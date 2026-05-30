@@ -1,5 +1,5 @@
 {
-  "total": 15,
+  "total": 17,
   "documents": [
     {
       "boardId": "main",
@@ -281,6 +281,42 @@
       "$sequence": "19",
       "$createdAt": "2026-05-30T04:09:54.791+00:00",
       "$updatedAt": "2026-05-30T04:09:54.791+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "posts"
+    },
+    {
+      "boardId": "main",
+      "title": "ccb302b4f156ee9d8303a8f91eceef66:1f7620f449c7654aa6f63314a5129a1d",
+      "content": "a73f473d0dac677b0421ed3cb6cf39c7:727b9726c3bb21c8d0db837af46eead6730822c8e9b4e44b62e3c9174d8f227b",
+      "authorId": "student_20240338",
+      "authorName": "12ff0593514a4b6c63cf4ea17a0c9e9b:759574e5bba2bf7bfb918daf6f530f89",
+      "viewPermission": 1,
+      "targetGroups": "536f1a133c7732942b28819ad04ff716:5739580b1a68f23b38bc4a1fb2760d01",
+      "status": 0,
+      "editedAt": null,
+      "$id": "6a1a6d40878f8e911cee",
+      "$sequence": "20",
+      "$createdAt": "2026-05-30T04:53:20.556+00:00",
+      "$updatedAt": "2026-05-30T04:53:20.556+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "posts"
+    },
+    {
+      "boardId": "main",
+      "title": "795420c9288e6e3253e9522142237a77:cc98007bc8e39e0763d3cabdd684cba7",
+      "content": "96a78fa9bcc5870c7b8c17749964bfb7:3fe811d9b8a4a3dbc9aee76e97ce43bf541a5401f6e0df21dd02a7728209e3b8",
+      "authorId": "student_20240338",
+      "authorName": "089f426842e180ff401f049e827eedd0:7edf0e2c71a123687b209d4767569aaf",
+      "viewPermission": 1,
+      "targetGroups": "1e209fec77096c2ac069d424790f2e6d:5edd94e48ccc26eaea0826ff6dd5a79b",
+      "status": 0,
+      "editedAt": null,
+      "$id": "6a1a6d42275fd695fb56",
+      "$sequence": "21",
+      "$createdAt": "2026-05-30T04:53:22.162+00:00",
+      "$updatedAt": "2026-05-30T04:53:22.162+00:00",
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "posts"
