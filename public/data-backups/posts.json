@@ -1,5 +1,5 @@
 {
-  "total": 18,
+  "total": 19,
   "documents": [
     {
       "boardId": "main",
@@ -335,6 +335,24 @@
       "$sequence": "22",
       "$createdAt": "2026-05-30T05:04:31.976+00:00",
       "$updatedAt": "2026-05-30T05:04:31.976+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "posts"
+    },
+    {
+      "boardId": "main",
+      "title": "fc9896da4641fe9e8400f8fa1d44ff9f:a0fe81ee59c84020b7ab96b754d10df9",
+      "content": "e0038c65d5b3150cb20495795ea76f62:dc41accdaafe8e531d9139628fd3ed28",
+      "authorId": "student_20240338",
+      "authorName": "e0097168f600e4a6776754046575866a:e4f23230e7925ac2937060d7f6302e26",
+      "viewPermission": 1,
+      "targetGroups": "5df2c5bffa8da7d604c2fba0e14d7627:0639d173064b97134feac90a26a97722",
+      "status": 0,
+      "editedAt": null,
+      "$id": "6a1ad86e4986301fe681",
+      "$sequence": "23",
+      "$createdAt": "2026-05-30T12:30:38.302+00:00",
+      "$updatedAt": "2026-05-30T12:30:38.302+00:00",
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "posts"
