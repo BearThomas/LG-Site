@@ -1,0 +1,100 @@
+<!-- index.html -->
+<!-- Made by BearThomas 2026/4/18-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title> Example </title>
+        <link rel="stylesheet" href="./css/light/forall.css">
+    </head>
+    <body style="height: 100%;">
+        <script src="./js/theme-change.js"></script>
+        <script src="./js/events.js"></script>
+        <div class="title-bar">
+            <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;">
+            <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+            <ul class="nav-bar">
+                <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+            <li class="nav-bar-item active" onclick="location.href='confession'">表白墙</li>
+            </ul>
+            <div class="user-area" id="userArea">
+                <!-- 未登录时显示 -->
+                <div class="user-not-login" id="userNotLogin">
+                    <a href="login.html" class="login-link">登录</a>
+                    <span class="divider">/</span>
+                    <a href="login.html#register" class="register-link">注册</a>
+                </div>
+                <!-- 已登录时显示（默认隐藏） -->
+                <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                    <span class="user-name" id="userName">同学</span>
+                    <div class="user-dropdown">
+                        <button class="user-avatar" id="userAvatar">👤</button>
+                        <div class="dropdown-menu" id="dropdownMenu">
+                            <a href="#" id="profileLink">📋 我的帖子</a>
+                            <a href="#" id="logoutBtn">🚪 退出登录</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="home-content">
+            <!-- 1. 大事记板块 (顶部) -->
+            <div class="event-board">
+                <h2>
+                    <span>📌 本周大事记</span>
+                    <a href="events.html" style="font-size: 0.9rem; color: rgba(255,255,255,0.8); text-decoration: none; margin-left: auto;">查看全部 →</a>
+                </h2>
+                <div class="event-scroll" id="weekEvents">
+                    <!-- 由 events.js 动态渲染 -->
+                </div>
+            </div>
+
+            <!-- 2. 双栏区域 (帖子 + 表白墙) -->
+            <div class="content-two-columns">
+                <!-- 左侧：帖子流 -->
+                <div class="post-section">
+                    <div class="section-header">
+                        <h2>📋 最新帖子</h2>
+                        <button class="new-post-btn" id="newPostBtn">+ 发新帖</button>
+                    </div>
+                    <div class="post-list" id="postList">
+                        <!-- 帖子 1 -->
+                        
+                    </div>
+                    <!-- 查看更多按钮 -->
+                    <div class="view-more-wrapper">
+                        <button class="view-more-btn" id="morePostsBtn" onclick="location.href='posts'">📄 查看更多帖子</button>
+                    </div>
+                </div>
+
+                <!-- 右侧：表白墙 -->
+                <!-- 右侧：表白墙 -->
+                <div class="confession-section">
+                    <div class="confession-header">
+                        <span style="font-size: 2rem;">💗</span>
+                        <h2>表白墙</h2>
+                    </div>
+                    <div class="confession-list" id="confessionList">
+                        <!-- 示例表白 1 - 10 条 -->
+                        <!-- ... 共 10 条 ... -->
+                    </div>
+                    <div class="view-more-wrapper" style="margin-top: 12px;">
+                        <button class="view-more-btn" id="moreConfessionsBtn" onclick="location.href='confession'">💕 更多表白</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script>
+            // 首页大事记初始化
+            (async function() {
+                await EventsManager.loadEvents();
+                EventsManager.renderWeekEvents('#weekEvents');
+            })();
+        </script>
+
+        <script src="./js/nav-bar.js"></script>
+        <script type="module" src="./js/home.js"></script>
+        
+    </body>
+</html>

@@ -1,0 +1,447 @@
+/* ========== 表白墙样式 ========== */
+
+.confession-container {
+    max-width: 680px;
+    margin: 24px auto;
+    padding: 0 24px;
+}
+
+/* 页面头部 */
+.confession-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.confession-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.confession-subtitle {
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+/* 发表卡片 */
+.publish-card {
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.08);
+    margin-bottom: 28px;
+    border: 1px solid #fce7f3;
+}
+
+.publish-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 16px;
+}
+
+.publish-icon {
+    font-size: 1.2rem;
+}
+
+.confession-textarea {
+    width: 100%;
+    padding: 16px;
+    border: 1.5px solid #f1f5f9;
+    border-radius: 18px;
+    font-size: 1rem;
+    line-height: 1.6;
+    resize: vertical;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+    background: #fafafa;
+}
+
+.confession-textarea:focus {
+    border-color: #ec4899;
+    background: white;
+}
+
+.confession-textarea::placeholder {
+    color: #a0aec0;
+}
+
+.publish-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 12px;
+}
+
+.char-count {
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.publish-btn {
+    padding: 10px 28px;
+    background: linear-gradient(135deg, #ec4899, #db2777);
+    border: none;
+    border-radius: 40px;
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+}
+
+.publish-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
+}
+
+.publish-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-tip {
+    margin-top: 16px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 14px;
+    text-align: center;
+}
+
+.login-tip a {
+    color: #ec4899;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+/* 排序栏 */
+.sort-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.sort-btn {
+    padding: 8px 20px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
+    font-size: 0.9rem;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.sort-btn:hover {
+    border-color: #ec4899;
+    color: #ec4899;
+}
+
+.sort-btn.active {
+    background: #ec4899;
+    border-color: #ec4899;
+    color: white;
+}
+
+/* 表白卡片 */
+.confession-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-height: 300px;
+}
+
+.confession-card {
+    background: white;
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s;
+    position: relative;
+}
+
+.confession-card:hover {
+    box-shadow: 0 6px 20px rgba(236, 72, 153, 0.1);
+}
+
+.confession-content {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #1e293b;
+    margin-bottom: 18px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    padding-right: 30px;
+}
+
+.confession-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.confession-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.confession-time {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+.confession-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.confession-action {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: transparent;
+    border: none;
+    border-radius: 30px;
+    font-size: 0.85rem;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.confession-action:hover {
+    background: #fdf2f8;
+    color: #ec4899;
+}
+
+.confession-action.liked {
+    color: #ec4899;
+}
+
+.confession-action.report:hover {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 24px;
+}
+
+.empty-icon {
+    font-size: 3.5rem;
+    margin-bottom: 16px;
+}
+
+.empty-state p {
+    color: #94a3b8;
+    font-size: 1rem;
+}
+
+/* 加载状态 */
+.loading-state {
+    text-align: center;
+    padding: 40px;
+    color: #94a3b8;
+}
+
+/* 分页器 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 32px;
+}
+
+.page-btn {
+    min-width: 40px;
+    height: 40px;
+    padding: 0 12px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    color: #1e293b;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.page-btn:hover:not(:disabled) {
+    border-color: #ec4899;
+    color: #ec4899;
+}
+
+.page-btn.active {
+    background: #ec4899;
+    border-color: #ec4899;
+    color: white;
+}
+
+.page-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* 弹窗 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(4px);
+}
+
+.modal-container {
+    background: white;
+    border-radius: 24px;
+    width: 90%;
+    max-width: 400px;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 650;
+}
+
+.modal-close {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: transparent;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.modal-body {
+    padding: 24px;
+}
+
+.report-tip {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-top: 8px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.cancel-btn {
+    padding: 10px 20px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 30px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.submit-btn {
+    padding: 10px 24px;
+    background: #ec4899;
+    border: none;
+    border-radius: 30px;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.danger-btn {
+    background: #dc2626 !important;
+}
+
+/* 深色模式 */
+.dark .publish-card,
+.dark .confession-card,
+.dark .empty-state,
+.dark .modal-container {
+    background: #1e293b;
+}
+
+.dark .confession-header h1 {
+    color: #f1f5f9;
+}
+
+.dark .confession-content {
+    color: #e2e8f0;
+}
+
+.dark .confession-textarea {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+.dark .confession-textarea:focus {
+    background: #1e293b;
+}
+
+.dark .sort-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+.dark .login-tip {
+    background: #0f172a;
+}
+
+.dark .page-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+.dark .cancel-btn {
+    background: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+/* 响应式 */
+@media (max-width: 500px) {
+    .confession-container {
+        padding: 0 16px;
+    }
+    
+    .confession-card {
+        padding: 18px;
+    }
+    
+    .confession-content {
+        font-size: 1rem;
+    }
+}

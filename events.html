@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>大事记 - 龙高北小站</title>
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/events.css">
+</head>
+<body>
+    <!-- 复用相同导航栏 -->
+    <div class="title-bar">
+        <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;">
+        <h1 class="site-title">龙高北小站</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='index.html'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item active" id="history-btn">大事记</li>
+            <li class="nav-bar-item" onclick="location.href='confession'">表白墙</li>
+        </ul>
+    </div>
+
+    <div class="events-page">
+        <h1 class="events-page-title">📌 大事记</h1>
+        
+        <!-- 筛选栏 -->
+        <div id="filterContainer"></div>
+        
+        <!-- 大事记列表 -->
+        <div id="allEvents" class="events-list"></div>
+        
+        <!-- 返回顶部 -->
+        <button class="back-to-top" id="backToTop" title="返回顶部">⬆</button>
+    </div>
+
+    <script src="./js/events.js"></script>
+    <script>
+        (async function() {
+            // 加载数据
+            await EventsManager.loadEvents();
+            
+            // 初始化筛选器
+            const { bindFilter } = EventsManager.initFilters('#filterContainer');
+            
+            // 渲染函数
+            const refresh = () => {
+                EventsManager.renderAllEvents('#allEvents');
+            };
+            
+            // 绑定筛选事件
+            bindFilter(() => {
+                const tag = document.getElementById('filterTag')?.value || 'all';
+                const keyword = document.getElementById('filterKeyword')?.value || '';
+                const dateRange = document.getElementById('filterDate')?.value || 'all';
+                
+                EventsManager.renderAllEvents('#allEvents', { tag, keyword, dateRange });
+            });
+            
+            // 首次渲染
+            refresh();
+            
+            // 返回顶部按钮
+            const backBtn = document.getElementById('backToTop');
+            window.addEventListener('scroll', () => {
+                backBtn.style.display = window.scrollY > 300 ? 'block' : 'none';
+            });
+            backBtn.addEventListener('click', () => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+        })();
+    </script>
+    
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>帖子广场 - 龙高北小站</title>
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/light/posts.css">
+</head>
+<div class="modal-overlay" id="createBoardModal" style="display: none;">
+    <div class="modal-container">
+        <div class="modal-header">
+            <h3>创建新板块</h3>
+            <button class="modal-close" id="closeBoardModal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>板块名称</label>
+                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="30">
+            </div>
+            <div class="form-group">
+                <label>板块简介</label>
+                <textarea id="boardDesc" placeholder="介绍一下这个板块..." rows="3" maxlength="100"></textarea>
+            </div>
+            <div class="form-group">
+                <label>板块类型</label>
+                <select id="boardType">
+                    <option value="club">社团</option>
+                    <option value="custom">其他</option>
+                </select>
+            </div>
+            <!-- <div class="form-group">
+                <label>
+                    <input type="checkbox" id="boardPublic" checked> 公开板块（所有人可见）
+                </label>
+            </div> -->
+            <div class="form-actions">
+                <button class="cancel-btn" id="cancelBoardBtn">取消</button>
+                <button class="submit-btn" id="submitBoardBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+<body>
+    <!-- 导航栏 -->
+    <div class="title-bar">
+        <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo">
+        <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+            <li class="nav-bar-item active" onclick="location.href='confession'">表白墙</li>
+        </ul>
+        
+        <!-- 登录状态区域 -->
+        <div class="user-area" id="userArea">
+            <div class="user-not-login" id="userNotLogin">
+                <a href="login.html" class="login-link">登录</a>
+                <span class="divider">/</span>
+                <a href="login.html#register" class="register-link">注册</a>
+            </div>
+            <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                <span class="user-name" id="userName">同学</span>
+                <div class="user-dropdown">
+                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="#" id="profileLink">📋 我的帖子</a>
+                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="posts-container">
+        
+        <!-- 右侧：帖子流 -->
+        <main class="posts-main">
+            <!-- 当前板块信息 -->
+            <div class="current-board-header">
+                <div class="board-info">
+                    <h2 id="currentBoardName">主板块</h2>
+                    <span class="board-member-count" id="boardMemberCount">42 人</span>
+                </div>
+                <div class="board-actions">
+                    <button class="join-board-btn" id="joinBoardBtn" style="display: none;">➕ 加入板块</button>
+                    <button class="new-post-btn" id="newPostBtn">✏️ 发新帖</button>
+                </div>
+            </div>
+
+            <!-- 排序/筛选栏 -->
+            <div class="posts-toolbar">
+                <div class="filter-options">
+                    <select id="timeFilter" class="time-filter">
+                        <option value="all">全部时间</option>
+                        <option value="today">今天</option>
+                        <option value="week">本周</option>
+                        <option value="month">本月</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 帖子列表 -->
+            <div class="posts-list" id="postsList">
+                <!-- 动态加载帖子 -->
+                <div class="loading-state">加载中...</div>
+            </div>
+
+            <!-- 分页器 -->
+            <div class="pagination" id="pagination"></div>
+        </main>
+    </div>
+
+    <!-- 发帖弹窗 -->
+    <div class="modal-overlay" id="postModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>发新帖</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>标题</label>
+                    <input type="text" id="postTitle" placeholder="输入标题（最多100字）" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>内容</label>
+                    <textarea id="postContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>可见范围</label>
+                    <select id="visibilityType">
+                        <option value="all">🌐 全员可见</option>
+                        <option value="specific">👤 指定学号可见</option>
+                    </select>
+                </div>
+                <!-- 指定学号区域（默认隐藏） -->
+                <div id="specificUsersArea" style="display: none;">
+                    <div class="form-group">
+                        <label>添加可见用户</label>
+                        <div class="user-search-box">
+                            <input type="text" id="userSearchInput" placeholder="输入学号搜索..." maxlength="12" autocomplete="off">
+                            <button type="button" class="search-btn" id="searchUserBtn">🔍</button>
+                        </div>
+                        <div class="search-results" id="searchResults" style="display: none;"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>已选用户 (<span id="selectedCount">0</span>人)</label>
+                        <div class="selected-users" id="selectedUsers">
+                            <div class="no-users-hint">尚未添加用户</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="cancel-btn" id="cancelPostBtn">取消</button>
+                    <button type="button" class="submit-btn" id="submitPostBtn">发布</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帖子详情弹窗 -->
+    <div class="modal-overlay" id="postDetailModal" style="display: none;">
+        <div class="modal-container post-detail-container">
+            <div class="modal-header">
+                <h3 id="detailTitle">帖子详情</h3>
+                <button class="modal-close" id="closeDetailBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="postDetailBody">
+                <!-- 动态加载帖子详情 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/theme-change.js"></script>
+    
+    <script type="module" src="./js/posts.js"></script>
+        
+</body>
+</html>

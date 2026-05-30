@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/appwrite-api/*"
+  to = "https://sgp.cloud.appwrite.io/:splat"
+  status = 200
+  force = true

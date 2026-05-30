@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>帖子详情 - 龙高北小站</title>
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/light/posts.css">
+    <link rel="stylesheet" href="./css/light/post-detail.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="title-bar">
+        <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo" onclick="location.href='index.html'">
+        <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+            <li class="nav-bar-item active" onclick="location.href='confession'">表白墙</li>
+        </ul>
+        
+        <!-- 登录状态区域 -->
+        <div class="user-area" id="userArea">
+            <div class="user-not-login" id="userNotLogin">
+                <a href="login.html" class="login-link">登录</a>
+                <span class="divider">/</span>
+                <a href="login.html#register" class="register-link">注册</a>
+            </div>
+            <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                <span class="user-name" id="userName">同学</span>
+                <div class="user-dropdown">
+                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="#" id="profileLink">📋 我的帖子</a>
+                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="post-detail-container">
+        <!-- 面包屑导航 -->
+        <div class="breadcrumb">
+            <a href="posts.html">← 返回帖子广场</a>
+            <span class="breadcrumb-divider">/</span>
+            <span id="boardName">加载中...</span>
+        </div>
+
+        <!-- 帖子主体 -->
+        <div class="post-detail-card" id="postDetailCard">
+            <div class="loading-state">加载中...</div>
+        </div>
+
+        <!-- 评论区 -->
+        <div class="comments-section" id="commentsSection">
+            <div class="comments-header">
+                <h3>💬 评论 (<span id="commentCount">0</span>)</h3>
+            </div>
+            
+            <!-- 评论输入框 -->
+            <div class="comment-input-box" id="commentInputBox">
+                <div class="comment-avatar" id="commentAvatar">?</div>
+                <div class="comment-input-wrapper">
+                    <textarea id="commentContent" placeholder="写下你的评论..." rows="2" maxlength="500"></textarea>
+                    <div class="comment-actions">
+                        <span class="comment-tip">😊 友善交流</span>
+                        <button class="submit-comment-btn" id="submitCommentBtn">发 布</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 未登录提示 -->
+            <div class="login-tip" id="loginTip" style="display: none;">
+                <p>请先<a href="login.html">登录</a>后发表评论</p>
+            </div>
+
+            <!-- 评论列表 -->
+            <div class="comments-list" id="commentsList">
+                <!-- 动态加载评论 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑帖子弹窗 -->
+    <div class="modal-overlay" id="editModal" style="display: none;">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h3>编辑帖子</h3>
+                <button class="modal-close" id="closeEditModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>标题</label>
+                    <input type="text" id="editTitle" placeholder="输入标题" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label>内容</label>
+                    <textarea id="editContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button class="cancel-btn" id="cancelEditBtn">取消</button>
+                    <button class="submit-btn" id="submitEditBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div class="modal-overlay" id="deleteModal" style="display: none;">
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这篇帖子吗？此操作不可恢复。</p>
+                <div class="form-actions">
+                    <button class="cancel-btn" id="cancelDeleteBtn">取消</button>
+                    <button class="submit-btn danger-btn" id="confirmDeleteBtn">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/theme-change.js"></script>
+    <script type="module" src="./js/post-detail.js"></script>
+    
+</body>
+</html>

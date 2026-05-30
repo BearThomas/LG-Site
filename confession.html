@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>表白墙 - 龙高北小站</title>
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/light/confession.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <div class="title-bar">
+        <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo" onclick="location.href='index.html'">
+        <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+            <li class="nav-bar-item active" onclick="location.href='confession'">表白墙</li>
+        </ul>
+        
+        <!-- 登录状态区域 -->
+        <div class="user-area" id="userArea">
+            <div class="user-not-login" id="userNotLogin">
+                <a href="login.html" class="login-link">登录</a>
+                <span class="divider">/</span>
+                <a href="login.html#register" class="register-link">注册</a>
+            </div>
+            <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                <span class="user-name" id="userName">同学</span>
+                <div class="user-dropdown">
+                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="#" id="profileLink">📋 我的帖子</a>
+                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="confession-container">
+        <!-- 页面头部 -->
+        <div class="confession-header">
+            <h1>💗 表白墙</h1>
+            <p class="confession-subtitle">勇敢说出来，完全匿名，只有你知道</p>
+        </div>
+
+        <!-- 发表表白卡片 -->
+        <div class="publish-card">
+            <div class="publish-header">
+                <span class="publish-icon">✏️</span>
+                <span>写下你的心意</span>
+            </div>
+            <textarea id="confessionContent" class="confession-textarea" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="3"></textarea>
+            <div class="publish-footer">
+                <span class="char-count"><span id="charCount">0</span>/300</span>
+                <button id="publishBtn" class="publish-btn">匿名发布</button>
+            </div>
+            <div class="login-tip" id="loginTip" style="display: none;">
+                <p>💡 请先<a href="login.html">登录</a>后发表表白</p>
+            </div>
+        </div>
+
+        <!-- 排序栏 -->
+        <div class="sort-bar">
+            <button class="sort-btn active" data-sort="latest">🕐 最新</button>
+            <button class="sort-btn" data-sort="hot">🔥 最热</button>
+        </div>
+
+        <!-- 表白列表 -->
+        <div class="confession-list" id="confessionList">
+            <!-- 动态加载 -->
+            <div class="loading-state">加载中...</div>
+        </div>
+
+        <!-- 分页器 -->
+        <div class="pagination" id="pagination"></div>
+    </div>
+
+    <!-- 举报弹窗 -->
+    <div class="modal-overlay" id="reportModal" style="display: none;">
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3>举报表白</h3>
+                <button class="modal-close" id="closeReportModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>确定要举报这条表白吗？</p>
+                <p class="report-tip">举报后管理员会审核处理</p>
+                <div class="form-actions">
+                    <button class="cancel-btn" id="cancelReportBtn">取消</button>
+                    <button class="submit-btn danger-btn" id="confirmReportBtn">举报</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/theme-change.js"></script>
+    <script type="module" src="./js/confession.js"></script>
+
+    
+</body>
+</html>
