@@ -1,0 +1,92 @@
+{
+  "total": 3,
+  "documents": [
+    {
+      "userId": "20240338",
+      "name": "同学0338",
+      "avatar": null,
+      "email": "20240338@campus.local",
+      "role": "normal",
+      "permissions": 31,
+      "joinedBoards": [
+        "main"
+      ],
+      "ownedBoards": [],
+      "class": "2024届03班",
+      "mutedUntil": null,
+      "banned": false,
+      "$id": "20240338",
+      "$sequence": "1",
+      "$createdAt": "2026-04-19T06:58:15.998+00:00",
+      "$updatedAt": "2026-04-19T06:58:15.998+00:00",
+      "$permissions": [
+        "read(\"user:20240338\")",
+        "update(\"user:20240338\")",
+        "delete(\"user:20240338\")",
+        "read(\"team:admin\")",
+        "update(\"team:admin\")",
+        "delete(\"team:admin\")"
+      ],
+      "$databaseId": "lg",
+      "$collectionId": "users"
+    },
+    {
+      "userId": "20240860",
+      "name": "同学0860",
+      "avatar": null,
+      "email": "20240860@campus.local",
+      "role": "normal",
+      "permissions": 31,
+      "joinedBoards": [
+        "main"
+      ],
+      "ownedBoards": [],
+      "class": "2024届08班",
+      "mutedUntil": null,
+      "banned": false,
+      "$id": "20240860",
+      "$sequence": "2",
+      "$createdAt": "2026-05-24T06:50:57.868+00:00",
+      "$updatedAt": "2026-05-24T06:50:57.868+00:00",
+      "$permissions": [
+        "read(\"user:20240860\")",
+        "update(\"user:20240860\")",
+        "delete(\"user:20240860\")",
+        "read(\"team:admin\")",
+        "update(\"team:admin\")",
+        "delete(\"team:admin\")"
+      ],
+      "$databaseId": "lg",
+      "$collectionId": "users"
+    },
+    {
+      "userId": "20240160",
+      "name": "同学0160",
+      "avatar": null,
+      "email": "20240160@campus.local",
+      "role": "normal",
+      "permissions": 31,
+      "joinedBoards": [
+        "main"
+      ],
+      "ownedBoards": [],
+      "class": "2024届01班",
+      "mutedUntil": null,
+      "banned": false,
+      "$id": "20240160",
+      "$sequence": "3",
+      "$createdAt": "2026-05-24T06:52:26.695+00:00",
+      "$updatedAt": "2026-05-24T06:52:26.695+00:00",
+      "$permissions": [
+        "read(\"user:20240160\")",
+        "update(\"user:20240160\")",
+        "delete(\"user:20240160\")",
+        "read(\"team:admin\")",
+        "update(\"team:admin\")",
+        "delete(\"team:admin\")"
+      ],
+      "$databaseId": "lg",
+      "$collectionId": "users"
+    }
+  ]
+}

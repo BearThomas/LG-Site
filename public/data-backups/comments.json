@@ -1,0 +1,9 @@
+{
+  "total": 0,
+  "documents": [],
+  "encrypted": true,
+  "encryptedFields": [
+    "content",
+    "authorName"
+  ]
+}
