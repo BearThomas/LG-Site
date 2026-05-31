@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <title>个人中心 - 龙高北小站</title>
+        <link rel="stylesheet" href="./css/light/forall.css">
+        <style>
+            /* 局部轻量样式补丁，用于支撑个人中心特有的双栏表单布局 */
+            .profile-wrapper {
+                max-width: 1100px;
+                margin: 30px auto;
+                padding: 0 20px;
+                display: flex;
+                gap: 30px;
+            }
+            @media (max-width: 768px) {
+                .profile-wrapper {
+                    flex-direction: column;
+                }
+            }
+            .profile-sidebar {
+                flex: 1;
+                background: #ffffff;
+                border-radius: 12px;
+                padding: 30px 20px;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                height: fit-content;
+            }
+            .avatar-preview {
+                width: 90px;
+                height: 90px;
+                background-color: #228be6;
+                color: #ffffff;
+                font-size: 2.2rem;
+                font-weight: bold;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 0 auto 15px;
+                text-transform: uppercase;
+                box-shadow: 0 4px 8px rgba(34, 139, 230, 0.25);
+            }
+            .profile-sidebar h3 {
+                margin: 10px 0 5px;
+                color: #212529;
+                font-size: 1.3rem;
+            }
+            .user-id-tag {
+                font-size: 0.85rem;
+                color: #868e96;
+                background: #f1f3f5;
+                padding: 4px 10px;
+                border-radius: 20px;
+                display: inline-block;
+                margin-top: 5px;
+            }
+            .profile-main {
+                flex: 2.5;
+                display: flex;
+                flex-direction: column;
+                gap: 24px;
+            }
+            .settings-section {
+                background: #ffffff;
+                border-radius: 12px;
+                padding: 24px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            }
+            .settings-section h2 {
+                font-size: 1.25rem;
+                color: #343a40;
+                margin-top: 0;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #f1f3f5;
+                padding-bottom: 10px;
+            }
+            .form-group {
+                margin-bottom: 18px;
+            }
+            .form-group label {
+                display: block;
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: #495057;
+                margin-bottom: 8px;
+            }
+            .form-group input {
+                width: 100%;
+                padding: 10px 14px;
+                border: 1px solid #ced4da;
+                border-radius: 6px;
+                font-size: 0.95rem;
+                color: #495057;
+                box-sizing: border-box;
+                transition: border-color 0.2s;
+            }
+            .form-group input:focus {
+                outline: none;
+                border-color: #228be6;
+            }
+            .save-btn {
+                background-color: #228be6;
+                color: #ffffff;
+                border: none;
+                padding: 10px 20px;
+                font-size: 0.95rem;
+                font-weight: 500;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+            }
+            .save-btn:hover {
+                background-color: #1c7ed6;
+            }
+            .save-btn:disabled {
+                background-color: #adb5bd;
+                cursor: not-allowed;
+            }
+            .save-btn.danger {
+                background-color: #fa5252;
+            }
+            .save-btn.danger:hover {
+                background-color: #e03131;
+            }
+        </style>
+    </head>
+    <body style="height: 100%; background-color: #f8f9fa;">
+        <script src="./js/theme-change.js"></script>
+
+        <div class="title-bar">
+            <img src="image/LG.png" width="70px" height="70px" style="padding: 7px; padding-left: 20px;" alt="Logo">
+            <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+            <ul class="nav-bar">
+                <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+                <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+                <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+                <li class="nav-bar-item" onclick="location.href='confession'">表白墙</li>
+            </ul>
+            <div class="user-area" id="userArea">
+                <div class="user-not-login" id="userNotLogin">
+                    <a href="login.html" class="login-link">登录</a>
+                    <span class="divider">/</span>
+                    <a href="login.html#register" class="register-link">注册</a>
+                </div>
+                <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                    <span class="user-name" id="userName">同学</span>
+                    <div class="user-dropdown">
+                        <button class="user-avatar" id="userAvatar">👤</button>
+                        <div class="dropdown-menu" id="dropdownMenu">
+                            <a href="./profile" id="profileLink"> 个人中心 </a>
+                            <a href="#" id="logoutBtn">🚪 退出登录</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="profile-wrapper">
+            
+            <div class="profile-sidebar">
+                <div class="avatar-preview" id="avatarPreview">
+                    <span id="avatarText">?</span>
+                    <img id="avatarImg" src="" alt="头像" style="display: none; width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                </div>
+                <h3 id="profileUsername">加载中...</h3>
+                <span class="user-id-tag" id="profileUserId">ID: --</span>
+            </div>
+
+            <div class="profile-main">
+                
+                <div class="settings-section">
+                    <h2>🎨 个人资料设置</h2>
+                    <div class="form-group">
+                        <label for="nameInput">修改显示姓名 / 昵称</label>
+                        <input type="text" id="nameInput" placeholder="请输入你的新名称" maxlength="12" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="avatarInput">自定义头像图片链接 (URL)</label>
+                        <input type="url" id="avatarInput" placeholder="请输入以 https:// 开头的图片网址" autocomplete="off">
+                    </div>
+                    <button class="save-btn" id="saveProfileBtn">保存资料</button>
+                </div>
+
+                <div class="settings-section">
+                    <h2>🔒 账户安全管理</h2>
+                    <div class="form-group">
+                        <label for="oldPasswordInput">当前旧密码</label>
+                        <input type="password" id="oldPasswordInput" placeholder="请输入当前正在使用的密码">
+                    </div>
+                    <div class="form-group">
+                        <label for="newPasswordInput">安全新密码</label>
+                        <input type="password" id="newPasswordInput" placeholder="请输入新密码（长度至少6位）">
+                    </div>
+                    <button class="save-btn danger" id="updatePasswordBtn">修改账户密码</button>
+                </div>
+
+            </div>
+        </div>
+
+        <script src="./js/nav-bar.js"></script>
+        <script type="module" src="./js/profile.js"></script>
+    </body>
+</html>

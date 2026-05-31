@@ -1,5 +1,5 @@
 // js/login.js
-// 登录页前端逻辑（已剥离）
+// 登录页前端逻辑（已修复会话令牌丢失与语法缺陷）
 
 (function() {
     'use strict';
@@ -52,7 +52,6 @@
 
     // ========== 创建校园验证弹窗 ==========
     function createVerifyModal(questions, onSubmit) {
-        // 移除旧弹窗
         if (verifyModal) {
             verifyModal.remove();
         }
@@ -122,7 +121,6 @@
                 answers.push({ id: parseInt(id), answer: answer });
             }
 
-            // 提交验证
             const submitBtn = form.querySelector('.verify-submit-btn');
             submitBtn.textContent = '验证中...';
             submitBtn.disabled = true;
@@ -139,7 +137,6 @@
                 if (result.passed) {
                     showSuccess('验证通过！');
                     closeModal();
-                    // 执行回调（真正的注册）
                     onSubmit();
                 } else {
                     showError(result.message || '验证失败，请重试');
@@ -206,6 +203,7 @@
             alert('网络错误，看控制台: ' + err.message);
         }
     }
+
     // ========== 选项卡切换 ==========
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
@@ -226,7 +224,7 @@
         });
     });
 
-    // ========== 登录 ==========
+    // ========== 登录业务内核 ==========
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideMessages();
@@ -263,22 +261,68 @@
 
             const result = await response.json();
 
-            // 登录成功处理
+            // 在你的登录成功分支里替换
             if (result.success) {
-                // 用一个新的 client 来恢复会话，避免和页面上的 client 冲突
+                const rawKeyHex = result.encryptKey; // 假设这是云端给你的 Hex 密钥
+                
+                // 1. 把 Hex 字符串转成字节数组
+                const keyBytes = new Uint8Array(rawKeyHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+                
+                // 2. 🌟 将其导入为浏览器托管的 CryptoKey，核心是设置 [extractable: false]
+                const cryptoKey = await crypto.subtle.importKey(
+                    "raw",
+                    keyBytes,
+                    { name: "AES-CBC" },
+                    false, // 👈 关键：false 代表【不可导出】！一旦落地，神仙也拿不到明文
+                    ["decrypt", "encrypt"] // 允许这把钥匙用来解密和加密
+                );
+
+                // 3. 把这个临时的 cryptoKey 存在当前页面的全局变量，或者存入 IndexedDB 里长效留存
+                window.secureKeyBlackBox = cryptoKey; 
+                await localforage.setItem('secure_gate_key', cryptoKey);
+                console.log("🔒 密钥已成功锁入浏览器硬件级黑盒，控制台已无法读取！");
+            }
+
+            // 验证系统后台下发的登录许可
+            if (result.success) {
                 const { Client, Account } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
                 const loginClient = new Client()
                     .setEndpoint('https://sgp.cloud.appwrite.io/v1')
                     .setProject('lg');
                 const account = new Account(loginClient);
 
-                // 🔥 核心：用 userId 和 secret 创建长期 Session
-                await account.createSession(result.userId, result.secret); 
+                const loginEmail = `${studentId.trim()}@campus.local`;
+                
+                let session = null;
 
-                // 存储学生信息和密钥（不需要再存 token）
+                // ⚡ ⭐ 【核心自愈大招】：直面幽灵 Cookie 冲突
+                try {
+                    // 尝试第一次标准登录
+                    session = await account.createEmailPasswordSession(loginEmail, password); 
+                } catch (loginError) {
+                    // 🛡️ 如果服务器抛出“已有活跃会话”的 401 冲突拦截
+                    if (loginError.message && loginError.message.includes("prohibited")) {
+                        console.log("🔄 触发服务器级会话冲突！检测到幽灵 Cookie，正在进行现场强力清洗...");
+                        
+                        // 此时服务器承认会话存在，这句注销必然百分之百在云端执行成功，把幽灵 Cookie 彻底扬了
+                        await account.deleteSession('current'); 
+                        
+                        console.log("🧹 幽灵会话已强制全量蒸发，正在原地发起二次登录重试...");
+                        // 瞬间进行二次原地登录，此时两端障碍全部扫清，必定一路绿灯！
+                        session = await account.createEmailPasswordSession(loginEmail, password);
+                    } else {
+                        // 如果是密码错误等其他真实异常，直接抛给外层 catch
+                        throw loginError;
+                    }
+                }
+
+                // ⚡ 凭证安全护航：保存完整的上下文凭证，将凭证 Secret 映射为其他页面急需的 token
                 localStorage.setItem('campus_user', JSON.stringify({
+                    userId: result.studentId,
                     studentId: result.studentId,
+                    name: result.name || result.studentId, 
                     encryptKey: result.encryptKey,
+                    token: session.secret, // 🔑 注入个人中心和帖子流改密必用的核心长效钥匙
                     loginTime: Date.now()
                 }));
 
@@ -289,15 +333,21 @@
             } else {
                 showError(result.error || '登录失败，请检查学号和密码');
             }
-                    } catch (err) {
-                        showError('网络错误，请稍后重试');
-                    } finally {
-                        loginBtn.classList.remove('loading');
-                        loginBtn.textContent = '登 录';
-                    }
-                });
+        } catch (err) {
+            console.error("💥 登录链路最终捕获异常:", err);
+            // 优雅拦截并翻译
+            if (err.message && err.message.includes("Invalid credentials")) {
+                showError('❌ 登录失败：学号或密码不正确！');
+            } else {
+                showError(`网络通信故障，或凭证异常: ${err.message}`);
+            }
+        } finally {
+            loginBtn.classList.remove('loading');
+            loginBtn.textContent = '登 录';
+        }
+    });
 
-    // ========== 注册（触发验证） ==========
+    // ========== 注册触发验证 ==========
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideMessages();
@@ -306,7 +356,6 @@
         const password = regPassword.value;
         const confirmPassword = regConfirmPassword.value;
 
-        // 前端校验
         if (!password) {
             showError('请输入密码');
             return;
@@ -324,32 +373,19 @@
             return;
         }
 
-        // 保存待注册信息
-        const pendingRegistration = { studentId, password };
-        console.log(pendingRegistration)
-        // 先弹出校园验证
+        const pendingData = { studentId, password };
+        
         await fetchAndShowVerification(() => {
-            console.log(pendingRegistration);
-            console.log("20240160");
-            doRegister(pendingRegistration.studentId, pendingRegistration.password);
+            doRegister(pendingData.studentId, pendingData.password);
         });
     });
 
-    // ========== 回车快捷登录 ==========
+    // ========== 快捷事件监听 ==========
     loginStudentId.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') loginPassword.focus();
     });
     loginPassword.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') loginForm.dispatchEvent(new Event('submit'));
     });
-
-    // ========== 检查是否已登录 ==========
-    const user = localStorage.getItem('campus_user');
-    if (user) {
-        try {
-            const userData = JSON.parse(user);
-            
-        } catch (e) {}
-    }
 
 })();

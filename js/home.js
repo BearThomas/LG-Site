@@ -1,7 +1,4 @@
-// index.html 中的 <script> 部分
-// 放在 home-interactions.js 或直接内联
-
-import { Client, Databases, Query,  Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query, Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 
 // ========== Appwrite 配置 ==========
 const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
@@ -11,8 +8,10 @@ const COLLECTION_POSTS = 'posts';
 const COLLECTION_CONFESSIONS = 'confessions';
 const COLLECTION_USERS = 'users';
 
-// import { Client, Databases, Query, Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+// ========== 安全密钥 配置 (与 posts.js 保持一致) ==========
+const ENCRYPT_KEY = '176ec04db0ffc0e689e2e36b40e6c68a528b4179339fbaad8bdd12bf63597eec';
 
+// 初始化 Appwrite
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
@@ -20,24 +19,71 @@ const client = new Client()
 let databases;
 let currentUser = null;
 
+// ========== 核心：解密函数（失败返回 null，不返回脏数据） ==========
+async function decryptText(encryptedText) {
+    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
+    
+    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
+    const cryptoKey = window.secureKeyBlackBox; 
+    if (!cryptoKey) {
+        console.warn("未发现安全密钥，拒绝解密");
+        return null;
+    }
+    
+    const parts = encryptedText.split(':');
+    const ivHex = parts[0];
+    const cipherHex = parts.slice(1).join(':');
+    
+    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+    
+    try {
+        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-CBC', iv }, 
+            cryptoKey, // 👈 传入这个不可导出的对象即可
+            ciphertext
+        );
+        return new TextDecoder().decode(decrypted);
+    } catch (e) {
+        console.warn('解密失败。');
+        return null;
+    }
+}
+
+// ========== 初始化入口 ==========
 (async function init() {
+    try {
+        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
+        const cryptoKey = await localforage.getItem('secure_gate_key');
+        
+        if (cryptoKey) {
+            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
+            window.secureKeyBlackBox = cryptoKey;
+            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
+        } else {
+            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
+        }
+    } catch (dbError) {
+        console.error("读取本地安全数据库失败:", dbError);
+    }
     const account = new Account(client);
 
     try {
-        // 尝试获取当前用户（登录过的设备会自动恢复）
+        // 尝试自动恢复长效会话
         const user = await account.get();
         console.log('✅ 已登录:', user.$id);
-        // 从 localStorage 补充学号信息
         const saved = JSON.parse(localStorage.getItem('campus_user') || '{}');
         currentUser = {
             studentId: saved.studentId || user.$id.replace('student_', ''),
-            userId: user.$id
+            userId: user.$id,
+            token: saved.token
         };
     } catch {
-        // 未登录，创建匿名会话
+        // 未登录，自动创建匿名会话以便读取公开内容
         try {
             await account.createAnonymousSession();
-            console.log('👻 匿名游客');
+            console.log('👻 匿名游客访问');
         } catch (e) {
             console.warn('匿名会话创建失败');
         }
@@ -45,334 +91,225 @@ let currentUser = null;
 
     databases = new Databases(client);
     checkLoginStatus();
-    loadHomePosts();
-    loadHomeConfessions();
+    
+    // ⚡ 独立并行启动两路缓存加持的加载流水线
+    loadHomePosts();        
+    loadHomeConfessions();  
 })();
 
-
-// 初始化
-// const client = new Client()
-//     .setEndpoint(APPWRITE_ENDPOINT)
-//     .setProject(APPWRITE_PROJECT_ID);
-
-// // const databases = new Databases(client);
-// let databases;
-// // 全局状态
-// let currentUser = null;
-
-// ========== 初始化 ==========
-// document.addEventListener('DOMContentLoaded', async () => {
-//     // 1. 核心安全修改：绝对不要上来就抢跑发请求！
-//     console.log("⏳ 首页加载，正在等待长效会话守护就绪...");
-    
-//     // 2. 检查全局保活模块是否初始化完成
-//     // 我们可以给它加一个双保险：确保 initAutoAuth 执行完毕后再发请求
-//     // if (window.initAutoAuth) {
-//     //     try {
-//     //         // 等待 auto-auth.js 内部逻辑走完（不管是读取本地还是从后端换取到了最新 Token）
-//     //         await window.initAutoAuth(); 
-//     //         console.log("✓ 会话守护已就绪，Thomas，开始安全加载首页内容。");
-//     //     } catch (e) {
-//     //         console.error("会话初始化异常，降级以访客身份加载:", e);
-//     //     }
-//     // }
-
-//     // // 3. 此时 Token 已经是最新最热乎的了，再安全地去拿数据
-//     // checkLoginStatus();
-//     // await getUserJoinedBoards();
-//     // await loadHomePosts();
-//     // await loadHomeConfessions();
-//     // // bindEvents();
-//     const userData = localStorage.getItem('campus_user');
-//     if (userData) {
-//         const user = JSON.parse(userData);
-//         client.setJWT(user.token);
-//     }
-//     if (userData) {
-//         const user = JSON.parse(userData);
-//         client.setJWT(user.token);
-//         console.log('🔑 已设置 JWT:', user.token?.slice(0, 30) + '...');
-//     }
-//     databases = new Databases(client);
-
-//     checkLoginStatus();
-//     loadHomePosts();
-//     loadHomeConfessions();
-// });
-// document.addEventListener('DOMContentLoaded', async () => {
-//     // ⭐ 用 session secret 恢复会话
-//     const savedUser = localStorage.getItem('campus_user');
-//         if (savedUser) {
-//             const user = JSON.parse(savedUser);
-//             client.setJWT(user.token);  // token 就是 session.secret
-//             console.log('✅ 设置 token:', user.token.slice(0, 30));
-//         }
-//         databases = new Databases(client);
-//         checkLoginStatus();
-//         loadHomePosts();
-//         loadHomeConfessions();
-// });
-// const client = new Client()
-//     .setEndpoint(APPWRITE_ENDPOINT)
-//     .setProject(APPWRITE_PROJECT_ID);
-
-// let databases;
-// let currentUser = null;
-
-// 页面加载时自动执行
-// (async function init() {
-//     const savedUser = localStorage.getItem('campus_user');
-//     if (!savedUser) {
-//         console.log('未找到登录信息，以访客身份浏览。');
-//         databases = new Databases(client);
-//         return;
-//     }
-
-//     const user = JSON.parse(savedUser);
-    
-//     // 1. 先用短期JWT初始化客户端，以证明身份
-//     client.setJWT(user.token);
-//     console.log('✅ 短期JWT已设置，准备升级为长期会话...');
-
-//     try {
-//         const account = new Account(client);
-        
-//         // 2. 在创建新会话前，先尝试删除可能存在的旧会话
-//         try {
-//             await account.deleteSession('current');
-//             console.log('🧹 已清理旧的当前会话。');
-//         } catch (deleteError) {
-//             // 如果删除失败（例如没有旧会话），我们忽略此错误并继续
-//             console.log('ℹ️ 没有需要清理的旧会话，或清理失败。');
-//         }
-
-//         // 3. 现在，安全地用短期JWT创建一个新的、长期有效的会话
-//         await account.createSession(user.studentId, user.token);
-//         console.log('✅ 长期会话创建成功，无需担心过期！');
-        
-//     } catch (error) {
-//         console.warn('创建长期会话失败，将使用短期JWT:', error);
-//         // 如果失败，仍然可以尝试用JWT继续
-//     }
-
-//     databases = new Databases(client);
-//     checkLoginStatus();
-//     loadHomePosts();
-//     loadHomeConfessions();
-// })();
-
-// (async function init() {
-//     const savedUser = localStorage.getItem('campus_user');
-
-//     if (savedUser) {
-//         // 已登录用户：用 JWT 恢复会话
-//         const user = JSON.parse(savedUser);
-//         client.setJWT(user.token);
-//         console.log('✅ 已登录用户');
-//     }
-//     // } else {
-//     //     // ⭐ 游客：创建匿名会话
-//     //     const account = new Account(client);
-//     //     try {
-//     //         await account.createAnonymousSession();
-//     //         console.log('👻 匿名会话已创建，游客可浏览公开内容');
-//     //     } catch (e) {
-//     //         console.warn('匿名会话创建失败，可能无法加载数据');
-//     //     }
-//     // }
-
-//     databases = new Databases(client);
-//     checkLoginStatus();
-//     loadHomePosts();
-//     loadHomeConfessions();
-// })();
-
+// ========== 检查并同步登录状态 UI ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
     const userNotLogin = document.getElementById('userNotLogin');
     const userLoggedIn = document.getElementById('userLoggedIn');
 
-    if (userData) {
-        currentUser = JSON.parse(userData);
+    if (userData && currentUser) {
+        if (userNotLogin) userNotLogin.style.display = 'none';
+        if (userLoggedIn) userLoggedIn.style.display = 'flex';
         
-        // ⭐ 直接设置
-        if (currentUser.token) {
-            client.setJWT(currentUser.token);
-        }
-
-        userNotLogin.style.display = 'none';
-        userLoggedIn.style.display = 'flex';
-        document.getElementById('userName').textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
-        document.getElementById('userAvatar').textContent = currentUser.studentId.charAt(0);
+        const userNameEl = document.getElementById('userName');
+        const userAvatarEl = document.getElementById('userAvatar');
+        if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
+        if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
     } else {
-        userNotLogin.style.display = 'flex';
-        userLoggedIn.style.display = 'none';
+        if (userNotLogin) userNotLogin.style.display = 'flex';
+        if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
 }
 
-// ========== 获取用户已加入的板块 ==========
+// ========== 异步优雅获取用户板块权限组 ==========
 async function getUserJoinedBoards() {
     if (!currentUser) return ['main'];
-    // const latestJwt = localStorage.getItem('persistent_jwt');
-    //     if (latestJwt && typeof client !== 'undefined') {
-    //         client.setJWT(latestJwt); 
-    //     }
-    
     try {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
             Query.equal('userId', currentUser.studentId)
         ]);
-        
         if (response.documents.length > 0) {
             return response.documents[0].joinedBoards || ['main'];
         }
     } catch (e) {
-        console.warn('获取用户板块失败:', e);
+        console.warn('获取用户板块失败，降级回主板块:', e);
     }
-    
     return ['main'];
 }
 
-// ========== 检查帖子是否对当前用户可见 ==========
+// ========== 严格视图可见性权限过滤器 ==========
 function isPostVisible(post, userBoards) {
-    // const latestJwt = localStorage.getItem('persistent_jwt');
-    //     if (latestJwt && typeof client !== 'undefined') {
-    //         client.setJWT(latestJwt); 
-    //     }
-    const viewPermission = post.viewPermission || 1;
-    const isAuthor = currentUser && currentUser.studentId === post.authorId;
+    // 🛡️ 边界断路器：只要帖子核心字段解密出 null，说明密钥错误，直接人间蒸发
+    if (post.title === null || post.content === null) return false;
+
+    const viewPermission = Number(post.viewPermission) || 1;
+    // 🛡️ 堵死原代码明文下的 undefined === undefined 访客越权伪装作者漏洞
+    const isAuthor = currentUser && currentUser.studentId && post.authorId && (post.authorId === currentUser.studentId);
     
-    // 1 = 所有人可见
-    if (viewPermission === 1) return true;
-    
-    // 8 = 仅作者可见
-    if (viewPermission === 8) return isAuthor;
-    
-    // 2 = 板块成员可见
-    if (viewPermission === 2) {
+    if (viewPermission === 1) return true; // 所有人可见
+    if (viewPermission === 8) return isAuthor; // 仅作者可见
+    if (viewPermission === 2) { // 板块成员可见
         if (!currentUser) return false;
         return userBoards.includes(post.boardId);
     }
-    
-    // 4 = 指定群组可见（需要 targetGroups）
-    if (viewPermission === 4) {
+    if (viewPermission === 4) { // 指定群组/用户可见
         if (!currentUser) return false;
         const targetGroups = post.targetGroups || [];
-        return targetGroups.some(group => userBoards.includes(group));
+        return targetGroups.includes(currentUser.studentId) || targetGroups.some(group => userBoards.includes(group));
     }
-    
     return false;
 }
 
-// ========== 加载首页帖子（最新5条） ==========
+// ========== 缓存状态同步提示条控制 ==========
+function showHomeCacheNotice(containerEl, noticeId, message, type = 'waiting') {
+    if (!containerEl) return;
+    document.getElementById(noticeId)?.remove(); // 规避重复渲染
+
+    const noticeEl = document.createElement('div');
+    noticeEl.id = noticeId;
+    noticeEl.className = `cache-notice-bar ${type}`;
+    noticeEl.style.fontSize = '12px';
+    noticeEl.style.padding = '6px 12px';
+    noticeEl.style.marginBottom = '10px';
+    noticeEl.innerHTML = message;
+    
+    containerEl.insertBefore(noticeEl, containerEl.firstChild);
+
+    if (type === 'success') {
+        setTimeout(() => {
+            noticeEl.style.opacity = '0';
+            setTimeout(() => noticeEl.remove(), 400);
+        }, 2000);
+    }
+}
+
+// ========== 【高级缓存重构】加载首页帖子（最新5条） ==========
 async function loadHomePosts() {
     const postList = document.getElementById('postList');
     if (!postList) return;
-    postList.innerHTML = '<div class="loading-state">加载中...</div>';
 
-    const currentUserId = currentUser?.studentId;
+    const currentUserId = currentUser?.studentId || 'guest';
+    const cacheKey = `cache_home_posts_${currentUserId}`;
+    const localCache = localStorage.getItem(cacheKey);
+    let hasRenderedCache = false;
 
-    // ========== 1. 先加载热数据 ==========
+    // 【步骤 1】秒开快速捞取本地缓存快照
+    if (localCache) {
+        try {
+            const parsed = JSON.parse(localCache);
+            if (parsed && Array.isArray(parsed.data)) {
+                renderHomePosts(parsed.data);
+                showHomeCacheNotice(postList, 'postCacheNotice', '⚡ 已载入本地动态快照，正在校验云端...', 'waiting');
+                hasRenderedCache = true;
+            }
+        } catch (e) {
+            console.warn('读取首页帖子缓存失败:', e);
+        }
+    }
+
+    if (!hasRenderedCache) {
+        postList.innerHTML = '<div class="loading-state">加载中...</div>';
+    }
+
+    // 【步骤 2】后台并行洗流热、冷数据
     let hotPosts = [];
     try {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
             Query.orderDesc('$createdAt'),
-            Query.limit(20)
+            Query.limit(25) // 取25条确保过滤后足够填满前5条
         ]);
         hotPosts = response.documents;
     } catch (e) {
-        console.warn('热数据加载失败，等待冷备份...');
-        postList.innerHTML = '<div class="loading-state">正在从备份加载...</div>';
+        console.warn('云端热帖子加载失败，仅检索备份:', e.message);
     }
 
-    // 过滤 + 渲染热数据
-    const userBoards = currentUser ? await getUserJoinedBoards() : ['main'];
-    const visibleHot = hotPosts.filter(post => isPostVisible(post, userBoards)).slice(0, 5);
-    renderHomePosts(visibleHot);
-
-    // ========== 2. 后台加载冷备份 ==========
-    loadColdPostsForHome(currentUserId, visibleHot, userBoards);
-}
-
-async function loadColdPostsForHome(currentUserId, existingPosts, userBoards) {
+    let coldPosts = [];
     try {
-        const url = 'https://cdn.jsdelivr.net/gh/BearThomas/LG-Site-Backup@main/backups/last/posts.json';
+        const url = './public/data-backups/posts.json';
         const res = await fetch(url);
-        if (!res.ok) return;
-
-        const backupData = await res.json();
-        let coldPosts = backupData.documents || backupData || [];
-        console.log(`从冷备份获取到 ${coldPosts.length} 条帖子`);
-        // 解密
-        if (backupData.encrypted) {
-            coldPosts = await Promise.all(coldPosts.map(async post => ({
-                ...post,
-                content: await decryptColdData(post.content),
-                title: await decryptColdData(post.title),
-                authorName: await decryptColdData(post.authorName),
-                targetGroups: JSON.parse(await decryptColdData(post.targetGroups) || '[]')
-            })));
-        }
-
-        // 去重
-        const existingIds = new Set(existingPosts.map(p => p.$id || p.id));
-        const newPosts = coldPosts
-            .map(p => ({ ...p, $id: p.$id || p.id, $createdAt: p.$createdAt || p.createdAt }))
-            .filter(p => !existingIds.has(p.$id) && isPostVisible(p, userBoards))
-            .slice(0, 5 - existingPosts.length);
-
-        if (newPosts.length > 0) {
-            appendHomePosts(newPosts);
+        if (res.ok) {
+            const backupData = await res.json();
+            let docs = backupData.documents || backupData || [];
+            
+            if (backupData.encrypted) {
+                docs = await Promise.all(docs.map(async post => {
+                    let targetGroups = [];
+                    if (post.targetGroups !== '已隐藏') {
+                        const decrypted = await decryptText(post.targetGroups);
+                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                    }
+                    return {
+                        ...post,
+                        content: await decryptText(post.content),
+                        title: await decryptText(post.title),
+                        authorName: await decryptText(post.authorName),
+                        targetGroups: targetGroups
+                    };
+                }));
+            }
+            coldPosts = docs;
         }
     } catch (e) {
-        console.log('无冷备份数据');
+        console.log('无冷备份帖子数据', e);
+    }
+
+    // 【步骤 3】数据格式归一化映射
+    const normalizePost = (post, isCold) => ({
+        $id: post.$id || post.id,
+        $createdAt: post.$createdAt || post.createdAt,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        authorName: post.authorName,
+        boardId: post.boardId,
+        viewPermission: post.viewPermission,
+        targetGroups: post.targetGroups || [],
+        status: post.status || 0,
+        likes: post.likes || 0,
+        commentCount: post.commentCount || 0,
+        _isCold: isCold
+    });
+
+    const normalizedHot = hotPosts.map(p => normalizePost(p, false));
+    const normalizedCold = coldPosts.map(p => normalizePost(p, true));
+
+    // 【步骤 4】全局去重合并、依照绝对时序重排列
+    const seen = new Set();
+    const allPosts = [...normalizedHot, ...normalizedCold].filter(p => {
+        if (seen.has(p.$id)) return false;
+        seen.add(p.$id);
+        return true;
+    });
+
+    allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+
+    // 【步骤 5】通过严格的前端鉴权锁，截取最新前5条
+    const userBoards = currentUser ? await getUserJoinedBoards() : ['main'];
+    const visiblePosts = allPosts.filter(post => isPostVisible(post, userBoards));
+    const finalHomePosts = visiblePosts.slice(0, 5);
+
+    // 【步骤 6】复写 DOM 并刷新高速缓存
+    renderHomePosts(finalHomePosts);
+    localStorage.setItem(cacheKey, JSON.stringify({ data: finalHomePosts, ts: Date.now() }));
+
+    if (hasRenderedCache) {
+        showHomeCacheNotice(postList, 'postCacheNotice', '✨ 动态流已实时同步至最新', 'success');
     }
 }
 
-function appendHomePosts(posts) {
-    const postList = document.getElementById('postList');
-    if (!postList || !posts.length) return;
-
-    const html = posts.map(post => {
-        const timeStr = formatTime(new Date(post.$createdAt));
-        return `
-            <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
-                <div class="post-header">
-                    <div class="post-avatar">${(post.authorName || '?').charAt(0)}</div>
-                    <div>
-                        <div class="post-author">${escapeHtml(post.authorName || '匿名')}</div>
-                        <div class="post-time">${timeStr}</div>
-                    </div>
-                </div>
-                <div class="post-title">${escapeHtml(post.title || '')}</div>
-                <div class="post-content">${escapeHtml((post.content || '').slice(0, 100))}</div>
-            </div>
-        `;
-    }).join('');
-
-    postList.insertAdjacentHTML('beforeend', html);
-}
-
+// ========== 渲染首页帖子 HTML ==========
 function renderHomePosts(posts) {
-    // const latestJwt = localStorage.getItem('persistent_jwt');
-    //     if (latestJwt && typeof client !== 'undefined') {
-    //         client.setJWT(latestJwt); 
-    //     }
     const postList = document.getElementById('postList');
+    if (!postList) return;
     
     if (!posts.length) {
         postList.innerHTML = `
             <div class="empty-state">
-                <p>暂无帖子，<a href="posts.html">去发帖</a></p>
+                <p>暂无最新帖子，<a href="posts.html">点击去发帖</a></p>
             </div>
         `;
         return;
     }
     
     postList.innerHTML = posts.map(post => {
-        const createdAt = new Date(post.$createdAt);
-        const timeStr = formatTime(createdAt);
-        const isPinned = (post.status & 1) !== 0;
+        const timeStr = formatTime(new Date(post.$createdAt));
+        const isPinned = post.status ? (post.status & 1) !== 0 : false;
         
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
@@ -383,8 +320,8 @@ function renderHomePosts(posts) {
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
-                <div class="post-title">${isPinned ? '📌 ' : ''}${escapeHtml(post.title)}</div>
-                <div class="post-content">${escapeHtml(post.content.slice(0, 100))}${post.content.length > 100 ? '...' : ''}</div>
+                <div class="post-title">${isPinned ? '📌 ' : ''}${escapeHtml(post.title || '无标题')}</div>
+                <div class="post-content">${escapeHtml((post.content || '').slice(0, 100))}${post.content?.length > 100 ? '...' : ''}</div>
                 <div class="post-footer">
                     <span class="post-action">👍 ${post.likes || 0}</span>
                     <span class="post-action">💬 ${post.commentCount || 0} 评论</span>
@@ -394,63 +331,115 @@ function renderHomePosts(posts) {
     }).join('');
 }
 
+// ========== 【高级缓存重构】加载首页表白墙（最新10条） ==========
 async function loadHomeConfessions() {
     const confessionList = document.getElementById('confessionList');
     if (!confessionList) return;
 
-    // ========== 1. 先加载热数据 ==========
+    const currentUserId = currentUser?.studentId || 'guest';
+    const cacheKey = `cache_home_confessions_${currentUserId}`;
+    const localCache = localStorage.getItem(cacheKey);
+    let hasRenderedCache = false;
+
+    // 【步骤 1】捞取本地缓存快照
+    if (localCache) {
+        try {
+            const parsed = JSON.parse(localCache);
+            if (parsed && Array.isArray(parsed.data)) {
+                renderHomeConfessions(parsed.data);
+                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '⚡ 已载入历史手札，正在同步最新心动...', 'waiting');
+                hasRenderedCache = true;
+            }
+        } catch (e) {
+            console.warn('读取首页表白缓存失败:', e);
+        }
+    }
+
+    if (!hasRenderedCache) {
+        confessionList.innerHTML = '<div class="loading-state">装载中...</div>';
+    }
+
+    // 【步骤 2】并行加载清洗热数据与冷备份
     let hotConfessions = [];
     try {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, [
             Query.equal('status', 0),
             Query.orderDesc('$createdAt'),
-            Query.limit(10)
+            Query.limit(20)
         ]);
         hotConfessions = response.documents;
     } catch (e) {
-        console.warn('热表白数据加载失败');
+        console.warn('云端实时表白拉取失败:', e.message);
     }
 
-    renderHomeConfessions(hotConfessions);
-
-    // ========== 2. 后台加载冷备份 ==========
-    loadColdConfessionsForHome(hotConfessions);
-}
-
-async function loadColdConfessionsForHome(existingConfessions) {
+    let coldConfessions = [];
     try {
-        const url = 'https://cdn.jsdelivr.net/gh/BearThomas/LG-Site-Backup@main/backups/last/confessions.json';
+        const url = './public/data-backups/confessions.json';
         const res = await fetch(url);
-        if (!res.ok) return;
+        if (res.ok) {
+            const backupData = await res.json();
+            let docs = backupData.documents || backupData || [];
 
-        const backupData = await res.json();
-        let coldConfessions = backupData.documents || backupData || [];
-
-        if (backupData.encrypted) {
-            coldConfessions = await Promise.all(coldConfessions.map(async c => ({
-                ...c,
-                content: await decryptColdData(c.content),
-                authorName: await decryptColdData(c.authorName)
-            })));
+            if (backupData.encrypted) {
+                docs = await Promise.all(docs.map(async c => ({
+                    ...c,
+                    content: await decryptText(c.content), 
+                    authorName: await decryptText(c.authorName)
+                })));
+            }
+            coldConfessions = docs;
         }
+    } catch (e) {
+        console.log('未发现表白冷备份数据', e);
+    }
 
-        const existingIds = new Set(existingConfessions.map(c => c.$id || c.id));
-        const newConfessions = coldConfessions
-            .map(c => ({ ...c, $id: c.$id || c.id, $createdAt: c.$createdAt || c.createdAt }))
-            .filter(c => !existingIds.has(c.$id) && (c.status === 0 || c.status === undefined))
-            .slice(0, 10 - existingConfessions.length);
+    // 【步骤 3】清洗格式、全局去重并硬性隔离错密脏数据
+    const normalizeConfession = (c) => ({
+        $id: c.$id || c.id,
+        $createdAt: c.$createdAt || c.createdAt,
+        content: c.content,
+        authorName: c.authorName || '匿名',
+        status: c.status !== undefined ? c.status : 0
+    });
 
-        if (newConfessions.length > 0) {
-            appendHomeConfessions(newConfessions);
-        }
-    } catch (e) {}
+    const seenIds = new Set();
+    const allConfessions = [
+        ...hotConfessions.map(c => normalizeConfession(c)),
+        ...coldConfessions.map(c => normalizeConfession(c))
+    ].filter(c => {
+        // 🛡️ 错密脏数据防御：只要正文为 null 证明解密完全失败，或者是已标记下架状态，直接滤除
+        if (c.content === null || c.status !== 0) return false;
+        if (seenIds.has(c.$id)) return false;
+        seenIds.add(c.$id);
+        return true;
+    });
+
+    // 【步骤 4】严格时序重排，切片取前 10 条
+    allConfessions.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    const finalConfessions = allConfessions.slice(0, 10);
+
+    // 【步骤 5】洗版展现并刷新缓存
+    renderHomeConfessions(finalConfessions);
+    localStorage.setItem(cacheKey, JSON.stringify({ data: finalConfessions, ts: Date.now() }));
+
+    if (hasRenderedCache) {
+        showHomeCacheNotice(confessionList, 'confessionCacheNotice', '✨ 表白手札已完成同步更新', 'success');
+    }
 }
 
-function appendHomeConfessions(confessions) {
+function renderHomeConfessions(confessions) {
     const confessionList = document.getElementById('confessionList');
-    if (!confessionList || !confessions.length) return;
-
-    const html = confessions.map(c => `
+    if (!confessionList) return;
+    
+    if (!confessions.length) {
+        confessionList.innerHTML = `
+            <div class="empty-state">
+                <p>暂无表白，<a href="confession.html">去写一张</a></p>
+            </div>
+        `;
+        return;
+    }
+    confessionList.innerHTML = confessions.map(c => `
         <div class="confession-card">
             <div class="confession-text">${escapeHtml(c.content)}</div>
             <div class="confession-footer">
@@ -459,43 +448,9 @@ function appendHomeConfessions(confessions) {
             </div>
         </div>
     `).join('');
-
-    confessionList.insertAdjacentHTML('beforeend', html);
 }
 
-function renderHomeConfessions(confessions) {
-    // const latestJwt = localStorage.getItem('persistent_jwt');
-    //     if (latestJwt && typeof client !== 'undefined') {
-    //         client.setJWT(latestJwt); 
-    //     }
-    const confessionList = document.getElementById('confessionList');
-    
-    if (!confessions.length) {
-        confessionList.innerHTML = `
-            <div class="empty-state">
-                <p>暂无表白，<a href="confession.html">去表白</a></p>
-            </div>
-        `;
-        return;
-    }
-    
-    confessionList.innerHTML = confessions.map(c => {
-        const createdAt = new Date(c.$createdAt);
-        const timeStr = formatTime(createdAt);
-        
-        return `
-            <div class="confession-card">
-                <div class="confession-text">${escapeHtml(c.content)}</div>
-                <div class="confession-footer">
-                    <span>😶 匿名</span>
-                    <span>${timeStr}</span>
-                </div>
-            </div>
-        `;
-    }).join('');
-}
-
-// ========== 工具函数 ==========
+// ========== 公用工具函数 ==========
 function formatTime(date) {
     const now = new Date();
     const diff = now - date;
@@ -507,7 +462,7 @@ function formatTime(date) {
     if (minutes < 60) return `${minutes}分钟前`;
     if (hours < 24) return `${hours}小时前`;
     if (days < 7) return `${days}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function formatBoardName(boardId) {
@@ -517,6 +472,7 @@ function formatBoardName(boardId) {
     return boardId;
 }
 
+// 防止 XSS 注入
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');

@@ -1,5 +1,15 @@
+# netlify.toml
+# 免 publish 冲突纯净版
+
+[functions]
+  # 只告诉 Netlify 云函数在哪里，静态网页目录让 Netlify 走它默认的规矩
+  directory = "netlify/functions"
+
+[functions.js]
+  node_version = "18"
+
+# 🌟 核心防 404 重定向拦截器
 [[redirects]]
-  from = "/appwrite-api/*"
-  to = "https://sgp.cloud.appwrite.io/:splat"
+  from = "/*"
+  to = "/index.html"
   status = 200
-  force = true

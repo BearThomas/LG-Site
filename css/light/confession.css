@@ -445,3 +445,38 @@
         font-size: 1rem;
     }
 }
+
+/* 顶部缓存状态同步条说明 */
+.cache-notice-bar {
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+/* 正在更新中的黄色状态 */
+.cache-notice-bar.waiting {
+    background-color: #fff9db;
+    color: #f59f00;
+    border: 1px solid #ffe066;
+    animation: pulseNotice 2s infinite ease-in-out;
+}
+
+/* 更新成功后的绿色状态 */
+.cache-notice-bar.success {
+    background-color: #e6fcf5;
+    color: #0ca678;
+    border: 1px solid #96f2d7;
+}
+
+/* 微弱呼吸动画暗示正在网络加载 */
+@keyframes pulseNotice {
+    0% { opacity: 0.85; }
+    50% { opacity: 1; }
+    100% { opacity: 0.85; }
+}

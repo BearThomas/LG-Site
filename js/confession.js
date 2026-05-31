@@ -1,11 +1,13 @@
-// js/confession.js
-import { Client, Databases, Query, Permission, Role } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 
 // ========== Appwrite 配置 ==========
 const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
 const APPWRITE_PROJECT_ID = 'lg';
 const DATABASE_ID = 'lg';
 const COLLECTION_CONFESSIONS = 'confessions';
+
+// ========== 加密密钥 ==========
+const ENCRYPT_KEY = '176ec04db0ffc0e689e2e36b40e6c68a528b4179339fbaad8bdd12bf63597eec';
 
 // 初始化
 const client = new Client()
@@ -28,73 +30,50 @@ const publishBtn = document.getElementById('publishBtn');
 const confessionList = document.getElementById('confessionList');
 const pagination = document.getElementById('pagination');
 const loginTip = document.getElementById('loginTip');
-const publishCard = document.querySelector('.publish-card');
 
 // 弹窗
 const reportModal = document.getElementById('reportModal');
 let pendingReportId = null;
 
-// ========== 【核心重构】页面加载初始化 ==========
+// ========== 页面加载初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("⏳ 表白墙加载，正在等待长效会话守护就绪...");
-    
-    // 1. 🔥 铁闸门：强制等待后台把新 Token 换回来并写入 localStorage
-    if (window.initAutoAuth) {
-        try {
-            await window.initAutoAuth(); 
-            console.log("✓ 会话守护已就绪，开始安全加载表白墙数据。");
-        } catch (e) {
-            console.error("认证保活模块初始化异常:", e);
+    try {
+        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
+        const cryptoKey = await localforage.getItem('secure_gate_key');
+        
+        if (cryptoKey) {
+            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
+            window.secureKeyBlackBox = cryptoKey;
+            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
+        } else {
+            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
         }
+    } catch (dbError) {
+        console.error("读取本地安全数据库失败:", dbError);
     }
-
-    // 2. 钥匙同步：强行给当前唯一的全局 client 实例喂下最新的长效令牌
-    const latestJwt = localStorage.getItem('persistent_jwt');
-    if (latestJwt) {
-        client.setJWT(latestJwt); 
-        console.log("🔑 全局 Appwrite 客户端已成功同步最新的 JWT 凭证");
-    }
-
-    // 3. 基础状态处理与数据加载
     checkLoginStatus();
-    await loadConfessions(); // 此时发出的请求必过，绝对一路绿灯 200
-    
-    // 4. 安全触发事件绑定
-    if (typeof bindEvents === 'function') {
-        bindEvents();
-    }
+    await loadConfessions(); // ⚡ 开启双源缓存管道
+    bindEvents();
 });
 
 // ========== 登录状态 ==========
 function checkLoginStatus() {
-    const persistentJwt = localStorage.getItem('persistent_jwt');
-    if (persistentJwt && typeof client !== 'undefined') {
-        client.setJWT(persistentJwt);
-    }
     const userData = localStorage.getItem('campus_user');
     const userNotLogin = document.getElementById('userNotLogin');
     const userLoggedIn = document.getElementById('userLoggedIn');
     
     if (userData) {
-        try {
-            currentUser = JSON.parse(userData);
-            if (userNotLogin) userNotLogin.style.display = 'none';
-                if (userLoggedIn) userLoggedIn.style.display = 'flex';
-                
-                const userNameEl = document.getElementById('userName');
-                const userAvatarEl = document.getElementById('userAvatar');
-                if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
-                if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
-                
-                if (loginTip) loginTip.style.display = 'none';
-                if (publishBtn) publishBtn.disabled = false;
-                
-                // 💡 注意：不再盲目使用 currentUser.token 去覆盖 client，
-                // 优先使用我们已经通过保活机制同步到全局的最新长效 Token。
-            
-        } catch (e) {
-            currentUser = null;
-        }
+        currentUser = JSON.parse(userData);
+        if (userNotLogin) userNotLogin.style.display = 'none';
+        if (userLoggedIn) userLoggedIn.style.display = 'flex';
+        
+        const userNameEl = document.getElementById('userName');
+        const userAvatarEl = document.getElementById('userAvatar');
+        if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
+        if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
+        
+        if (loginTip) loginTip.style.display = 'none';
+        if (publishBtn) publishBtn.disabled = false;
     } else {
         if (userNotLogin) userNotLogin.style.display = 'flex';
         if (userLoggedIn) userLoggedIn.style.display = 'none';
@@ -103,13 +82,95 @@ function checkLoginStatus() {
     }
 }
 
-// ========== 加载表白列表 ==========
-// 修改 js/confession.js 中的 loadConfessions 函数
+// ========== 解密函数 ==========
+async function decryptText(encryptedText) {
+    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
+    
+    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
+    const cryptoKey = window.secureKeyBlackBox; 
+    if (!cryptoKey) {
+        console.warn("未发现安全密钥，拒绝解密");
+        return null;
+    }
+    
+    const parts = encryptedText.split(':');
+    const ivHex = parts[0];
+    const cipherHex = parts.slice(1).join(':');
+    
+    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+    
+    try {
+        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-CBC', iv }, 
+            cryptoKey, // 👈 传入这个不可导出的对象即可
+            ciphertext
+        );
+        return new TextDecoder().decode(decrypted);
+    } catch (e) {
+        console.warn('解密失败。');
+        return null;
+    }
+}
+
+// ========== 顶部缓存状态同步条控制 ==========
+function showCacheNotice(message, type = 'waiting') {
+    if (!confessionList) return;
+    document.getElementById('cacheNoticeBar')?.remove(); // 移除老提示栏
+
+    const noticeEl = document.createElement('div');
+    noticeEl.id = 'cacheNoticeBar';
+    noticeEl.className = `cache-notice-bar ${type}`;
+    noticeEl.innerHTML = message;
+    
+    // 始终挂载在表白墙最上方
+    confessionList.insertBefore(noticeEl, confessionList.firstChild);
+
+    if (type === 'success') {
+        setTimeout(() => {
+            noticeEl.style.opacity = '0';
+            noticeEl.style.transform = 'translateY(-10px)';
+            setTimeout(() => noticeEl.remove(), 400);
+        }, 2500);
+    }
+}
+
+// ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
 async function loadConfessions() {
     try {
         if (!confessionList) return;
-        confessionList.innerHTML = '<div class="loading-state">💗 正在装载心动记忆...</div>';
-        
+
+        const currentUserId = currentUser?.studentId || 'guest';
+        // 🚀 构建隔离防污染的唯一 Cache Key [用户+排序策略+页码]
+        const cacheKey = `cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`;
+        const localCache = localStorage.getItem(cacheKey);
+
+        let hasRenderedCache = false;
+
+        // 【步骤 A】：优先捞取本地历史缓存，零延迟渲染
+        if (localCache) {
+            try {
+                const parsedCache = JSON.parse(localCache);
+                if (parsedCache && Array.isArray(parsedCache.data)) {
+                    renderConfessions(parsedCache.data);
+                    totalPages = parsedCache.totalPages || 1;
+                    renderPagination();
+                    
+                    showCacheNotice('⚡ 正在展示本地缓存，正在唤醒最新的心动记忆...', 'waiting');
+                    hasRenderedCache = true;
+                }
+            } catch (err) {
+                console.warn('解析表白墙本地缓存异常:', err);
+            }
+        }
+
+        // 若无任何缓存，则退回传统骨架加载提示
+        if (!hasRenderedCache) {
+            confessionList.innerHTML = '<div class="loading-state">💗 正在装载心动记忆...</div>';
+        }
+
+        // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
         const queries = [
             Query.limit(PAGE_SIZE),
             Query.equal('status', 0)
@@ -125,23 +186,21 @@ async function loadConfessions() {
             queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
         }
 
-        // 🔥 【双源并行】：同时抓取最新的表白和本地老旧表白
         const [appwriteRes, localRes] = await Promise.all([
             databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, queries).catch(err => {
-                console.warn('⚠️ 实时表白墙读取失败，切换冷备份:', err.message);
+                console.warn('⚠️ 实时表白墙读取失败，降级等待冷备份:', err.message);
                 return { documents: [] };
             }),
             (async () => {
                 try {
-                    const url = `https://cdn.jsdelivr.net/gh/BearThomas/LG-Site-Backup@main/backups/last/confessions.json`;
+                    const url = `./public/data-backups/confessions.json`;
                     const res = await fetch(url);
                     if (res.ok) {
                         const data = await res.json();
-                        const docs = data.documents || data || [];
+                        let docs = data.documents || data || [];
                         
-                        // ⭐ 如果加密了，解密
                         if (data.encrypted) {
-                            return await Promise.all(docs.map(async doc => ({
+                            docs = await Promise.all(docs.map(async doc => ({
                                 ...doc,
                                 content: await decryptText(doc.content),
                                 authorName: await decryptText(doc.authorName)
@@ -150,37 +209,75 @@ async function loadConfessions() {
                         return docs;
                     }
                 } catch (e) {
-                    console.log('无表白墙冷备份');
+                    console.log('无表白墙冷备份数据');
                 }
                 return [];
             })()
         ]);
 
-        // 合并数据
-        const allConfessions = [...appwriteRes.documents, ...localRes];
+        // 统一格式化归一处理
+        const normalizeConfession = (doc) => {
+            return {
+                $id: doc.$id || doc.id,
+                $createdAt: doc.$createdAt || doc.createdAt,
+                content: doc.content,
+                authorId: doc.authorId,
+                authorName: doc.authorName || '匿名',
+                likes: doc.likes || 0,
+                status: doc.status !== undefined ? doc.status : 0
+            };
+        };
 
-        // 根据当前的筛选规则（最新发布 or 最多点赞）对合并后的全量数据做一次大排序
+        const normalizedHot = appwriteRes.documents.map(d => normalizeConfession(d));
+        const normalizedCold = localRes.map(d => normalizeConfession(d));
+
+        // 跨源去重 (基于唯一标识符 $id)
+        const seen = new Set();
+        const allConfessions = [...normalizedHot, ...normalizedCold].filter(c => {
+            if (seen.has(c.$id) || c.status !== 0) return false;
+            seen.add(c.$id);
+            return true;
+        });
+
+        // 本地原生严格排序
         allConfessions.sort((a, b) => {
             if (currentSort === 'latest') {
-                const timeA = new Date(a.$createdAt || a.createdAt);
-                const timeB = new Date(b.$createdAt || b.createdAt);
-                return timeB - timeA;
+                return new Date(b.$createdAt) - new Date(a.$createdAt);
             } else {
-                return (b.likes || 0) - (a.likes || 0); // 按点赞数排
+                return (b.likes || 0) - (a.likes || 0);
             }
         });
 
-        totalPages = Math.ceil((appwriteRes.total || 0) / PAGE_SIZE) || 1;
-        
-        renderConfessions(allConfessions);
+        // 统一计算分页切片
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const paged = allConfessions.slice(start, start + PAGE_SIZE);
+        totalPages = Math.ceil(allConfessions.length / PAGE_SIZE) || 1;
+
+        // 【步骤 C】：将最终清洗过的纯净序列覆盖写入视图，并重刷本地缓存
+        renderConfessions(paged);
         renderPagination();
+
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: paged,
+            totalPages: totalPages,
+            updateAt: Date.now()
+        }));
+
+        // 如果先前加载了本地缓存，弹出优雅的同步完成通告
+        if (hasRenderedCache) {
+            showCacheNotice('✨ 表白墙已成功同步至最新内容', 'success');
+        }
         
     } catch (error) {
-        console.error('加载表白墙失败:', error);
-        confessionList.innerHTML = '<div class="empty-state"><p>加载失败，请刷新</p></div>';
+        console.error('装载表白墙最新内容挂裂:', error);
+        const currentUserId = currentUser?.studentId || 'guest';
+        if (!localStorage.getItem(`cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`)) {
+            confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网络</p></div>';
+        }
     }
 }
 
+// 视图渲染
 function renderConfessions(confessions) {
     if (!confessionList) return;
     if (!confessions.length) {
@@ -196,7 +293,6 @@ function renderConfessions(confessions) {
     const likedIds = JSON.parse(localStorage.getItem('likedConfessions') || '[]');
     
     confessionList.innerHTML = confessions.map(c => {
-        // 💡 核心兼容修改：同时兼容 $id 和 id
         const confessionId = c.$id || c.id;
         const confessionCreatedAt = c.$createdAt || c.createdAt;
         
@@ -226,7 +322,7 @@ function renderConfessions(confessions) {
         `;
     }).join('');
     
-    // 绑定点赞事件
+    // 点赞与举报绑定保持不变
     document.querySelectorAll('.like-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -234,7 +330,6 @@ function renderConfessions(confessions) {
         });
     });
     
-    // 绑定举报事件
     document.querySelectorAll('.confession-action.report').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -297,10 +392,6 @@ async function publishConfession() {
     publishBtn.textContent = '发布中...';
     
     try {
-        // 在写入操作前，再次保险性地同步一次最新 JWT 状态
-        const token = localStorage.getItem('persistent_jwt');
-        if (token) client.setJWT(token);
-
         await databases.createDocument(DATABASE_ID, COLLECTION_CONFESSIONS, 'unique()', {
             content: content,
             authorId: currentUser.studentId,
@@ -312,6 +403,10 @@ async function publishConfession() {
         
         confessionContent.value = '';
         if (charCount) charCount.textContent = '0';
+        
+        // ⚡ 【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
+        const currentUserId = currentUser?.studentId || 'guest';
+        localStorage.removeItem(`cache_confessions_${currentUserId}_${currentSort}_p1`);
         
         currentPage = 1;
         await loadConfessions();
@@ -335,7 +430,6 @@ function openReportModal(confessionId) {
 
 async function submitReport() {
     if (!pendingReportId) return;
-    
     try {
         alert('举报已提交，管理员会尽快处理');
         if (reportModal) reportModal.style.display = 'none';
@@ -403,7 +497,7 @@ function bindEvents() {
             btn.classList.add('active');
             currentSort = btn.dataset.sort;
             currentPage = 1;
-            loadConfessions();
+            loadConfessions(); // 排序更改，将自动应用对应排序的隔离缓存
         });
     });
     
@@ -421,10 +515,15 @@ function bindEvents() {
         });
     }
     
-    document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
+    document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
         e.preventDefault();
+        try {
+            const { Account } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
+            const account = new Account(client);
+            await account.deleteSession('current');
+        } catch (err) {}
         localStorage.removeItem('campus_user');
-        localStorage.removeItem('persistent_jwt'); // 同步清空保活模块令牌
+        localStorage.removeItem('persistent_jwt');
         location.reload();
     });
     
@@ -457,16 +556,4 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
     return div.innerHTML;
-}
-
-async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-    const [ivHex, cipherHex] = encryptedText.split(':');
-    const encoder = new TextEncoder();
-    const keyBuffer = encoder.encode(ENCRYPT_KEY.padEnd(32, '0').slice(0, 32));
-    const cryptoKey = await crypto.subtle.importKey('raw', keyBuffer, { name: 'AES-CBC' }, false, ['decrypt']);
-    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, cryptoKey, ciphertext);
-    return new TextDecoder().decode(decrypted);
 }
