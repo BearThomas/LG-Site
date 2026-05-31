@@ -1,4 +1,4 @@
-import { Client, Databases, Query, Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 
 // ========== Appwrite 配置 ==========
 const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
@@ -8,7 +8,7 @@ const COLLECTION_POSTS = 'posts';
 const COLLECTION_CONFESSIONS = 'confessions';
 const COLLECTION_USERS = 'users';
 
-// 初始化 Appwrite
+// 初始化 Appwrite (仅作为只读数据拉取客户端)
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
@@ -48,45 +48,50 @@ async function decryptText(encryptedText) {
     }
 }
 
-// ========== 初始化入口 ==========
+// ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
+    console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
+
+    // 【步骤 1】：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
     try {
-        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-        const cryptoKey = await localforage.getItem('secure_gate_key');
-        
-        if (cryptoKey) {
-            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
-            window.secureKeyBlackBox = cryptoKey;
-            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
-        } else {
-            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
+        if (typeof localforage !== 'undefined') {
+            const cryptoKey = await localforage.getItem('secure_gate_key');
+            if (cryptoKey) {
+                window.secureKeyBlackBox = cryptoKey;
+                console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
+            } else {
+                console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密。");
+            }
         }
     } catch (dbError) {
         console.error("读取本地安全数据库失败:", dbError);
     }
-    const account = new Account(client);
 
-    try {
-        // 尝试自动恢复长效会话
-        const user = await account.get();
-        console.log('✅ 已登录:', user.$id);
-        const saved = JSON.parse(localStorage.getItem('campus_user') || '{}');
-        currentUser = {
-            studentId: saved.studentId || user.$id.replace('student_', ''),
-            userId: user.$id,
-            token: saved.token
-        };
-    } catch {
-        // 未登录，自动创建匿名会话以便读取公开内容
+    // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
+    const userData = localStorage.getItem('campus_user');
+    if (userData) {
         try {
-            await account.createAnonymousSession();
-            console.log('👻 匿名游客访问');
+            const saved = JSON.parse(userData);
+            if (saved && saved.studentId) {
+                currentUser = {
+                    studentId: saved.studentId,
+                    userId: saved.userId || `student_${saved.studentId}`,
+                    token: saved.token,
+                    name: saved.name || '同学'
+                };
+                console.log(`✅ 欢迎回来，${currentUser.name}！已挂载本地长效会话通道。`);
+            }
         } catch (e) {
-            console.warn('匿名会话创建失败');
+            console.warn('解析本地用户凭证失败:', e);
         }
+    } else {
+        console.log('👻 游客访问模式：跳过身份挂载，直接开启公共只读通道');
     }
 
+    // 【步骤 3】：只初始化只读数据库客户端，完全不执行会导致 401/501 的 account 握手
     databases = new Databases(client);
+    
+    // 渲染用户状态 UI
     checkLoginStatus();
     
     // ⚡ 独立并行启动两路缓存加持的加载流水线
@@ -96,17 +101,16 @@ async function decryptText(encryptedText) {
 
 // ========== 检查并同步登录状态 UI ==========
 function checkLoginStatus() {
-    const userData = localStorage.getItem('campus_user');
     const userNotLogin = document.getElementById('userNotLogin');
     const userLoggedIn = document.getElementById('userLoggedIn');
 
-    if (userData && currentUser) {
+    if (currentUser) {
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
         
         const userNameEl = document.getElementById('userName');
         const userAvatarEl = document.getElementById('userAvatar');
-        if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
+        if (userNameEl) userNameEl.textContent = currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`;
         if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
     } else {
         if (userNotLogin) userNotLogin.style.display = 'flex';

@@ -1,9 +1,11 @@
 /* css/events.css - 大事记页面样式 */
 
 .events-page {
-    max-width: 900px;
+    width: 100%;             /* 📱 手机端自动撑满 */
+    max-width: 900px;        /* 💻 电脑端最大限制 */
     margin: 30px auto;
     padding: 0 24px;
+    box-sizing: border-box;  /* 刚性防爆仓 */
 }
 
 .events-page-title {
@@ -25,6 +27,7 @@
     margin-bottom: 28px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.04);
     align-items: flex-end;
+    box-sizing: border-box;
 }
 
 .filter-group {
@@ -33,6 +36,7 @@
     gap: 6px;
     flex: 1;
     min-width: 140px;
+    box-sizing: border-box;
 }
 
 .filter-group label {
@@ -43,6 +47,7 @@
 
 .filter-group select,
 .filter-group input {
+    width: 100%;             /* 保证容器内撑满 */
     padding: 10px 14px;
     border: 1.5px solid #e2e8f0;
     border-radius: 12px;
@@ -50,6 +55,8 @@
     background: white;
     outline: none;
     transition: border-color 0.2s;
+    box-sizing: border-box;
+    -webkit-appearance: none; /* 🧼 清洗 iOS 移动端自带的极其丑陋的 select 默认内阴影 */
 }
 
 .filter-group select:focus,
@@ -57,6 +64,7 @@
     border-color: #3b82f6;
 }
 
+/* 让搜索框在有空间的电脑端拿更多的宽度 */
 .filter-search {
     flex: 2;
     min-width: 200px;
@@ -78,6 +86,7 @@
     box-shadow: 0 4px 15px rgba(0,0,0,0.04);
     transition: transform 0.15s, box-shadow 0.15s;
     align-items: flex-start;
+    box-sizing: border-box;
 }
 
 .event-list-item:hover {
@@ -103,6 +112,7 @@
 
 .event-list-content {
     flex: 1;
+    min-width: 0; /* 🚨 极其关键：防止长文本或连字符撑破 Flex 弹性盒子导致横向溢出 */
 }
 
 .event-list-content .event-title {
@@ -110,13 +120,15 @@
     font-weight: 650;
     color: #0f172a;
     margin-bottom: 6px;
+    word-wrap: break-word; /* 保证标题长英文自动折行 */
 }
 
 .event-list-content .event-desc {
     color: #475569;
     font-size: 0.95rem;
     margin-bottom: 8px;
-    line-height: 1.5;
+    line-height: 1.6; /* 稍微拉开一点，更适合手机阅读 */
+    word-wrap: break-word;
 }
 
 .event-list-content .event-date {
@@ -129,6 +141,7 @@
     text-align: center;
     padding: 60px 20px;
     color: #94a3b8;
+    box-sizing: border-box;
 }
 
 .events-empty p {
@@ -140,10 +153,12 @@
 .back-to-top {
     display: none;
     position: fixed;
-    bottom: 30px;
-    right: 30px;
-    width: 44px;
-    height: 44px;
+    /* 🚨【移动端咬合修复】：原先的 bottom:30px 会被底栏微信导航死死挡住。
+       现在改到 85px，完美漂浮在移动端底栏的上方空间，电脑端也不受干扰。 */
+    bottom: 85px; 
+    right: 24px;
+    width: 46px; /* 触控热区轻微放大 */
+    height: 46px;
     background: #3b82f6;
     color: white;
     border: none;
@@ -152,21 +167,88 @@
     cursor: pointer;
     box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
     transition: transform 0.2s;
-    z-index: 99;
+    z-index: 100; /* 权重必须高于一切普通卡片 */
 }
 
 .back-to-top:hover {
     transform: scale(1.1);
 }
 
-/* ========== 响应式 ========== */
-@media (max-width: 600px) {
+/* ========== 📱 高阶移动端全方位重构补丁 ========== */
+@media (max-width: 768px) {
+    .events-page {
+        padding: 0 14px; /* 极致利用小屏两侧空间 */
+        margin: 16px auto;
+    }
+
+    .events-page-title {
+        font-size: 1.6rem; /* 降低手机标题字号，清爽直出 */
+        margin-bottom: 16px;
+    }
+
+    /* 优化手机端筛选栏，防止单列堆叠过长 */
     .filter-bar {
-        flex-direction: column;
+        padding: 16px;
+        gap: 12px;
+        margin-bottom: 18px;
+        border-radius: 16px;
+    }
+
+    .filter-group {
+        /* 在普通手机上让分类、年份两个输入框并排平铺，只有搜索框占满整行，极大节省垂直空间 */
+        flex: 1 1 calc(50% - 8px); 
+        min-width: 110px;
+    }
+
+    .filter-search {
+        flex: 1 1 100%; /* 搜索框强制独占一整行 */
+    }
+
+    .filter-group select,
+    .filter-group input {
+        padding: 12px; /* 放大指尖触控热区 */
+        font-size: 0.9rem;
+        border-radius: 10px;
+    }
+
+    /* 大事记卡片重构 */
+    .event-list-item {
+        padding: 18px;
+        border-radius: 16px;
+        gap: 10px;
+        /* 🌟【高级视觉避坑点】：不使用 flex-direction: column！
+           保持横向 Flex，让标签缩在左侧，正文在右侧，这比全盘切成纵向更像原生 App 的信息流！ */
+    }
+
+    .event-list-tag {
+        padding-top: 2px; /* 标签微调对齐右侧首行标题 */
+    }
+
+    .event-tag {
+        padding: 3px 10px;
+        font-size: 0.75rem;
+    }
+
+    .event-list-content .event-title {
+        font-size: 1.08rem; /* 手机端标题更精致 */
+        margin-bottom: 4px;
+    }
+
+    .event-list-content .event-desc {
+        font-size: 0.9rem;
+        color: #334155; /* 略微加深手机端正文字体颜色，提高户外强光下的可读性 */
+        margin-bottom: 6px;
+    }
+}
+
+/* 针对非常窄的苹果小屏（如 iPhone SE）的极限补丁 */
+@media (max-width: 380px) {
+    .event-list-item {
+        flex-direction: column; /* 极窄屏下由于空间实在不够，降级为上下纵向排列 */
+        align-items: flex-start;
     }
     
-    .event-list-item {
-        flex-direction: column;
-        gap: 12px;
+    .filter-group {
+        flex: 1 1 100%; /* 全部单列堆叠 */
     }
 }

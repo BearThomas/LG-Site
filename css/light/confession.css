@@ -1,15 +1,18 @@
 /* ========== 表白墙样式 ========== */
 
 .confession-container {
-    max-width: 680px;
+    width: 100%;             /* 📱 手机端宽度占满 */
+    max-width: 680px;        /* 💻 电脑端最大限制 */
     margin: 24px auto;
     padding: 0 24px;
+    box-sizing: border-box;  /* 刚性防爆：包含边距在内计算宽度 */
 }
 
 /* 页面头部 */
 .confession-header {
     text-align: center;
     margin-bottom: 28px;
+    padding: 0 8px;
 }
 
 .confession-header h1 {
@@ -21,6 +24,7 @@
     align-items: center;
     justify-content: center;
     gap: 8px;
+    flex-wrap: wrap; /* 📱 手机端如果字数太长允许自动换行 */
 }
 
 .confession-subtitle {
@@ -63,6 +67,7 @@
     outline: none;
     transition: border-color 0.15s;
     background: #fafafa;
+    box-sizing: border-box; /* 刚性防爆 */
 }
 
 .confession-textarea:focus {
@@ -74,11 +79,13 @@
     color: #a0aec0;
 }
 
+/* 📱 移动端自适应页脚布局 */
 .publish-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-top: 12px;
+    gap: 12px;
 }
 
 .char-count {
@@ -87,7 +94,7 @@
 }
 
 .publish-btn {
-    padding: 10px 28px;
+    padding: 12px 32px; /* 📱 手机端手指点击热区优化 */
     background: linear-gradient(135deg, #ec4899, #db2777);
     border: none;
     border-radius: 40px;
@@ -97,6 +104,7 @@
     cursor: pointer;
     transition: transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
+    white-space: nowrap; /* 拒绝手机端按钮文字挤压换行 */
 }
 
 .publish-btn:hover {
@@ -129,6 +137,13 @@
     display: flex;
     gap: 12px;
     margin-bottom: 20px;
+    overflow-x: auto; /* 📱 手机端如果选项卡太多支持丝滑左右滑动 */
+    scrollbar-width: none; /* 隐藏火狐滚动条 */
+    padding: 4px 0;
+}
+
+.sort-bar::-webkit-scrollbar {
+    display: none; /* 隐藏谷歌滚动条，保持精致感 */
 }
 
 .sort-btn {
@@ -140,6 +155,7 @@
     color: #64748b;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap; /* 拒绝由于挤压导致的按钮文字换行 */
 }
 
 .sort-btn:hover {
@@ -168,6 +184,7 @@
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
     transition: box-shadow 0.2s;
     position: relative;
+    box-sizing: border-box;
 }
 
 .confession-card:hover {
@@ -181,19 +198,23 @@
     margin-bottom: 18px;
     white-space: pre-wrap;
     word-break: break-word;
-    padding-right: 30px;
+    padding-right: 0; /* 🧼 清洗掉多余偏置，防止大屏文本排版不对称 */
 }
 
+/* 📱 手机端页脚自适应：解决元数据、时间与操作按钮堆叠挤扁的核心 */
 .confession-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap; /* 📱 空间不足时自动优雅折行 */
+    gap: 12px;
 }
 
 .confession-meta {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex-wrap: wrap;
 }
 
 .confession-time {
@@ -203,14 +224,15 @@
 
 .confession-actions {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    margin-left: auto; /* 💻 电脑端右侧对齐，📱 手机端折行后也依旧紧贴右边缘 */
 }
 
 .confession-action {
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
+    padding: 8px 14px; /* 📱 扩展手机端手指操作空间 */
     background: transparent;
     border: none;
     border-radius: 30px;
@@ -218,6 +240,7 @@
     color: #64748b;
     cursor: pointer;
     transition: all 0.15s;
+    user-select: none; /* 防止频繁点赞时误选中文本 */
 }
 
 .confession-action:hover {
@@ -240,6 +263,7 @@
     padding: 60px 20px;
     background: white;
     border-radius: 24px;
+    box-sizing: border-box;
 }
 
 .empty-icon {
@@ -259,24 +283,28 @@
     color: #94a3b8;
 }
 
-/* 分页器 */
+/* 分页器自适应 */
 .pagination {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     margin-top: 32px;
+    flex-wrap: wrap; /* 📱 页码过多时防止戳出屏幕 */
 }
 
 .page-btn {
-    min-width: 40px;
-    height: 40px;
-    padding: 0 12px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
     color: #1e293b;
     cursor: pointer;
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .page-btn:hover:not(:disabled) {
@@ -295,27 +323,31 @@
     cursor: not-allowed;
 }
 
-/* 弹窗 */
+/* 弹窗遮罩 */
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.6); /* 稍微加深蒙层突出重点 */
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 10000; /* 🔥 提高权重，确保压在移动端底部导航栏上面 */
     backdrop-filter: blur(4px);
+    padding: 16px; /* 📱 保证手机端弹窗不紧贴屏幕边缘 */
+    box-sizing: border-box;
 }
 
+/* 弹窗主体（大厂自适应行为） */
 .modal-container {
     background: white;
     border-radius: 24px;
-    width: 90%;
-    max-width: 400px;
+    width: 100%;             /* 📱 手机端自适应缩放 */
+    max-width: 400px;        /* 💻 电脑端最大卡死 */
     overflow: hidden;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .modal-header {
@@ -333,14 +365,17 @@
 }
 
 .modal-close {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: transparent;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
     color: #64748b;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .modal-body {
@@ -360,34 +395,37 @@
     margin-top: 24px;
 }
 
+.cancel-btn, .submit-btn {
+    padding: 12px 24px; /* 📱 提升触控体验 */
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
 .cancel-btn {
-    padding: 10px 20px;
     background: white;
     border: 1.5px solid #e2e8f0;
-    border-radius: 30px;
-    font-weight: 500;
-    cursor: pointer;
+    color: #64748b;
 }
 
 .submit-btn {
-    padding: 10px 24px;
     background: #ec4899;
     border: none;
-    border-radius: 30px;
     color: white;
-    font-weight: 500;
-    cursor: pointer;
 }
 
 .danger-btn {
     background: #dc2626 !important;
 }
 
-/* 深色模式 */
+/* 深色模式精细化 */
 .dark .publish-card,
 .dark .confession-card,
 .dark .empty-state,
-.dark .modal-container {
+.dark .modal-container,
+.dark .cancel-btn {
     background: #1e293b;
 }
 
@@ -426,23 +464,47 @@
 }
 
 .dark .cancel-btn {
-    background: #1e293b;
     border-color: #334155;
     color: #e2e8f0;
 }
 
-/* 响应式 */
+/* 📱 极窄屏响应式刚性补丁（小于500px的手机） */
 @media (max-width: 500px) {
     .confession-container {
-        padding: 0 16px;
+        padding: 0 14px; /* 缩小容器边距，让卡片变宽一些，极致利用屏幕空间 */
+        margin: 12px auto;
     }
     
-    .confession-card {
-        padding: 18px;
+    .publish-card, .confession-card, .empty-state, .modal-body {
+        padding: 16px; /* 减小内衬卡片边距，防止字被挤扁 */
+        border-radius: 20px;
     }
     
     .confession-content {
-        font-size: 1rem;
+        font-size: 1.02rem; /* 适当减小手机字号，增强排版紧凑感 */
+        line-height: 1.6;
+        margin-bottom: 14px;
+    }
+
+    .publish-btn {
+        padding: 10px 24px; /* 极窄屏缩减按钮体积 */
+    }
+
+    .confession-footer {
+        flex-direction: column; /* 📱 极窄屏状态下页脚强行切为纵向轴 */
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .confession-actions {
+        width: 100%; /* 撑满 */
+        justify-content: flex-end; /* 动作按钮推向最右侧 */
+        border-top: 1px solid #f1f5f9; /* 补上一条清爽的手机端分割线 */
+        padding-top: 10px;
+    }
+    
+    .dark .confession-actions {
+        border-top-color: #334155;
     }
 }
 
@@ -457,6 +519,7 @@
     align-items: center;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
 }
 
 /* 正在更新中的黄色状态 */
@@ -474,7 +537,7 @@
     border: 1px solid #96f2d7;
 }
 
-/* 微弱呼吸动画暗示正在网络加载 */
+/* 微弱呼吸动画 */
 @keyframes pulseNotice {
     0% { opacity: 0.85; }
     50% { opacity: 1; }

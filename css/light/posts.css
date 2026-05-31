@@ -10,6 +10,11 @@
     min-height: calc(100vh - 120px);
 }
 
+/* 全局盒模型防爆仓 */
+.posts-container, .boards-sidebar, .posts-main, .post-card, .modal-container, .selected-users, .search-results {
+    box-sizing: border-box !important;
+}
+
 /* ========== 左侧板块侧边栏 ========== */
 .boards-sidebar {
     width: 260px;
@@ -21,6 +26,7 @@
     height: fit-content;
     position: sticky;
     top: 24px;
+    z-index: 10;
 }
 
 .sidebar-header {
@@ -95,6 +101,11 @@
     text-overflow: ellipsis;
 }
 
+.board-item.active .board-name {
+    color: #3b82f6;
+    font-weight: 600;
+}
+
 .board-post-count {
     font-size: 0.75rem;
     color: #64748b;
@@ -134,6 +145,7 @@
     border-radius: 20px;
     padding: 24px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    min-width: 0; /* 🚨 刚性：防止 Flex 容器下长文本横向爆仓撑变形 */
 }
 
 /* 板块头部 */
@@ -144,6 +156,7 @@
     margin-bottom: 20px;
     padding-bottom: 16px;
     border-bottom: 1px solid #f1f5f9;
+    gap: 12px;
 }
 
 .board-info {
@@ -178,6 +191,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
 }
 
 .join-board-btn:hover {
@@ -190,9 +204,10 @@
     border: none;
     border-radius: 30px;
     color: white;
-    font-weight: 500;
+    font-weight: 600;
     cursor: pointer;
     transition: background 0.15s;
+    white-space: nowrap;
 }
 
 .new-post-btn:hover {
@@ -205,12 +220,16 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 20px;
+    gap: 12px;
 }
 
 .sort-tabs {
     display: flex;
     gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
 }
+.sort-tabs::-webkit-scrollbar { display: none; }
 
 .sort-tab {
     padding: 8px 18px;
@@ -221,6 +240,7 @@
     color: #64748b;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap;
 }
 
 .sort-tab:hover {
@@ -241,6 +261,7 @@
     background: white;
     cursor: pointer;
     outline: none;
+    -webkit-appearance: none; /* 清除 iOS 默认内阴影 */
 }
 
 /* 帖子列表 */
@@ -256,7 +277,7 @@
     padding: 20px;
     background: #fafafa;
     border-radius: 16px;
-    transition: box-shadow 0.15s;
+    transition: box-shadow 0.15s, background-color 0.15s;
     cursor: pointer;
 }
 
@@ -288,6 +309,7 @@
     color: white;
     font-weight: bold;
     font-size: 1rem;
+    flex-shrink: 0;
 }
 
 .post-author-info {
@@ -305,6 +327,7 @@
     gap: 12px;
     font-size: 0.75rem;
     color: #94a3b8;
+    flex-wrap: wrap;
 }
 
 .post-badge {
@@ -312,6 +335,7 @@
     border-radius: 20px;
     font-size: 0.7rem;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .post-badge.pinned-badge {
@@ -330,6 +354,7 @@
     color: #0f172a;
     margin-bottom: 10px;
     line-height: 1.4;
+    word-break: break-word;
 }
 
 .post-content-preview {
@@ -341,6 +366,7 @@
     -webkit-line-clamp: 3;  
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
 }
 
 .post-footer {
@@ -372,20 +398,24 @@
 .pagination {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     margin-top: 32px;
+    flex-wrap: wrap;
 }
 
 .page-btn {
-    min-width: 40px;
-    height: 40px;
-    padding: 0 12px;
+    min-width: 38px;
+    height: 38px;
+    padding: 0 10px;
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     color: #1e293b;
     cursor: pointer;
     transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .page-btn:hover:not(:disabled) {
@@ -411,26 +441,25 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(15, 23, 42, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 10000; /* 高于一切，压在移动端底部菜单上方 */
     backdrop-filter: blur(4px);
+    padding: 14px;
 }
 
 .modal-container {
     background: white;
     border-radius: 24px;
-    width: 90%;
+    width: 100%;
     max-width: 560px;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow: hidden;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}
-
-.post-detail-container {
-    max-width: 700px;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-header {
@@ -439,6 +468,7 @@
     justify-content: space-between;
     padding: 20px 24px;
     border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
 }
 
 .modal-header h3 {
@@ -449,25 +479,25 @@
 }
 
 .modal-close {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: transparent;
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
     color: #64748b;
-    transition: background 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.modal-close:hover {
-    background: #f1f5f9;
-}
+.modal-close:hover { background: #f1f5f9; }
 
 .modal-body {
     padding: 24px;
     overflow-y: auto;
-    max-height: calc(90vh - 80px);
+    flex: 1;
 }
 
 .form-group {
@@ -493,6 +523,7 @@
     outline: none;
     transition: border-color 0.15s;
     font-family: inherit;
+    box-sizing: border-box;
 }
 
 .form-group input:focus,
@@ -505,184 +536,29 @@
     resize: vertical;
 }
 
-.form-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-    margin-top: 24px;
-}
-
-.cancel-btn {
-    padding: 12px 24px;
-    background: white;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 30px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-
-.cancel-btn:hover {
-    background: #f8fafc;
-}
-
-.submit-btn {
-    padding: 12px 32px;
-    background: #3b82f6;
-    border: none;
-    border-radius: 30px;
-    color: white;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 0.15s;
-}
-
-.submit-btn:hover {
-    background: #2563eb;
-}
-
-.submit-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-/* ========== 深色模式适配 ========== */
-.dark .boards-sidebar,
-.dark .posts-main,
-.dark .modal-container {
-    background: #1e293b;
-}
-
-.dark .sidebar-header h3,
-.dark .board-name,
-.dark .board-info h2,
-.dark .post-author,
-.dark .post-title {
-    color: #f1f5f9;
-}
-
-.dark .board-item:hover {
-    background: #334155;
-}
-
-.dark .board-item.active {
-    background: #1e3a5f;
-}
-
-.dark .board-post-count {
-    background: #334155;
-    color: #94a3b8;
-}
-
-.dark .post-card {
-    background: #0f172a;
-}
-
-.dark .post-card:hover {
-    background: #1e293b;
-}
-
-.dark .post-card.pinned {
-    background: #1e3a5f;
-}
-
-.dark .post-content-preview {
-    color: #94a3b8;
-}
-
-.dark .sort-tab.active {
-    background: #3b82f6;
-}
-
-.dark .form-group input,
-.dark .form-group textarea,
-.dark .form-group select {
-    background: #0f172a;
-    border-color: #334155;
-    color: #f1f5f9;
-}
-
-.dark .modal-header {
-    border-bottom-color: #334155;
-}
-
-.dark .cancel-btn {
-    background: #1e293b;
-    border-color: #334155;
-    color: #e2e8f0;
-}
-
-.dark .cancel-btn:hover {
-    background: #334155;
-}
-
-/* ========== 响应式 ========== */
-@media (max-width: 768px) {
-    .posts-container {
-        flex-direction: column;
-        padding: 0 16px;
-    }
-    
-    .boards-sidebar {
-        width: 100%;
-        position: static;
-    }
-    
-    .current-board-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 16px;
-    }
-    
-    .posts-toolbar {
-        flex-direction: column;
-        gap: 12px;
-        align-items: flex-start;
-    }
-}
-
-/* ========== 用户搜索与可见范围样式 ========== */
-
+/* 用户搜索与可见范围样式加固 */
 .user-search-box {
     display: flex;
     gap: 8px;
 }
 
-.user-search-box input {
-    flex: 1;
-    padding: 10px 14px;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    font-size: 0.95rem;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.user-search-box input:focus {
-    border-color: #3b82f6;
-}
-
 .search-btn {
-    padding: 10px 16px;
+    padding: 10px 18px;
     background: #3b82f6;
     color: white;
     border: none;
     border-radius: 12px;
     cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.2s;
+    font-size: 0.95rem;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
-.search-btn:hover {
-    background: #2563eb;
-}
-
-/* 搜索结果 */
 .search-results {
     margin-top: 8px;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    max-height: 200px;
+    max-height: 160px;
     overflow-y: auto;
     background: white;
     box-shadow: 0 4px 12px rgba(0,0,0,0.05);
@@ -694,71 +570,8 @@
     justify-content: space-between;
     padding: 10px 14px;
     border-bottom: 1px solid #f1f5f9;
-    cursor: pointer;
-    transition: background 0.15s;
 }
 
-.search-result-item:last-child {
-    border-bottom: none;
-}
-
-.search-result-item:hover {
-    background: #f8fafc;
-}
-
-.search-result-item .user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.search-result-item .user-avatar-small {
-    width: 32px;
-    height: 32px;
-    background: #e0e7ff;
-    color: #3b82f6;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    font-size: 0.85rem;
-}
-
-.search-result-item .user-student-id {
-    font-weight: 500;
-    color: #1e293b;
-}
-
-.search-result-item .add-user-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.search-result-item .add-user-btn:hover {
-    background: #2563eb;
-}
-
-.search-result-item .add-user-btn.added {
-    background: #e2e8f0;
-    color: #64748b;
-    cursor: default;
-}
-
-.search-empty {
-    padding: 16px;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 0.9rem;
-}
-
-/* 已选用户标签 */
 .selected-users {
     display: flex;
     flex-wrap: wrap;
@@ -768,14 +581,6 @@
     border: 1.5px solid #e2e8f0;
     border-radius: 12px;
     background: #f8fafc;
-}
-
-.no-users-hint {
-    color: #94a3b8;
-    font-size: 0.85rem;
-    width: 100%;
-    text-align: center;
-    padding: 8px 0;
 }
 
 .user-tag {
@@ -790,17 +595,175 @@
     font-weight: 500;
 }
 
-.user-tag .remove-tag {
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    opacity: 0.6;
-    transition: opacity 0.2s;
+.form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
 }
 
-.user-tag .remove-tag:hover {
-    opacity: 1;
-    color: #dc2626;
+.cancel-btn, .submit-btn {
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cancel-btn {
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    color: #64748b;
+}
+
+.submit-btn {
+    background: #3b82f6;
+    border: none;
+    color: white;
+}
+
+.submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ========== 深色模式适配 ========== */
+.dark .boards-sidebar, .dark .posts-main, .dark .modal-container, .dark .search-results { background: #1e293b; }
+.dark .sidebar-header h3, .dark .board-name, .dark .board-info h2, .dark .post-author, .dark .post-title { color: #f1f5f9; }
+.dark .board-item:hover { background: #334155; }
+.dark .board-item.active { background: #1e3a5f; }
+.dark .board-post-count { background: #334155; color: #94a3b8; }
+.dark .post-card { background: #0f172a; }
+.dark .post-card:hover { background: #1e293b; }
+.dark .post-card.pinned { background: #1e3a5f; }
+.dark .post-content-preview { color: #94a3b8; }
+.dark .sort-tab.active { background: #3b82f6; }
+.dark .form-group input, .dark .form-group textarea, .dark .form-group select, .dark .user-search-box input { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+.dark .modal-header, .dark .sidebar-header, .dark .current-board-header, .dark .search-result-item { border-bottom-color: #334155; }
+.dark .cancel-btn { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.dark .selected-users { background: #0f172a; border-color: #334155; }
+
+/* ========== 📱 移动端自适应黑科技级重构补丁 ========== */
+@media (max-width: 768px) {
+    .posts-container {
+        flex-direction: column;  /* 强行切为纵向单列 */
+        padding: 0 12px;
+        margin: 12px auto;
+        gap: 16px;
+    }
+    
+    /* 🌟【灵魂手术】：电脑端侧边栏在手机端横向解封，秒变横向滚动 Tabs */
+    .boards-sidebar {
+        width: 100% !important;
+        position: static !important; /* 解除固定置顶 */
+        padding: 0 !important;
+        background: transparent !important; /* 去掉大底色，保持空气感 */
+        box-shadow: none !important;
+        border-radius: 0;
+    }
+
+    /* 隐藏对手机没用的侧边栏头部和页脚，极大地省出首屏空间 */
+    .sidebar-header, .sidebar-footer {
+        display: none !important;
+    }
+
+    /* 将垂直列表激活为单行横向流式滚动 */
+    .boards-list {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 8px !important;
+        overflow-x: auto !important;     /* 允许手机指尖无感横向轻刷 */
+        padding: 4px 0 12px 0 !important;
+        scrollbar-width: none;           /* 抹除火狐滚动条 */
+        -webkit-overflow-scrolling: touch;
+    }
+    .boards-list::-webkit-scrollbar { display: none; } /* 抹除谷歌滚动条 */
+
+    /* 改造单个板块气泡卡片：紧凑横排 */
+    .board-item {
+        flex-shrink: 0 !important;      /* 强行锁死，不允许被弹性挤压 */
+        padding: 8px 16px !important;   /* 缩减间距 */
+        background: #f1f5f9;            /* 手机端未激活气泡色 */
+        border-radius: 30px !important;  /* 胶囊形状 */
+        margin-bottom: 0 !important;
+        gap: 6px !important;
+    }
+    .dark .board-item { background: #0f172a; }
+
+    .board-item.active {
+        background: #3b82f6 !important; /* 激活时变主蓝色 */
+        border-left: none !important;  /* 清除电脑端的左侧竖线 */
+    }
+
+    .board-item.active .board-name {
+        color: white !important;       /* 激活后文字反白 */
+    }
+    
+    .board-post-count {
+        background: rgba(255, 255, 255, 0.25) !important; /* 数量角标在气泡里无感融合 */
+        color: inherit !important;
+    }
+
+    /* 右侧主贴子流底座填满 */
+    .posts-main {
+        width: 100% !important;
+        padding: 16px;
+        border-radius: 20px;
+    }
+    
+    /* 当前板块名称区域自适应 */
+    .current-board-header {
+        flex-direction: row !important; /* 保持横向，防止发帖按钮孤零零掉下去 */
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+    }
+    
+    .board-info h2 { font-size: 1.3rem; }
+    .join-board-btn { padding: 8px 14px; font-size: 0.85rem; }
+    .new-post-btn { padding: 8px 18px; font-size: 0.85rem; }
+    
+    /* 工具栏单列堆叠 */
+    .posts-toolbar {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .sort-tabs {
+        width: 100%;
+        padding-bottom: 2px;
+    }
+
+    .time-filter {
+        width: 100%; /* 让时间选择框在手机上独占整行，放大触控面 */
+        text-align: center;
+    }
+
+    /* 帖子卡片内间距优化 */
+    .post-card { padding: 16px; border-radius: 14px; }
+    .post-title { font-size: 1.05rem; margin-bottom: 6px; }
+    .post-content-preview { font-size: 0.88rem; margin-bottom: 12px; }
+    .post-footer { gap: 18px; }
+
+    /* 弹窗响应式极致防出界 */
+    .modal-container {
+        max-height: 82vh;
+    }
+    .modal-body {
+        padding: 16px;
+    }
+    .form-actions {
+        margin-top: 16px;
+    }
+
+    /* 联动底部常驻底栏防阻挡 */
+    body {
+        padding-bottom: 85px !important;
+    }
 }
 
 /* 顶部缓存状态同步条说明 */
@@ -814,9 +777,9 @@
     align-items: center;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
 }
 
-/* 正在更新中的黄色状态 */
 .cache-notice-bar.waiting {
     background-color: #fff9db;
     color: #f59f00;
@@ -824,14 +787,12 @@
     animation: pulseNotice 2s infinite ease-in-out;
 }
 
-/* 更新成功后的绿色状态 */
 .cache-notice-bar.success {
     background-color: #e6fcf5;
     color: #0ca678;
     border: 1px solid #96f2d7;
 }
 
-/* 微弱呼吸动画暗示正在网络加载 */
 @keyframes pulseNotice {
     0% { opacity: 0.85; }
     50% { opacity: 1; }

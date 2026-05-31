@@ -5,18 +5,19 @@
     <head>
         <title> Example </title>
         <link rel="stylesheet" href="./css/light/forall.css">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     </head>
-    <body style="height: 100%;">
-        <script src="./js/theme-change.js"></script>
+    <body>
+        <!-- <script src="./js/theme-change.js"></script> -->
         <script src="./js/events.js"></script>
         <div class="title-bar">
             <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;">
             <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
             <ul class="nav-bar">
-                <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+                <li class="nav-bar-item active" onclick="location.href='./'">首页</li>
             <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
             <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
-            <li class="nav-bar-item active" onclick="location.href='confession'">表白墙</li>
+            <li class="nav-bar-item" onclick="location.href='confession'">表白墙</li>
             </ul>
             <div class="user-area" id="userArea">
                 <!-- 未登录时显示 -->

@@ -1,444 +1,97 @@
-body{
+/* ==========================================================================
+   🧱 基础骨架与全局盒模型加固 (全站公共底层)
+   ========================================================================== */
+body {
     background-color: #ffffff;
     margin: 0px;
 }
 
-.title-bar{
+/* 全量核心容器防爆仓，确保手机端不会产生横向死滑 */
+.home-content, .title-bar, .event-board, .post-section, .confession-section, .post-card, .nav-bar, .nav-bar-item, .posts-container, .posts-main {
+    box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   💻 电脑大屏端：公共顶部状态栏基础样式 (PC View - Default)
+   ========================================================================== */
+.title-bar {
     display: flex;
-    background-color: #e7e7e7;
+    background-color: #ffffff; /* 🧼 清洗掉原本灰色的老旧定义 */
     border-bottom-left-radius: 30px;
     border-bottom-right-radius: 30px;
     margin: 0px;
-    align-items: center;
-}
-
-.nav-bar{
-    /* background-color: #f8f3fa; */
-    list-style-type: none;
-    border-radius: 10px;
-    margin: 0px;
-    display: flex;
-    
-}
-
-.nav-bar-item{
-    font-size: 20px;
-    margin: 5px;
-    padding: 5px 10px;
-    border-radius: 10px;
-}
-
-.nav-bar-item:hover{
-    cursor: pointer;
-    font-size: 20px;
-    margin: 5px;
-    background-color: #dadada;
-}
-
-.site-title{
-    font-family:Georgia, 'Times New Roman', Times, serif;
-}
-
-.site-title:hover{
-    font-family:Georgia, 'Times New Roman', Times, serif;
-    cursor: pointer;
-}
-
-/* ========== 校园首页布局样式 by BearThomas ========== */
-
-/* 整体内容容器 */
-.home-content {
-    max-width: 1400px;
-    margin: 24px auto;
     padding: 0 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-}
-
-/* ---------- 1. 大事记板块 (顶部通栏) ---------- */
-.event-board {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 24px;
-    padding: 24px 28px;
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.25);
-    color: white;
-}
-
-.event-board h2 {
-    margin: 0 0 18px 0;
-    font-size: 1.8rem;
-    font-weight: 600;
-    display: flex;
+    height: 74px; /* 完美对齐 70px Logo */
     align-items: center;
-    gap: 10px;
-}
-
-.event-board h2 i {
-    font-size: 1.8rem;
-}
-
-.event-scroll {
-    display: flex;
-    gap: 20px;
-    overflow-x: auto;
-    padding-bottom: 8px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.5) transparent;
-}
-
-.event-scroll::-webkit-scrollbar {
-    height: 6px;
-}
-
-.event-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.5);
-    border-radius: 10px;
-}
-
-.event-card {
-    min-width: 260px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(10px);
-    border-radius: 18px;
-    padding: 18px 20px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.2s;
-    flex-shrink: 0;
-}
-
-.event-card:hover {
-    transform: translateY(-4px);
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.event-tag {
-    display: inline-block;
-    background: rgba(255, 215, 0, 0.9);
-    color: #333;
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 4px 12px;
-    border-radius: 30px;
-    margin-bottom: 14px;
-}
-
-.event-title {
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    line-height: 1.3;
-}
-
-.event-desc {
-    font-size: 0.9rem;
-    opacity: 0.9;
-    margin-bottom: 16px;
-}
-
-.event-date {
-    font-size: 0.8rem;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    opacity: 0.8;
-}
-
-/* ---------- 2. 双栏布局 (帖子 + 表白墙) ---------- */
-.content-two-columns {
-    display: flex;
-    gap: 28px;
-}
-
-/* 左侧帖子区域 */
-.post-section {
-    flex: 2;
-    background: white;
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.section-header h2 {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 650;
-    color: #1e293b;
-}
-
-.new-post-btn {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 10px 22px;
-    border-radius: 40px;
-    font-weight: 500;
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-}
-
-.new-post-btn:hover {
-    background: #2563eb;
-    transform: scale(1.02);
-}
-
-/* 帖子卡片 */
-.post-card {
-    padding: 22px 0;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.post-card:last-child {
-    border-bottom: none;
-}
-
-.post-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 14px;
-}
-
-.post-avatar {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(145deg, #a5b4fc, #818cf8);
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-.post-author {
-    font-weight: 650;
-    color: #0f172a;
-    margin-bottom: 4px;
-}
-
-.post-time {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.post-title {
-    font-size: 1.2rem;
-    font-weight: 650;
-    margin-bottom: 10px;
-    color: #0f172a;
-}
-
-.post-content {
-    color: #334155;
-    line-height: 1.6;
-    margin-bottom: 18px;
-}
-
-.post-footer {
-    display: flex;
-    gap: 24px;
-}
-
-.post-action {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #64748b;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: color 0.15s;
-}
-
-.post-action:hover {
-    color: #3b82f6;
-}
-
-/* 右侧表白墙 */
-.confession-section {
-    flex: 1;
-    background: white;
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
-}
-
-.confession-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 22px;
-    color: #ec4899;
-}
-
-.confession-header h2 {
-    margin: 0;
-    font-size: 1.6rem;
-    font-weight: 650;
-    color: #1e293b;
-}
-
-.confession-list {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    margin-bottom: 24px;
-}
-
-.confession-card {
-    background: #fdf4ff;
-    border-radius: 20px;
-    padding: 18px;
-    border-left: 5px solid #ec4899;
-}
-
-.confession-text {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: #4a044e;
-    margin-bottom: 10px;
-    font-style: italic;
-}
-
-.confession-footer {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: #a21caf;
-}
-
-.add-confession-btn {
-    background: #ec4899;
-    color: white;
-    border: none;
-    padding: 14px;
-    border-radius: 60px;
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.2s;
-    width: 100%;
-}
-
-.add-confession-btn:hover {
-    background: #db2777;
-}
-
-/* ---------- 响应式 (手机/平板) ---------- */
-@media (max-width: 900px) {
-    .content-two-columns {
-        flex-direction: column;
-    }
-    
-    .home-content {
-        padding: 0 16px;
-    }
-    
-    .event-card {
-        min-width: 220px;
-    }
-}
-
-/* ========== 查看更多按钮样式 ========== */
-.view-more-wrapper {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.view-more-btn {
-    background: transparent;
-    border: 2px solid #e2e8f0;
-    color: #64748b;
-    padding: 10px 24px;
-    border-radius: 40px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    width: 100%;
-    max-width: 200px;
-}
-
-.view-more-btn:hover {
-    border-color: #3b82f6;
-    color: #3b82f6;
-    background: rgba(59, 130, 246, 0.05);
-}
-
-/* 表白墙列表容器 — 固定高度 + 滚动 */
-.confession-list {
-    max-height: 520px;        /* 大约显示 5-6 条 */
-    overflow-y: auto;
-    padding-right: 6px;
-    margin-bottom: 16px;
-}
-
-/* 自定义滚动条 */
-.confession-list::-webkit-scrollbar {
-    width: 5px;
-}
-
-.confession-list::-webkit-scrollbar-thumb {
-    background: #fbcfe8;
-    border-radius: 10px;
-}
-
-
-
-/* 深色模式适配（可选） */
-.dark .view-more-btn {
-    border-color: #475569;
-    color: #94a3b8;
-}
-
-.dark .view-more-btn:hover {
-    border-color: #60a5fa;
-    color: #60a5fa;
-}
-
-/* ========== 登录状态区域 ========== */
-.title-bar {
-    display: flex;
-    align-items: center;
-    padding: 0 24px;
-    background: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     position: relative;
+    z-index: 999;
 }
 
+.site-title {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* 💻 电脑端：包裹 ul 菜单 */
+.nav-bar {
+    list-style-type: none;
+    margin: 0px 0px 0px 24px;
+    padding: 0;
+    display: flex;
+    gap: 4px;
+}
+
+/* 💻 电脑端：单个菜单按钮 */
+.nav-bar-item {
+    font-size: 16px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    color: #475569;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.nav-bar-item:hover {
+    background-color: #f1f5f9;
+    color: #3b82f6;
+}
+
+.nav-bar-item.active {
+    background-color: #eff6ff;
+    color: #3b82f6;
+    font-weight: 600;
+}
+
+/* 👥 顶栏登录状态用户区域 */
 .user-area {
-    margin-left: auto;  /* 推到最右边 */
+    margin-left: auto;
     display: flex;
     align-items: center;
 }
 
-/* 未登录状态 */
 .user-not-login {
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
 .login-link, .register-link {
     color: #3b82f6;
     text-decoration: none;
     font-weight: 500;
-    padding: 8px 12px;
+    padding: 8px 14px;
     border-radius: 30px;
     transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .login-link:hover, .register-link:hover {
@@ -450,7 +103,6 @@ body{
     font-weight: 300;
 }
 
-/* 已登录状态 */
 .user-logged-in {
     display: flex;
     align-items: center;
@@ -460,10 +112,6 @@ body{
 .user-name {
     font-weight: 500;
     color: #1e293b;
-    max-width: 120px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .user-dropdown {
@@ -471,13 +119,13 @@ body{
 }
 
 .user-avatar {
-    width: 44px;
-    height: 44px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     border: none;
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -485,77 +133,251 @@ body{
     transition: transform 0.2s;
 }
 
-.user-avatar:hover {
-    transform: scale(1.05);
-}
-
 .dropdown-menu {
     position: absolute;
-    top: 52px;
+    top: 46px;
     right: 0;
     background: white;
-    border-radius: 16px;
+    border-radius: 14px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-    min-width: 140px;
-    padding: 8px 0;
+    min-width: 130px;
+    padding: 6px 0;
     display: none;
     z-index: 1000;
     border: 1px solid #e2e8f0;
 }
 
-.dropdown-menu.show {
-    display: block;
+.dropdown-menu.show { display: block; }
+.dropdown-menu a { display: block; padding: 10px 16px; color: #1e293b; text-decoration: none; font-size: 0.9rem; }
+.dropdown-menu a:hover { background: #f8fafc; }
+
+
+/* ==========================================================================
+   🏠 校园首页大厅专属板块样式
+   ========================================================================== */
+.home-content {
+    max-width: 1400px;
+    margin: 24px auto;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
 }
 
-.dropdown-menu a {
-    display: block;
-    padding: 12px 18px;
-    color: #1e293b;
-    text-decoration: none;
-    font-size: 0.95rem;
-    transition: background 0.15s;
+.event-board {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 24px;
+    padding: 24px 28px;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.25);
+    color: white;
 }
 
-.dropdown-menu a:hover {
-    background: #f8fafc;
+.event-board h2 {
+    margin: 0 0 18px 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
-.dropdown-menu a:first-child {
-    border-bottom: 1px solid #e2e8f0;
+.event-scroll {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    padding-bottom: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.4) transparent;
+    -webkit-overflow-scrolling: touch;
 }
 
-/* 深色模式适配 */
-.dark .title-bar {
-    background: #1e293b;
+.event-scroll::-webkit-scrollbar { height: 6px; }
+.event-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.4); border-radius: 10px; }
+
+.event-card {
+    width: 280px;
+    min-width: 260px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 18px;
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s;
+    flex-shrink: 0;
 }
 
-.dark .user-name {
-    color: #f1f5f9;
+.event-card:hover { transform: translateY(-4px); }
+.event-tag { display: inline-block; background: rgba(255, 215, 0, 0.9); color: #333; font-size: 0.75rem; font-weight: bold; padding: 4px 12px; border-radius: 30px; margin-bottom: 14px; }
+.event-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 8px; line-height: 1.4; }
+.event-desc { font-size: 0.9rem; opacity: 0.9; margin-bottom: 16px; line-height: 1.5; }
+.event-date { font-size: 0.8rem; display: flex; align-items: center; gap: 6px; opacity: 0.8; }
+
+.content-two-columns {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
 }
 
-.dark .login-link, 
-.dark .register-link {
-    color: #60a5fa;
+.post-section {
+    flex: 2;
+    background: white;
+    border-radius: 24px;
+    padding: 28px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
 }
 
-.dark .login-link:hover, 
-.dark .register-link:hover {
-    background: #1e3a5f;
-}
+.section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 12px; }
+.section-header h2 { margin: 0; font-size: 1.5rem; font-weight: 650; color: #1e293b; }
+.new-post-btn { background: #3b82f6; color: white; border: none; padding: 10px 22px; border-radius: 40px; font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; }
+.new-post-btn:hover { background: #2563eb; }
 
-.dark .dropdown-menu {
-    background: #1e293b;
-    border-color: #334155;
-}
+.post-card { padding: 22px 0; border-bottom: 1px solid #f1f5f9; }
+.post-card:last-child { border-bottom: none; }
+.post-header { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.post-avatar { width: 44px; height: 44px; background: linear-gradient(145deg, #a5b4fc, #818cf8); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.1rem; flex-shrink: 0; }
+.post-author { font-weight: 650; color: #0f172a; margin-bottom: 2px; }
+.post-time { font-size: 0.8rem; color: #64748b; }
+.post-title { font-size: 1.2rem; font-weight: 650; margin-bottom: 8px; color: #0f172a; }
+.post-content { color: #334155; line-height: 1.6; margin-bottom: 16px; word-break: break-word; }
+.post-footer { display: flex; gap: 24px; }
+.post-action { display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 0.88rem; cursor: pointer; user-select: none; }
+.post-action:hover { color: #3b82f6; }
 
-.dark .dropdown-menu a {
-    color: #e2e8f0;
-}
+.confession-section { flex: 1; background: white; border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04); display: flex; flex-direction: column; }
+.confession-header { display: flex; align-items: center; gap: 8px; margin-bottom: 22px; color: #ec4899; }
+.confession-header h2 { margin: 0; font-size: 1.5rem; font-weight: 650; color: #1e293b; }
 
-.dark .dropdown-menu a:hover {
-    background: #334155;
-}
+.confession-list { max-height: 520px; overflow-y: auto; padding-right: 6px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 18px; -webkit-overflow-scrolling: touch; }
+.confession-list::-webkit-scrollbar { width: 5px; }
+.confession-list::-webkit-scrollbar-thumb { background: #fbcfe8; border-radius: 10px; }
 
-.dark .dropdown-menu a:first-child {
-    border-bottom-color: #334155;
+.confession-card { background: #fdf4ff; border-radius: 20px; padding: 18px; border-left: 5px solid #ec4899; }
+.confession-text { font-size: 0.95rem; line-height: 1.6; color: #4a044e; margin-bottom: 10px; font-style: italic; white-space: pre-wrap; word-break: break-word; }
+.confession-footer { display: flex; justify-content: space-between; font-size: 0.75rem; color: #a21caf; }
+.add-confession-btn { background: #ec4899; color: white; border: none; padding: 14px; border-radius: 60px; font-weight: 600; font-size: 1rem; cursor: pointer; width: 100%; }
+.add-confession-btn:hover { background: #db2777; }
+
+.view-more-wrapper { text-align: center; margin-top: 20px; }
+.view-more-btn { background: transparent; border: 2px solid #e2e8f0; color: #64748b; padding: 10px 24px; border-radius: 40px; font-size: 0.95rem; font-weight: 500; cursor: pointer; width: 100%; max-width: 200px; }
+.view-more-btn:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.05); }
+
+.dark .view-more-btn { border-color: #475569; color: #94a3b8; }
+.dark .view-more-btn:hover { border-color: #60a5fa; color: #60a5fa; }
+
+/* ==========================================================================
+   📱 移动端自适应黑科技核心：沉底解耦，现场生成微信底栏 (max-width: 768px)
+   ========================================================================== */
+@media screen and (max-width: 768px) {
+    
+    /* 1. 顶部外壳优化：变成手机利落款短状态栏 */
+    .title-bar {
+        height: 56px !important;
+        padding: 0 14px !important;
+        border-radius: 0 0 16px 16px !important;
+    }
+    
+    /* 缩减手机端顶部 Logo 图标尺寸 */
+    .title-bar img {
+        width: 38px !important;
+        height: 38px !important;
+        padding: 0 !important;
+        margin-right: 8px !important;
+    }
+    
+    .site-title {
+        font-size: 1.15rem !important;
+    }
+
+    /* 🚨 2. 【核心蜕变】：将原先夹在顶部的 .nav-bar 强制抽走沉底，变身底部固定底栏！ */
+    .title-bar .nav-bar {
+        position: fixed !important;
+        bottom: 0 !important;              /* 锁死在屏幕最底部 */
+        top: auto !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 60px !important;           /* 手机底栏黄金高度 */
+        margin: 0 !important;
+        padding: 0 !important;
+        background: rgba(255, 255, 255, 0.96) !important;
+        backdrop-filter: blur(12px) !important;
+        box-shadow: 0 -3px 14px rgba(0, 0, 0, 0.06) !important;
+        z-index: 9999999 !important;       /* 置于全宇宙最表层 */
+        display: flex !important;
+        flex-direction: row !important;     /* 强行平铺 */
+        justify-content: space-around !important;
+        align-items: center !important;
+        border-top: 1px solid #f1f5f9 !important;
+    }
+
+    /* 🚨 3. 单个菜单选项：改造成按钮盒 */
+    .nav-bar-item {
+        display: flex !important;
+        flex-direction: column !important; /* 上图标下文字 */
+        align-items: center !important;
+        justify-content: center !important;
+        flex: 1 !important;                 /* 4个按钮百分之百等分手机屏宽 */
+        height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        font-size: 10.5px !important;       /* 移动端小字号标签 */
+        color: #64748b !important;
+        background: transparent !important; /* 清空色块 */
+        gap: 2px !important;
+    }
+
+    /* 🚨 4. 【动态幻化】：利用 CSS ::before 伪元素，现场变出微信大厂质感图标 */
+    .nav-bar-item::before {
+        font-size: 20px !important;
+        font-weight: normal !important;
+        display: inline-block !important;
+        margin-bottom: 1px;
+    }
+    
+    /* 注入 emoji 图标 */
+    .nav-bar-item:nth-child(1)::before { content: "🏠"; } /* 首页 */
+    .nav-bar-item:nth-child(2)::before { content: "💬"; } /* 帖子 */
+    .nav-bar-item:nth-child(3)::before { content: "📅"; } /* 大事记 */
+    .nav-bar-item:nth-child(4)::before { content: "💖"; } /* 表白墙 */
+
+    /* 🚨 5. 状态激活：只变颜色 */
+    .nav-bar-item:hover {
+        background: transparent !important;
+        color: #64748b !important;
+    }
+    
+    .nav-bar-item.active {
+        color: #3b82f6 !important; /* 激活一秒亮蓝 */
+        background: transparent !important;
+        font-weight: 600 !important;
+    }
+    
+    .nav-bar-item.active::before {
+        transform: scale(1.08);
+        transition: transform 0.2s;
+    }
+
+    /* 移动端主大厅信息流自适应调优 */
+    .home-content { padding: 0 12px; gap: 20px; margin: 12px auto; }
+    .event-board { padding: 18px; border-radius: 20px; }
+    .event-board h2 { font-size: 1.3rem; margin-bottom: 12px; }
+    .event-card { width: 240px; min-width: 230px; padding: 16px; border-radius: 16px; }
+    .content-two-columns { flex-direction: column !important; gap: 20px; width: 100%; }
+    .post-section, .confession-section { width: 100% !important; padding: 16px; border-radius: 20px; }
+    .post-card { padding: 16px 0; }
+    .post-avatar { width: 40px; height: 40px; border-radius: 12px; font-size: 1rem; }
+
+    /* 解除首页双层滚动死锁 */
+    .confession-list {
+        max-height: none !important;
+        overflow-y: visible !important;
+        padding-right: 0;
+        gap: 14px;
+    }
+
+    /* 🚨 6. 全站刚性底部缓冲区留白 */
+    body {
+        padding-bottom: 85px !important;
+        padding-top: 0px !important;
+    }
 }

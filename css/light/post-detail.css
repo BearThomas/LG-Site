@@ -1,9 +1,16 @@
 /* ========== 帖子详情页样式 ========== */
 
 .post-detail-container {
-    max-width: 800px;
+    width: 100%;             /* 📱 手机端自动撑满 */
+    max-width: 800px;        /* 💻 电脑端最大卡死 */
     margin: 24px auto;
     padding: 0 24px;
+    box-sizing: border-box;  /* 刚性防爆仓 */
+}
+
+/* 页面元素全部合入安全盒模型 */
+.post-detail-card, .comments-section, .comment-input-box, .comment-item, textarea {
+    box-sizing: border-box !important;
 }
 
 /* 面包屑 */
@@ -14,6 +21,7 @@
     margin-bottom: 20px;
     color: #64748b;
     font-size: 0.9rem;
+    flex-wrap: wrap; /* 📱 手机端层级过深时允许优雅自动换行 */
 }
 
 .breadcrumb a {
@@ -48,7 +56,8 @@
     font-weight: 700;
     color: #0f172a;
     margin-bottom: 16px;
-    line-height: 1.3;
+    line-height: 1.35;
+    word-wrap: break-word; /* 🛡️ 防御长符号和火星文撑破容器 */
 }
 
 .post-detail-meta {
@@ -57,6 +66,7 @@
     justify-content: space-between;
     padding-bottom: 16px;
     border-bottom: 1px solid #f1f5f9;
+    gap: 12px;
 }
 
 .post-author-info {
@@ -66,8 +76,8 @@
 }
 
 .post-detail-avatar {
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     border-radius: 14px;
     background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
@@ -75,7 +85,8 @@
     justify-content: center;
     color: white;
     font-weight: bold;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
+    flex-shrink: 0;
 }
 
 .post-author-detail {
@@ -87,7 +98,7 @@
 .post-author-name {
     font-weight: 650;
     color: #1e293b;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
 }
 
 .post-time {
@@ -97,7 +108,8 @@
 
 .post-actions {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    flex-wrap: wrap; /* 📱 保证管理按钮多开时在手机端能堆叠 */
 }
 
 .post-action-btn {
@@ -109,6 +121,7 @@
     color: #64748b;
     cursor: pointer;
     transition: all 0.15s;
+    white-space: nowrap; /* 拒绝文字被挤压成两行 */
 }
 
 .post-action-btn:hover {
@@ -123,17 +136,17 @@
 }
 
 .post-detail-content {
-    font-size: 1.05rem;
-    line-height: 1.8;
+    font-size: 1.08rem; /* 📱 轻微放大，手机端连续阅读不费眼 */
+    line-height: 1.75;
     color: #334155;
-    padding: 20px 0;
+    padding: 16px 0;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
 .post-detail-footer {
     display: flex;
-    gap: 28px;
+    gap: 20px;
     padding-top: 16px;
     border-top: 1px solid #f1f5f9;
 }
@@ -150,6 +163,7 @@
     color: #64748b;
     cursor: pointer;
     transition: all 0.15s;
+    user-select: none;
 }
 
 .post-stat-btn:hover {
@@ -161,7 +175,7 @@
     color: #ec4899;
 }
 
-/* 评论区 */
+/* ========== 评论区 ========== */
 .comments-section {
     background: white;
     border-radius: 24px;
@@ -184,7 +198,7 @@
 .comment-input-box {
     display: flex;
     gap: 14px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     padding-bottom: 24px;
     border-bottom: 1px solid #f1f5f9;
 }
@@ -215,7 +229,7 @@
     outline: none;
     resize: vertical;
     font-family: inherit;
-    transition: border-color 0.15s;
+    transition: border-color 0.15s, background-color 0.15s;
 }
 
 .comment-input-wrapper textarea:focus {
@@ -227,6 +241,7 @@
     align-items: center;
     justify-content: space-between;
     margin-top: 10px;
+    gap: 12px;
 }
 
 .comment-tip {
@@ -235,14 +250,16 @@
 }
 
 .submit-comment-btn {
-    padding: 8px 24px;
+    padding: 10px 26px; /* 📱 触控热区优化 */
     background: #3b82f6;
     border: none;
     border-radius: 30px;
     color: white;
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 0.95rem;
     cursor: pointer;
     transition: background 0.15s;
+    white-space: nowrap;
 }
 
 .submit-comment-btn:hover {
@@ -265,6 +282,7 @@
 .login-tip a {
     color: #3b82f6;
     text-decoration: none;
+    font-weight: 600;
 }
 
 /* 评论列表 */
@@ -292,8 +310,8 @@
 }
 
 .comment-author-avatar {
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border-radius: 10px;
     background: linear-gradient(135deg, #c4b5fd, #a78bfa);
     display: flex;
@@ -302,44 +320,47 @@
     color: white;
     font-size: 0.85rem;
     font-weight: bold;
+    flex-shrink: 0;
 }
 
 .comment-author-info {
     flex: 1;
+    min-width: 0;
 }
 
 .comment-author-name {
     font-weight: 600;
     color: #1e293b;
-    font-size: 0.9rem;
+    font-size: 0.92rem;
 }
 
 .comment-time {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     color: #94a3b8;
 }
 
 .comment-content {
-    margin-left: 42px;
+    margin-left: 44px; /* 💻 电脑端维持呼吸感 */
     color: #475569;
-    font-size: 0.95rem;
-    line-height: 1.6;
+    font-size: 0.98rem;
+    line-height: 1.65;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
 .comment-actions-bar {
-    margin-left: 42px;
+    margin-left: 44px;
     margin-top: 8px;
     display: flex;
     gap: 16px;
 }
 
 .comment-action {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
     color: #94a3b8;
     cursor: pointer;
     transition: color 0.15s;
+    user-select: none;
 }
 
 .comment-action:hover {
@@ -375,83 +396,109 @@
     background: #b91c1c !important;
 }
 
-/* 深色模式 */
+/* 深色模式适配 */
 .dark .post-detail-card,
-.dark .comments-section {
-    background: #1e293b;
-}
+.dark .comments-section,
+.dark .login-tip { background: #1e293b; }
+.dark .post-detail-title, .dark .post-author-name, .dark .comments-header h3 { color: #f1f5f9; }
+.dark .post-detail-content { color: #cbd5e1; }
+.dark .post-detail-meta, .dark .post-detail-footer, .dark .comment-input-box, .dark .comment-item { border-bottom-color: #334155; border-top-color: #334155; }
+.dark .post-action-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
+.dark .post-action-btn:hover { background: #1e293b; }
+.dark .comment-input-wrapper textarea { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+.dark .comment-content { color: #cbd5e1; }
+.dark .comment-author-name { color: #e2e8f0; }
+.dark .login-tip { background: #0f172a; }
+.dark .breadcrumb { color: #94a3b8; }
 
-.dark .post-detail-title,
-.dark .post-author-name,
-.dark .comments-header h3 {
-    color: #f1f5f9;
-}
-
-.dark .post-detail-content {
-    color: #cbd5e1;
-}
-
-.dark .post-detail-meta,
-.dark .post-detail-footer,
-.dark .comment-input-box,
-.dark .comment-item {
-    border-bottom-color: #334155;
-}
-
-.dark .post-action-btn {
-    background: #0f172a;
-    border-color: #334155;
-    color: #94a3b8;
-}
-
-.dark .post-action-btn:hover {
-    background: #1e293b;
-}
-
-.dark .comment-input-wrapper textarea {
-    background: #0f172a;
-    border-color: #334155;
-    color: #f1f5f9;
-}
-
-.dark .comment-content {
-    color: #94a3b8;
-}
-
-.dark .comment-author-name {
-    color: #e2e8f0;
-}
-
-.dark .login-tip {
-    background: #0f172a;
-}
-
-.dark .breadcrumb {
-    color: #94a3b8;
-}
-
-/* 响应式 */
+/* ==========================================================================
+   📱 帖子详情高级移动端降维平铺补丁 (小于 600px 自动触发)
+   ========================================================================== */
 @media (max-width: 600px) {
     .post-detail-container {
-        padding: 0 16px;
+        padding: 0 12px; /* 极致压榨两边，防止卡片太窄 */
+        margin: 12px auto;
     }
     
-    .post-detail-card {
-        padding: 20px;
+    .post-detail-card, .comments-section {
+        padding: 16px; /* 减小内边距 */
+        border-radius: 20px;
     }
     
     .post-detail-title {
-        font-size: 1.4rem;
+        font-size: 1.45rem; /* 调整手机标题比例 */
+        margin-bottom: 12px;
     }
     
+    /* 核心重构：将头像信息和控制按钮切为纵向，并拉大间距 */
     .post-detail-meta {
         flex-direction: column;
         align-items: flex-start;
-        gap: 12px;
+        gap: 14px;
+        padding-bottom: 14px;
     }
     
     .post-actions {
         width: 100%;
-        justify-content: flex-end;
+        justify-content: flex-end; /* 按钮整体向右靠拢 */
+        border-top: 1px dashed #e2e8f0; /* 给移动端补上一条优雅的管理虚线 */
+        padding-top: 10px;
+    }
+    
+    .dark .post-actions {
+        border-top-color: #334155;
+    }
+
+    .post-action-btn {
+        padding: 6px 14px;
+        font-size: 0.8rem;
+    }
+
+    .post-detail-content {
+        font-size: 1.02rem;
+        padding: 12px 0;
+    }
+
+    .post-detail-footer {
+        gap: 16px;
+    }
+
+    /* 评论框自适应升级 */
+    .comment-input-box {
+        gap: 10px;
+        margin-bottom: 20px;
+        padding-bottom: 18px;
+    }
+
+    .comment-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+    }
+
+    .comment-input-wrapper textarea {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+        border-radius: 12px;
+    }
+
+    /* 🌟【高级平铺微调】：手机端把评论左边距无感收回，横向排版瞬间宽敞！ */
+    .comment-content {
+        margin-left: 0px;  /* 物理清空缩进 */
+        margin-top: 8px;   /* 转入下一行展示，极度紧凑清爽 */
+        font-size: 0.92rem;
+        color: #334155;
+    }
+
+    .comment-actions-bar {
+        margin-left: 0px; /* 动作条同样无感靠左对齐 */
+        margin-top: 10px;
+        justify-content: flex-end; /* 手机端点赞回复推向右侧，大拇指点击更顺手 */
+    }
+    
+    /* 联动底部微信常驻导航栏安全边界补丁 */
+    body {
+        padding-bottom: 85px !important;
     }
 }
