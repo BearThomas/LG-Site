@@ -1,15 +1,16 @@
 // netlify/functions/auth-jwt.js
+// 🛠️ 终极无 SDK 污染纯物理 Fetch 咬合版
 // Made by BearThomas 2026/5/31
-const { Client, Users } = require('node-appwrite');
 
-// ========== 🛡️ 学号格式刚性校验断路器 ==========
+// 降级保留 Client 仅备后面可能的需求，核心查询与创建全部换成原生物理 Fetch，彻底绝育 request body 错误！
+const { Client } = require('node-appwrite');
+
 function isValidStudentId(studentId) {
     if (!/^\d{6,12}$/.test(studentId)) return false;
     return true;
 }
 
 exports.handler = async (event) => {
-    // 🛡️ 限制只接收 POST
     if (event.httpMethod !== 'POST') {
         return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
     }
@@ -24,58 +25,97 @@ exports.handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: '学号格式不正确' }) };
         }
 
-        // 🔍 【环境安全审计日志】
-        console.log("📡 [Env Check] 开始建立 Appwrite 线上安全隧道...");
-        
-        // 🧼 强行清洗可能被 Netlify 误吞的单双引号或隐形尾部换行符
+        console.log("📡 [Env Check] 开始清洗环境变量与密钥...");
         const finalEndpoint = (process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1').replace(/['"]/g, '').trim();
         const finalProject = (process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg').replace(/['"]/g, '').trim();
+        const finalApiKey = process.env.APPWRITE_API_KEY ? String(process.env.APPWRITE_API_KEY).replace(/['"]/g, '').trim() : '';
 
-        console.log(`🚀 [Env Check] 当前咬合配置 -> Endpoint: "${finalEndpoint}", Project: "${finalProject}"`);
-
-        const client = new Client()
-            .setEndpoint(finalEndpoint)
-            .setProject(finalProject)
-            .setKey(process.env.APPWRITE_API_KEY);
-
-        const users = new Users(client);
+        console.log(`🚀 [Env Check] 物理对齐配置 -> Endpoint: "${finalEndpoint}", Project: "${finalProject}"`);
 
         // ====================================================
-        // 🌟 精准对齐状态码，自愈消灭 409 漏洞
+        // 🌟 核心高阶重构：手写原生纯净 GET 请求，彻底粉碎 SDK 空 Body 漏洞
         // ====================================================
-        try { 
-            await users.get(studentId); 
-            console.log(`👤 [Auth Sync] 用户 ${studentId} 已存在于云端，跳过创建。`);
-        } catch (getErr) {
-            // 当 Appwrite 返回 404（用户不存在）时，触发自动注册流程
-            if (getErr.code === 404 || getErr.type === 'user_not_found') {
-                console.log(`📝 [Auth Sync] 用户 ${studentId} 是新同学，正在现场执行无感建档...`);
-                try {
-                    await users.create(studentId, undefined, undefined, undefined, `同学${studentId.slice(-4)}`);
-                    console.log(`✅ [Auth Sync] 新同学 ${studentId} 账户建档成功。`);
-                } catch (createErr) {
-                    if (createErr.code === 409 || createErr.type === 'user_already_exists') {
-                        console.log(`⚠️ [Auth Sync] 遭遇并发创建临界点，无缝放行。`);
-                    } else {
-                        throw createErr;
-                    }
-                }
-            } else {
-                console.error("❌ [Auth Sync] 遭遇非 404 阻碍错误:", getErr);
-                throw getErr;
+        let userExists = false;
+        let userData = null;
+
+        console.log(`👤 [Auth Sync] 正在通过原生物理通道盘查用户 ${studentId} 是否存在于云端...`);
+        
+        // 🧼 刚性硬核：发起绝无任何 Body 污染的纯净原生 HTTP GET 请求！
+        const getResponse = await fetch(`${finalEndpoint}/users/${studentId}`, {
+            method: 'GET', // 纯净 GET
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': finalProject,
+                'X-Appwrite-Key': finalApiKey
             }
+            // 🚨 绝对不写 body 属性！从物理层斩断 request cannot have request body 的可能！
+        });
+
+        const getResult = await getResponse.json();
+
+        if (getResponse.ok) {
+            userExists = true;
+            userData = getResult;
+            console.log(`👤 [Auth Sync] 盘查完毕：用户 ${studentId} 确认存在，直接放行.`);
+        } else if (getResponse.status === 404 || getResult.type === 'user_not_found') {
+            // 📝 用户不存在，走原生物理 POST 执行自动建档注册
+            console.log(`📝 [Auth Sync] 用户 ${studentId} 是新同学，正在现场通过物理通道建档...`);
+            
+            const createResponse = await fetch(`${finalEndpoint}/users`, {
+                method: 'POST', // 注册需要 POST
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Appwrite-Project': finalProject,
+                    'X-Appwrite-Key': finalApiKey
+                },
+                body: JSON.stringify({
+                    userId: studentId,
+                    email: `${studentId}@campus.local`, // 自动规范邮箱双口袋
+                    phone: undefined,
+                    password: password, // 将初始密码同步对齐
+                    name: `同学${studentId.slice(-4)}`
+                })
+            });
+
+            const createResult = await createResponse.json();
+
+            if (createResponse.ok || createResponse.status === 409) {
+                console.log(`✅ [Auth Sync] 新同学 ${studentId} 账户物理建档成功。`);
+                userExists = true;
+            } else {
+                throw new Error(createResult.message || '原生物理建档被拒绝');
+            }
+        } else {
+            // 如果遇到别的类似 400 错误，直接吐出真实底层报错
+            throw new Error(getResult.message || `Appwrite 物理通道阻碍: ${getResponse.status}`);
         }
 
         // ====================================================
-        // 🌟【终极修复核心】：彻底干掉 {} 对象，直接盲传纯字符串！
+        // 🌟 签发 Token 部分：同样换成无可挑剔的物理 POST 请求
         // ====================================================
-        console.log(`🔑 [Auth Sync] 正在为用户 ${studentId} 签发一次性授信凭证(Token)...`);
+        console.log(`🔑 [Auth Sync] 正在为用户 ${studentId} 签发一次性物理安全 Token...`);
         
-        // 🧼 拒绝传入 { userId: studentId }，直接以纯 string 喂给 SDK，彻底抹除后端 Body 冲突！
-        const token = await users.createToken(studentId); 
-        const secret = token.secret; 
+        const tokenResponse = await fetch(`${finalEndpoint}/users/${studentId}/tokens`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Appwrite-Project': finalProject,
+                'X-Appwrite-Key': finalApiKey
+            },
+            body: JSON.stringify({
+                userId: studentId
+            })
+        });
 
-        console.log(`🎉 [Auth Sync] 授信成功！正在安全分发下行数据包。`);
+        const tokenResult = await tokenResponse.json();
+
+        if (!tokenResponse.ok) {
+            throw new Error(tokenResult.message || '物理令牌签发失败');
+        }
+
+        const secret = tokenResult.secret;
+        console.log(`🎉 [Auth Sync] 全链路物理闭合授信成功！下行分发数据包中.`);
+
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
@@ -90,14 +130,11 @@ exports.handler = async (event) => {
 
     } catch (error) {
         console.error('💥 [Fatal Auth Error] 云函数生命周期遭遇严重崩塌:', error);
-        
-        // 动态识别真实报错状态码返回给前端
-        const errCode = error.code && error.code >= 400 && error.code < 600 ? error.code : 500;
         return { 
-            statusCode: errCode, 
+            statusCode: 500, 
             body: JSON.stringify({ 
-                error: error.message || '安全网关验证失败',
-                type: error.type || 'unknown_auth_error'
+                error: error.message || '安全网关物理验证失败',
+                type: 'fatal_physical_auth_error'
             }) 
         };
     }
