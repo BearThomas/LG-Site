@@ -24,23 +24,29 @@
         // 判定是否为合法的第三方网络图片链接
         const isImgUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/'));
         
+        // 🧼【开局大清洗】：不管走哪条路，首要任务是直接对这个原生 button 剥夺所有皮肤
+        userAvatar.style.overflow = 'hidden';
+        userAvatar.style.border = 'none';                  // 斩断自带的蓝色边框
+        userAvatar.style.padding = '0';                    // 消除内边距挤压
+        userAvatar.style.boxShadow = 'none';               // 掐断残留蓝色阴影
+        userAvatar.style.outline = 'none';                 // 防止聚焦时的蓝色外轮廓
+        userAvatar.style.webkitTapHighlightColor = 'transparent'; // 📱 绝杀手机/平板端自带的隐形蓝色点击高亮！
+        
         if (isImgUrl) {
-            // 💡【核心修复】：不仅给图片加控制，反手把外层这个 button 容器的边框、背景、阴影通通扬了！
-            userAvatar.innerHTML = `<img src="${cleanUrl}" style="width: 100% !important; height: 100% !important; border-radius: 50%; object-fit: cover; display: block;" alt="用户头像">`;
+            // 💡【核心修复】：将外层这个 button 容器的背景色彻底完全变透明
+            userAvatar.style.backgroundColor = 'transparent'; 
             
-            // 🧼 强行给外层 Button 物理洗白，剥夺它的所有皮肤属性：
-            userAvatar.style.overflow = 'hidden';
-            userAvatar.style.backgroundColor = 'transparent'; // 变透明，彻底干掉按钮内部残留的蓝色
-            userAvatar.style.border = 'none';                  // 斩断按钮自带的蓝色边框
-            userAvatar.style.padding = '0';                    // 防止内边距把图片往里挤、露出按钮底色
-            userAvatar.style.boxShadow = 'none';               // 掐断可能存在的蓝色阴影
-            userAvatar.style.outline = 'none';                 // 防止点击时产生蓝色的外轮廓线
+            // 注入图片，用 width/height 100% 刚性铺满、强制覆盖一切残余重绘
+            userAvatar.innerHTML = `<img src="${cleanUrl}" style="width: 100% !important; height: 100% !important; border-radius: 50%; object-fit: cover; display: block; background: transparent;" alt="用户头像">`;
         } else {
-            // 🔤 降级兜底：只有显示首字时，才允许重新染上炫彩主题蓝
+            // 🔤 降级兜底：只有在“确认没有自定义图片、必须显示首字”的时候，才允许染上蓝底！
             userAvatar.textContent = cleanName ? cleanName.charAt(0) : '?';
-            userAvatar.style.backgroundColor = '#228be6'; // 恢复原来的 button 颜色
-            userAvatar.style.border = '';                 // 恢复默认边框
+            userAvatar.style.backgroundColor = '#228be6'; // 仅在此处允许亮蓝染上文字底色
             userAvatar.style.lineHeight = '40px'; 
+            
+            // 为了防止定时器反复刷导致首字状态崩坏，如果是首字状态，顺手打个标
+            userAvatar.style.color = '#ffffff';
+            userAvatar.style.fontWeight = 'bold';
         }
     }
 

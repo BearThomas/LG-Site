@@ -381,3 +381,109 @@ body {
         padding-top: 0px !important;
     }
 }
+
+/* ==========================================================================
+   🧼 终极斩蓝术：彻底根除用户头像所有状态下的隐形蓝色牛皮癣
+   ========================================================================== */
+
+/* 1. 强制锁死基础状态：不管浏览器怎么重绘，只要里面有 img 头像，外壳按钮必须绝对透明 */
+/* ==========================================================================
+   🧼 终极斩蓝+绝对正圆矫正术：绝杀左侧切边与椭圆变形
+   ========================================================================== */
+.user-avatar {
+    width: 40px !important;       /* 刚性死锁物理宽度 */
+    height: 40px !important;      /* 刚性死锁物理高度 */
+    border-radius: 50% !important;/* 锁死 50% 正圆半角 */
+    flex-shrink: 0 !important;    /* 刚性防抱死：拒绝被 Flex 弹性横向挤扁 */
+    
+    /* 🚨【核心物理矫正】：把按钮本身降级成一个强力双向居中的 Flex 容器！ */
+    display: inline-flex !important;
+    align-items: center !important;     /* 🪐 纵向绝对居中对齐 */
+    justify-content: center !important;  /* 🪐 横向绝对居中对齐 */
+    
+    /* 🧼 强行清洗原生 Button 的一切越权默认内衬偏置 */
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    background: transparent !important;
+    overflow: hidden !important;
+    
+    /* 📱 隐藏移动端高亮 */
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+/* 🚨 2. 强力约束内部图片：废除原先可能会引起形变的 display: block; */
+.user-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    
+    /* 🪐 配合外层 Flex，将图片的渲染锚点刚性死锁在中心位置，绝不允许偏移 */
+    display: inline-block !important; 
+    flex-shrink: 0 !important;
+    
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background-color: transparent !important;
+}
+
+/* ==========================================================================
+   🔤 纯文字首字降级容错机制 (无图状态)
+   ========================================================================== */
+.user-avatar:not(:has(img)) {
+    background-color: #228be6 !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    font-size: 16px !important;
+    /* 🪐 删掉原本恶心的 lineHeight: 40px，完全靠 inline-flex 的 center 自动弹力对齐，100% 不偏心 */
+    line-height: 1 !important; 
+}
+
+.user-avatar:not(:has(img)):hover {
+    background-color: #1c7ed6 !important;
+}
+
+/* 2. 拦截所有鼠标/手指交互伪类：防止点击、聚焦、悬停时，浏览器自作聪明染上蓝色 */
+.user-avatar:hover,
+.user-avatar:focus,
+.user-avatar:active,
+.user-avatar:focus-visible,
+.user-avatar:focus-within {
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* 3. 刚性刚需：如果头像按钮内部包含自定义的 img 图片，确保图片绝对刚性铺满，不给底层留任何 1 像素的视觉缝隙 */
+.user-avatar img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+    background-color: transparent !important;
+    border: none !important;
+}
+
+/* ==========================================================================
+   🔤 降级容错机制：只有当按钮“不包含图片”（即纯文本首字模式）时，才允许亮蓝复活
+   ========================================================================== */
+/* 💡 巧妙利用 CSS 的 :empty 伪类和 :not 选择器：如果按钮里面没有 img 标签（纯文本），才恢复蓝色背景 */
+.user-avatar:not(:has(img)) {
+    background-color: #228be6 !important;
+    color: #ffffff !important;
+    font-weight: bold !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.user-avatar:not(:has(img)):hover {
+    background-color: #1c7ed6 !important; /* 纯文字头像悬停时变成略深一点的优雅海蓝色 */
+}
+
