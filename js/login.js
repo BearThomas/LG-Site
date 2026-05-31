@@ -256,30 +256,53 @@
                 }
             }
 
-            // 🚀 【第三步：高阶融合修复点】：利用 result.secret 完美登录兑换长效会话 Session
-            const { Client, Account } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
-            const loginClient = new Client()
-                .setEndpoint('https://sgp.cloud.appwrite.io/v1')
-                .setProject('lg');
-            const account = new Account(loginClient);
-
-            let session = null;
+            console.log("🚀 [Auth Client] 正在通过原生物理通道向 Appwrite 兑换长效 Session...");
+            
+            let sessionData = null;
             try {
-                // 🌟 使用大厂标准的凭证现场对齐函数（彻底摒弃可能会引发 body 冲突的 createEmailPasswordSession）
-                // 两个入参完全是干净字符串，SDK 的底层绝对不会再产生任何非法的 HTTP Body 乱入！
-                session = await account.createSession(result.userId, result.secret);
-                console.log("🎉 [Auth Client] 官方长效会话 Session 兑换成功！");
-            } catch (sessionError) {
-                // 🛡️ 自愈降维大招：如果遭遇由于幽灵残留导致的会话Prohibited阻碍，现场洗白重试
-                if (sessionError.message && sessionError.message.includes("prohibited")) {
-                    console.log("🔄 检测到多开活跃冲突，正在强力冲刷老旧幽灵会话...");
-                    try { await account.deleteSession('current'); } catch (f) {}
-                    // 洗干净后瞬间二次强攻，必一路绿灯直达
-                    session = await account.createSession(result.userId, result.secret);
-                    console.log("🧹 幽灵清除成功，二次授信会话对齐通过！");
-                } else {
-                    throw sessionError;
+                // 🌟 直接肉身翻墙，用最底层、最标准合规的官方 REST API 协议进行兑换
+                const sessionResponse = await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 🔑 Appwrite 官方刚性规范：Project ID 必须当成 Header 送过去
+                        'X-Appwrite-Project': 'lg' 
+                    },
+                    // 🌟 按照官方底层标准：只传这两个字段，不多塞任何一丁点脏数据！
+                    body: JSON.stringify({
+                        userId: result.userId,
+                        secret: result.secret
+                    })
+                });
+
+                sessionData = await sessionResponse.json();
+
+                if (!sessionResponse.ok) {
+                    // 🛡️ 自动洗白多开冲突：如果是由于幽灵残留导致的会话 Prohibited 阻碍
+                    if (sessionData.message && sessionData.message.includes("prohibited")) {
+                        console.log("🔄 检测到多开活跃冲突，正在强力洗刷老旧幽灵会话...");
+                        
+                        // 现场抹除老旧 Session
+                        await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/current`, {
+                            method: 'DELETE',
+                            headers: { 'X-Appwrite-Project': 'lg' }
+                        });
+
+                        // 强洗干净后，瞬间进行二次原地强攻，必定通车！
+                        const retryResp = await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/token`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-Appwrite-Project': 'lg' },
+                            body: JSON.stringify({ userId: result.userId, secret: result.secret })
+                        });
+                        sessionData = await retryResp.json();
+                    } else {
+                        throw new Error(sessionData.message || 'Appwrite 核心授信驳回');
+                    }
                 }
+                console.log("🎉 [Auth Client] 官方长效会话 Session 跨端自适应咬合成功！");
+            } catch (sessionError) {
+                console.error("❌ 物理通道会话握手失败:", sessionError);
+                throw sessionError;
             }
 
             // 💾 【第四步】：将干净的实名资料存入 localStorage，给所有页面的顶栏提供明文明显回显
