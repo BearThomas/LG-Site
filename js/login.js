@@ -204,6 +204,7 @@
     });
 
     // ========== 🔑 登录业务内核（全量升级为凭证兑换流） ==========
+    // ========== 🔑 登录业务内核（全面简化：不再自发请求 Appwrite，全权交由后端一条龙搞定） ==========
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideMessages();
@@ -219,7 +220,7 @@
         loginBtn.textContent = '登录中...';
 
         try {
-            // 📡 【第一步】：叩开 Netlify 安全云函数的大门
+            // 📡 【绝对同源通道】：只请求 Netlify 自己的云函数，0% 概率触发 CORS 跨域拦截
             const response = await fetch(`${API_BASE}/auth-jwt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -229,22 +230,17 @@
             const result = await response.json();
 
             if (!response.ok || !result.success) {
-                throw new Error(result.error || '云网关授信失败');
+                throw new Error(result.error || '登录验证未通过');
             }
 
-            console.log("📡 [Auth Client] 云网关授信通过！顺利拿到一次性暗号通行证(Secret).");
+            console.log("🎉 [Auth Client] 后端全链路 Session 签发成功！正在锁入本地黑盒...");
 
-            // 🔐 【第二步】：把云端回传的加密主密钥，塞入本地不可导出的硬件级安全黑盒
+            // 🔐 【安全沙箱】：注入解密钥匙
             if (result.encryptKey) {
                 try {
-                    const rawKeyHex = result.encryptKey;
-                    const keyBytes = new Uint8Array(rawKeyHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+                    const keyBytes = new Uint8Array(result.encryptKey.match(/.{2}/g).map(b => parseInt(b, 16)));
                     const cryptoKey = await crypto.subtle.importKey(
-                        "raw",
-                        keyBytes,
-                        { name: "AES-CBC" },
-                        false, // 刚性：不可导出
-                        ["decrypt", "encrypt"]
+                        "raw", keyBytes, { name: "AES-CBC" }, false, ["decrypt", "encrypt"]
                     );
                     window.secureKeyBlackBox = cryptoKey; 
                     if (typeof localforage !== 'undefined') {
@@ -252,67 +248,18 @@
                         console.log("🔒 硬件级不可逆解密钥匙已就位。");
                     }
                 } catch (cryptoErr) {
-                    console.warn("⚠️ 注入解密沙箱受阻（可能处于非安全上下文中）:", cryptoErr.message);
+                    console.warn("⚠️ 注入解密沙箱受阻:", cryptoErr.message);
                 }
             }
 
-            console.log("🚀 [Auth Client] 正在通过原生物理通道向 Appwrite 兑换长效 Session...");
-            
-            let sessionData = null;
-            try {
-                // 🌟 直接肉身翻墙，用最底层、最标准合规的官方 REST API 协议进行兑换
-                const sessionResponse = await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/token`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // 🔑 Appwrite 官方刚性规范：Project ID 必须当成 Header 送过去
-                        'X-Appwrite-Project': 'lg' 
-                    },
-                    // 🌟 按照官方底层标准：只传这两个字段，不多塞任何一丁点脏数据！
-                    body: JSON.stringify({
-                        userId: result.userId,
-                        secret: result.secret
-                    })
-                });
-
-                sessionData = await sessionResponse.json();
-
-                if (!sessionResponse.ok) {
-                    // 🛡️ 自动洗白多开冲突：如果是由于幽灵残留导致的会话 Prohibited 阻碍
-                    if (sessionData.message && sessionData.message.includes("prohibited")) {
-                        console.log("🔄 检测到多开活跃冲突，正在强力洗刷老旧幽灵会话...");
-                        
-                        // 现场抹除老旧 Session
-                        await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/current`, {
-                            method: 'DELETE',
-                            headers: { 'X-Appwrite-Project': 'lg' }
-                        });
-
-                        // 强洗干净后，瞬间进行二次原地强攻，必定通车！
-                        const retryResp = await fetch(`https://sgp.cloud.appwrite.io/v1/account/sessions/token`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-Appwrite-Project': 'lg' },
-                            body: JSON.stringify({ userId: result.userId, secret: result.secret })
-                        });
-                        sessionData = await retryResp.json();
-                    } else {
-                        throw new Error(sessionData.message || 'Appwrite 核心授信驳回');
-                    }
-                }
-                console.log("🎉 [Auth Client] 官方长效会话 Session 跨端自适应咬合成功！");
-            } catch (sessionError) {
-                console.error("❌ 物理通道会话握手失败:", sessionError);
-                throw sessionError;
-            }
-
-            // 💾 【第四步】：将干净的实名资料存入 localStorage，给所有页面的顶栏提供明文明显回显
+            // 💾 【本地缓存】：将完整的实名快照和核心凭证写入本地，供全局顶栏第一毫秒秒开读取
             localStorage.setItem('campus_user', JSON.stringify({
                 userId: result.userId,
                 studentId: result.studentId,
-                name: result.name || `同学${result.studentId.slice(-4)}`, 
-                avatar: result.avatar || '',
+                name: result.name, 
+                avatar: '',
                 encryptKey: result.encryptKey,
-                token: session ? session.secret : '', // 留用备改资料
+                token: result.sessionSecret, // 🔑 后端直接给到的核心安全长效钥匙
                 loginTime: Date.now()
             }));
 
@@ -322,8 +269,8 @@
             }, 800);
 
         } catch (err) {
-            console.error("💥 登录链路最终捕获异常:", err);
-            showError(`登录失败：${err.message || '网络安全认证未通过'}`);
+            console.error("💥 登录链路捕获异常:", err);
+            showError(err.message || '网络安全认证未通过');
         } finally {
             loginBtn.classList.remove('loading');
             loginBtn.textContent = '登 录';
