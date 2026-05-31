@@ -35,8 +35,8 @@ exports.handler = async (event) => {
         console.log("📡 [Env Check] API_KEY 是否存在:", !!process.env.APPWRITE_API_KEY);
 
         // 刚性洗白处理
-        const finalEndpoint = (process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1').trim();
-        const finalProject = (process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg').trim();
+        const finalEndpoint = (process.env.APPWRITE_ENDPOINT).trim();
+        const finalProject = (process.env.APPWRITE_PROJECT_ID).trim();
 
         console.log(`🚀 [Env Check] 最终咬合注入 -> Endpoint: "${finalEndpoint}", Project: "${finalProject}"`);
 
