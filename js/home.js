@@ -8,9 +8,6 @@ const COLLECTION_POSTS = 'posts';
 const COLLECTION_CONFESSIONS = 'confessions';
 const COLLECTION_USERS = 'users';
 
-// ========== 安全密钥 配置 (与 posts.js 保持一致) ==========
-const ENCRYPT_KEY = '176ec04db0ffc0e689e2e36b40e6c68a528b4179339fbaad8bdd12bf63597eec';
-
 // 初始化 Appwrite
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)

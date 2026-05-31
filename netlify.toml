@@ -7,6 +7,9 @@
   # 保持你网页的根目录
   publish = "/"
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "APPWRITE_COLLECTION_USERS,APPWRITE_ENDPOINT"
+
 [functions]
   directory = "netlify/functions"
 

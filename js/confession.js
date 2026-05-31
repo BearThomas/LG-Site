@@ -6,9 +6,6 @@ const APPWRITE_PROJECT_ID = 'lg';
 const DATABASE_ID = 'lg';
 const COLLECTION_CONFESSIONS = 'confessions';
 
-// ========== 加密密钥 ==========
-const ENCRYPT_KEY = '176ec04db0ffc0e689e2e36b40e6c68a528b4179339fbaad8bdd12bf63597eec';
-
 // 初始化
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
