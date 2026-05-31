@@ -28,10 +28,27 @@ exports.handler = async (event) => {
             return { statusCode: 400, body: JSON.stringify({ error: '学号格式不正确' }) };
         }
 
+        console.log("📡 [Env Check] 开始盘查线上环境变量...");
+        console.log("📡 [Env Check] ENDPOINT 原文:", process.env.APPWRITE_ENDPOINT);
+        console.log("📡 [Env Check] ENDPOINT 类型:", typeof process.env.APPWRITE_ENDPOINT);
+        console.log("📡 [Env Check] PROJECT_ID 原文:", process.env.APPWRITE_PROJECT_ID);
+        console.log("📡 [Env Check] API_KEY 是否存在:", !!process.env.APPWRITE_API_KEY);
+
+        // 刚性洗白处理
+        const finalEndpoint = (process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1').trim();
+        const finalProject = (process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg').trim();
+
+        console.log(`🚀 [Env Check] 最终咬合注入 -> Endpoint: "${finalEndpoint}", Project: "${finalProject}"`);
+
         const client = new Client()
-            .setEndpoint(process.env.APPWRITE_ENDPOINT)
-            .setProject(process.env.APPWRITE_PROJECT_ID)
+            .setEndpoint(finalEndpoint)
+            .setProject(finalProject)
             .setKey(process.env.APPWRITE_API_KEY);
+
+        // const client = new Client()
+        //     .setEndpoint(process.env.APPWRITE_ENDPOINT)
+        //     .setProject(process.env.APPWRITE_PROJECT_ID)
+        //     .setKey(process.env.APPWRITE_API_KEY);
 
         const users = new Users(client);
 
