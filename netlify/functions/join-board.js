@@ -1,4 +1,11 @@
-const { Client, Databases, Query, Account } = require('node-appwrite');
+const { Query } = require('node-appwrite');
+const {
+    COLLECTION_BOARDS,
+    COLLECTION_USERS,
+    DATABASE_ID,
+    createAccount,
+    createDatabases
+} = require('./appwrite');
 
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -8,35 +15,25 @@ exports.handler = async (event) => {
     const jwt = event.headers.authorization?.replace('Bearer ', '') || '';
     const { boardId } = JSON.parse(event.body);
 
-    const client = new Client()
-        .setEndpoint(process.env.APPWRITE_ENDPOINT)
-        .setProject(process.env.APPWRITE_PROJECT_ID)
-        .setKey(process.env.APPWRITE_API_KEY);
-
-    const databases = new Databases(client);
+    const databases = createDatabases();
 
     try {
         // 1. 验证用户
-        const userClient = new Client()
-            .setEndpoint(process.env.APPWRITE_ENDPOINT)
-            .setProject(process.env.APPWRITE_PROJECT_ID)
-            .setJWT(jwt);
-        
-        const account = new Account(userClient);
+        const account = createAccount(jwt);
         const user = await account.get();
         const userId = user.$id;
 
         // 2. 获取板块信息
         const board = await databases.getDocument(
-            process.env.DATABASE_ID,
-            'boards',
+            DATABASE_ID,
+            COLLECTION_BOARDS,
             boardId
         );
 
         // 3. 获取用户信息
         const userDoc = await databases.listDocuments(
-            process.env.DATABASE_ID,
-            'users',
+            DATABASE_ID,
+            COLLECTION_USERS,
             [Query.equal('userId', userId)]
         );
 
@@ -59,16 +56,16 @@ exports.handler = async (event) => {
 
         // 6. 更新板块成员数
         await databases.updateDocument(
-            process.env.DATABASE_ID,
-            'boards',
+            DATABASE_ID,
+            COLLECTION_BOARDS,
             boardId,
             { memberCount: (board.memberCount || 0) + 1 }
         );
 
         // 7. 更新用户 joinedBoards
         await databases.updateDocument(
-            process.env.DATABASE_ID,
-            'users',
+            DATABASE_ID,
+            COLLECTION_USERS,
             doc.$id,
             { joinedBoards: [...joinedBoards, boardId] }
         );

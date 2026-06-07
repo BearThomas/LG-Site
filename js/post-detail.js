@@ -1,14 +1,20 @@
 // js/post-detail.js
 // Made by BearThomas 2026/5/30
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-
-// ========== Appwrite 配置 ==========
-const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = 'lg';
-const DATABASE_ID = 'lg';
-const COLLECTION_POSTS = 'posts';
-const COLLECTION_COMMENTS = 'comments';
-const COLLECTION_USERS = 'users';
+import {
+    APPWRITE_ENDPOINT,
+    APPWRITE_PROJECT_ID,
+    COLLECTION_COMMENTS,
+    COLLECTION_POSTS,
+    COLLECTION_USERS,
+    DATABASE_ID,
+    decryptText,
+    escapeHtml,
+    formatBoardName,
+    formatTime,
+    loadUserDirectory,
+    restoreSecureKey
+} from './shared.js';
 
 // 初始化
 const client = new Client()
@@ -41,57 +47,9 @@ const commentAvatar = document.getElementById('commentAvatar');
 const editModal = document.getElementById('editModal');
 const deleteModal = document.getElementById('deleteModal');
 
-// ========== 一致性安全密钥 ==========
-
-
-// ========== 统一解密算法 ==========
-async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-    
-    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
-    const cryptoKey = window.secureKeyBlackBox; 
-    if (!cryptoKey) {
-        console.warn("未发现安全密钥，拒绝解密");
-        return null;
-    }
-    
-    const parts = encryptedText.split(':');
-    const ivHex = parts[0];
-    const cipherHex = parts.slice(1).join(':');
-    
-    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    
-    try {
-        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv }, 
-            cryptoKey, // 👈 传入这个不可导出的对象即可
-            ciphertext
-        );
-        return new TextDecoder().decode(decrypted);
-    } catch (e) {
-        console.warn('解密失败。');
-        return null;
-    }
-}
-
 // ========== ⚡ 页面加载初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-        const cryptoKey = await localforage.getItem('secure_gate_key');
-        
-        if (cryptoKey) {
-            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
-            window.secureKeyBlackBox = cryptoKey;
-            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
-        } else {
-            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
-        }
-    } catch (dbError) {
-        console.error("读取本地安全数据库失败:", dbError);
-    }
+    await restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
     
@@ -110,33 +68,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== 🌟 一键预载全量用户到详情页本地缓存字典 ==========
 async function loadAllUsers() {
     try {
-        // 🛡️ 客户端 Web SDK 单次最大合规限制限制为 100 条
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-            Query.limit(100)
-        ]);
-        
-        userCache = {}; 
-        allUsers = response.documents.map(doc => {
-            const uid = (doc.userId || doc.studentId || doc.$id || '').toString().trim();
-            const item = {
-                studentId: uid,
-                name: doc.name || `同学${uid.slice(-4)}`,
-                avatar: doc.avatar || '' // 自定义图片URL链接
-            };
-            
-            // 💡 【双保险对齐策略】：无缝咬合带前缀或纯数字的各种错位 ID 查询
-            const cleanId = uid.replace('student_', '');
-            userCache[cleanId] = item;
-            userCache[`student_${cleanId}`] = item;
-            
-            return item;
-        });
+        const directory = await loadUserDirectory(databases, Query);
+        userCache = directory.userCache;
+        allUsers = directory.allUsers;
         console.log(`✅ 详情页身份链：已预载 ${allUsers.length} 个用户名片到高速内存字典`);
     } catch (e) {
         console.warn('⚡ 初始化详情页用户身份快照失败，渲染将被迫降级使用内嵌冗余数据:', e.message);
     }
 }
-
 // ========== 登录状态恢复 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
@@ -270,6 +209,7 @@ async function loadPostDetail() {
     }
 
     if (boardName) boardName.textContent = formatBoardName(currentPost.boardId);
+    document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
     renderPostDetail();
     await loadComments(); 
 }
@@ -652,35 +592,4 @@ function bindEvents() {
     document.addEventListener('click', () => {
         document.getElementById('dropdownMenu')?.classList.remove('show');
     });
-}
-
-// ========== 基础级公用工具包 ==========
-function formatTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 7) return `${days}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-// 格式化板块名称
-function formatBoardName(boardId) {
-    if (!boardId) return '未知板块';
-    if (boardId === 'main') return '主板块';
-    const classMatch = boardId.match(/^class_(\d{4})_(\d+)$/);
-    if (classMatch) return `${classMatch[1]}届${classMatch[2]}班`;
-    return boardId;
-}
-
-// 防 XSS 注入过滤
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
 }

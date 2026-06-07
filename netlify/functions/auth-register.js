@@ -1,7 +1,14 @@
 // netlify/functions/auth-register.js
 // 注册云函数（已完全修复 Appwrite SDK 参数错位导致的匿名与403/401冲突漏洞）
 
-const { Client, Users, Databases, Permission, Role } = require('node-appwrite');
+const { Permission, Role } = require('node-appwrite');
+const {
+    COLLECTION_BOARDS,
+    COLLECTION_USERS,
+    DATABASE_ID,
+    createDatabases,
+    createUsers
+} = require('./appwrite');
 
 // 学号格式校验
 function isValidStudentId(studentId) {
@@ -44,16 +51,8 @@ exports.handler = async (event) => {
         }
 
         // 2. 初始化高权 Appwrite 后端控制客户端
-        const client = new Client()
-            .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1')
-            .setProject(process.env.APPWRITE_PROJECT_ID)
-            .setKey(process.env.APPWRITE_API_KEY);
-
-        const users = new Users(client);
-        const databases = new Databases(client);
-
-        const DATABASE_ID = 'lg';
-        const COLLECTION_USERS = 'users';
+        const users = createUsers();
+        const databases = createDatabases();
 
         // 3. 检查学号是否已在数据库集合中存在（双重安全防御）
         try {
@@ -128,9 +127,9 @@ exports.handler = async (event) => {
         // 6. 自动扫描并加入班级专属板块
         const classBoardId = `class_${studentId.slice(0, 4)}_${studentId.slice(4, 6)}`;
         try {
-            const classBoard = await databases.getDocument(DATABASE_ID, 'boards', classBoardId);
+            const classBoard = await databases.getDocument(DATABASE_ID, COLLECTION_BOARDS, classBoardId);
             // 原子递增板块成员数计数器
-            await databases.updateDocument(DATABASE_ID, 'boards', classBoardId, {
+            await databases.updateDocument(DATABASE_ID, COLLECTION_BOARDS, classBoardId, {
                 memberCount: (classBoard.memberCount || 0) + 1
             });
             // 将自动识别出的班级板块追加进用户的已加入阵营

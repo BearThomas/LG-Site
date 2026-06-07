@@ -1,14 +1,20 @@
 // js/home.js
 // Made by BearThomas 2026/5/31
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-
-// ========== Appwrite 配置 ==========
-const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = 'lg';
-const DATABASE_ID = 'lg';
-const COLLECTION_POSTS = 'posts';
-const COLLECTION_BOARDS = 'boards';
-const COLLECTION_USERS = 'users';
+import {
+    APPWRITE_ENDPOINT,
+    APPWRITE_PROJECT_ID,
+    COLLECTION_POSTS,
+    COLLECTION_USERS,
+    DATABASE_ID,
+    decryptText,
+    escapeHtml,
+    formatTime,
+    getPostAuthorDisplay,
+    loadUserDirectory,
+    renderAuthorAvatar,
+    restoreSecureKey
+} from './shared.js';
 
 // 初始化 Appwrite
 const client = new Client()
@@ -48,20 +54,7 @@ const postBoardSelect = document.getElementById('postBoardSelect');
 // ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
 
-    try {
-        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-        const cryptoKey = await localforage.getItem('secure_gate_key');
-        
-        if (cryptoKey) {
-            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
-            window.secureKeyBlackBox = cryptoKey;
-            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
-        } else {
-            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
-        }
-    } catch (dbError) {
-        console.error("读取本地安全数据库失败:", dbError);
-    }
+    await restoreSecureKey();
     checkLoginStatus();
     await loadBoards();
     // 让全量用户快照提前注入内存缓存，确保渲染时有据可查
@@ -69,50 +62,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadPosts(); 
     bindEvents();
 });
-// async function initPage() {
-//     // 🌟 开局直接去 IndexedDB 数据库里请出这把不透明的钥匙
-//     const cryptoKey = await localforage.getItem('secure_gate_key');
-    
-//     if (cryptoKey) {
-//         window.secureKeyBlackBox = cryptoKey; // 喂给解密函数
-//         console.log("🎯 成功从本地数据库唤醒安全密钥");
-//     } else {
-//         console.warn("未发现钥匙，请重新登录");
-//     }
-// }
-
-// ========== 🛡️ 解密断路器 ==========
-async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-    
-    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
-    const cryptoKey = window.secureKeyBlackBox; 
-    if (!cryptoKey) {
-        console.warn("未发现安全密钥，拒绝解密");
-        return null;
-    }
-    
-    const parts = encryptedText.split(':');
-    const ivHex = parts[0];
-    const cipherHex = parts.slice(1).join(':');
-    
-    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    
-    try {
-        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv }, 
-            cryptoKey, // 👈 传入这个不可导出的对象即可
-            ciphertext
-        );
-        return new TextDecoder().decode(decrypted);
-    } catch (e) {
-        console.warn('解密失败。');
-        return null;
-    }
-}
-
 // ========== 登录状态 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
@@ -138,7 +87,6 @@ function checkLoginStatus() {
         if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
 }
-
 // ========== 加载板块基础数据 ==========
 async function loadBoards() {
     try {
@@ -188,27 +136,9 @@ function showCacheNotice(message, type = 'waiting') {
 // ========== 1. 全量用户装载（安全合规版） ==========
 async function loadAllUsers() {
     try {
-        // 🛡️ 修复限制：客户端 SDK 严格限制 limit 最大为 100
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-            Query.limit(100) 
-        ]);
-        
-        userCache = {}; 
-        allUsers = response.documents.map(doc => {
-            const uid = (doc.userId || doc.studentId || doc.$id || '').toString().trim();
-            const item = {
-                studentId: uid,
-                name: doc.name || `同学${uid.slice(-4)}`,
-                avatar: doc.avatar || '' 
-            };
-            
-            // 💡 【双保险策略】：防止不同前缀命名冲突导致的丢失
-            const cleanId = uid.replace('student_', '');
-            userCache[cleanId] = item;
-            userCache[`student_${cleanId}`] = item;
-            
-            return item;
-        });
+        const directory = await loadUserDirectory(databases, Query);
+        userCache = directory.userCache;
+        allUsers = directory.allUsers;
         console.log("🎯 内存字典当前全量钥匙箱:", userCache);
     } catch (e) {
         console.error('❌ 全局用户身份快照彻底崩塌，原因:', e.message);
@@ -401,30 +331,8 @@ function renderPosts(posts) {
         const createdAt = new Date(postCreatedAt);
         const timeStr = formatTime(createdAt);
 
-        let cleanAuthorId = post.authorId || '';
-        if (cleanAuthorId.startsWith('student_')) {
-            cleanAuthorId = cleanAuthorId.replace('student_', '');
-        }
-
-        const cachedUser = userCache[cleanAuthorId];
-        
-        let finalName = '未知成员';
-        let avatarHtml = '?';
-
-        if (cachedUser) {
-            finalName = cachedUser.name;
-            const isImgUrl = cachedUser.avatar && (cachedUser.avatar.startsWith('http://') || cachedUser.avatar.startsWith('https://') || cachedUser.avatar.startsWith('/'));
-            
-            if (isImgUrl) {
-                avatarHtml = `<img src="${escapeHtml(cachedUser.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像">`;
-            } else {
-                avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
-            }
-        } else {
-            const rawName = post.authorName || '';
-            finalName = (rawName.includes(':') || !rawName) ? `同学${cleanAuthorId.slice(-4)}` : rawName;
-            avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
-        }
+        const author = getPostAuthorDisplay(post, userCache);
+        const avatarHtml = renderAuthorAvatar(author, 40);
         
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
@@ -433,7 +341,7 @@ function renderPosts(posts) {
                         ${avatarHtml}
                     </div>
                     <div class="post-author-info">
-                        <div class="post-author">${escapeHtml(finalName)}</div>
+                        <div class="post-author">${escapeHtml(author.name)}</div>
                         <div class="post-meta">
                             <span>${timeStr}</span>
                             ${isPinned ? '<span class="post-badge pinned-badge">置顶</span>' : ''}
@@ -766,25 +674,4 @@ function renderSelectedUsers() {
             removeUser(this.dataset.studentId);
         });
     });
-}
-
-// ========== 工具函数 ==========
-function formatTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 7) return `${days}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
 }

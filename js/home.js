@@ -1,12 +1,20 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-
-// ========== Appwrite 配置 ==========
-const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = 'lg';
-const DATABASE_ID = 'lg';
-const COLLECTION_POSTS = 'posts';
-const COLLECTION_CONFESSIONS = 'confessions';
-const COLLECTION_USERS = 'users';
+import {
+    APPWRITE_ENDPOINT,
+    APPWRITE_PROJECT_ID,
+    COLLECTION_CONFESSIONS,
+    COLLECTION_POSTS,
+    COLLECTION_USERS,
+    DATABASE_ID,
+    decryptText,
+    escapeHtml,
+    formatBoardName,
+    formatTime,
+    getPostAuthorDisplay,
+    loadUserDirectory,
+    renderAuthorAvatar,
+    restoreSecureKey
+} from './shared.js';
 
 // 初始化 Appwrite (仅作为只读数据拉取客户端)
 const client = new Client()
@@ -15,57 +23,14 @@ const client = new Client()
 
 let databases;
 let currentUser = null;
-
-// ========== 核心：解密函数（失败返回 null，不返回脏数据） ==========
-async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-    
-    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
-    const cryptoKey = window.secureKeyBlackBox; 
-    if (!cryptoKey) {
-        console.warn("未发现安全密钥，拒绝解密");
-        return null;
-    }
-    
-    const parts = encryptedText.split(':');
-    const ivHex = parts[0];
-    const cipherHex = parts.slice(1).join(':');
-    
-    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    
-    try {
-        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv }, 
-            cryptoKey, // 👈 传入这个不可导出的对象即可
-            ciphertext
-        );
-        return new TextDecoder().decode(decrypted);
-    } catch (e) {
-        console.warn('解密失败。');
-        return null;
-    }
-}
+let userCache = {};
 
 // ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
     console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
 
     // 【步骤 1】：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-    try {
-        if (typeof localforage !== 'undefined') {
-            const cryptoKey = await localforage.getItem('secure_gate_key');
-            if (cryptoKey) {
-                window.secureKeyBlackBox = cryptoKey;
-                console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
-            } else {
-                console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密。");
-            }
-        }
-    } catch (dbError) {
-        console.error("读取本地安全数据库失败:", dbError);
-    }
+    await restoreSecureKey();
 
     // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
     const userData = localStorage.getItem('campus_user');
@@ -93,6 +58,7 @@ async function decryptText(encryptedText) {
     
     // 渲染用户状态 UI
     checkLoginStatus();
+    await loadHomeUsers();
     
     // ⚡ 独立并行启动两路缓存加持的加载流水线
     loadHomePosts();        
@@ -118,6 +84,14 @@ function checkLoginStatus() {
     }
 }
 
+async function loadHomeUsers() {
+    try {
+        const directory = await loadUserDirectory(databases, Query);
+        userCache = directory.userCache;
+    } catch (error) {
+        console.warn('首页用户快照加载失败，帖子作者信息将降级显示:', error.message);
+    }
+}
 // ========== 异步优雅获取用户板块权限组 ==========
 async function getUserJoinedBoards() {
     if (!currentUser) return ['main'];
@@ -311,13 +285,15 @@ function renderHomePosts(posts) {
     postList.innerHTML = posts.map(post => {
         const timeStr = formatTime(new Date(post.$createdAt));
         const isPinned = post.status ? (post.status & 1) !== 0 : false;
+        const author = getPostAuthorDisplay(post, userCache);
+        const avatarHtml = renderAuthorAvatar(author, 44);
         
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
-                    <div class="post-avatar">${post.authorName?.charAt(0) || '?'}</div>
+                    <div class="post-avatar">${avatarHtml}</div>
                     <div>
-                        <div class="post-author">${escapeHtml(post.authorName || '匿名')}</div>
+                        <div class="post-author">${escapeHtml(author.name)}</div>
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
@@ -449,34 +425,4 @@ function renderHomeConfessions(confessions) {
             </div>
         </div>
     `).join('');
-}
-
-// ========== 公用工具函数 ==========
-function formatTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 7) return `${days}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function formatBoardName(boardId) {
-    if (boardId === 'main') return '主板块';
-    const match = boardId.match(/^class_(\d{4})_(\d+)$/);
-    if (match) return `${match[1]}届${match[2]}班`;
-    return boardId;
-}
-
-// 防止 XSS 注入
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }

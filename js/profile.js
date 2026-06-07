@@ -1,12 +1,12 @@
 // js/profile.js
 // Made by BearThomas 2026/5/30
 import { Client, Databases, Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-
-// ========== Appwrite 配置 ==========
-const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = 'lg';
-const DATABASE_ID = 'lg';
-const COLLECTION_USERS = 'users';
+import {
+    APPWRITE_ENDPOINT,
+    APPWRITE_PROJECT_ID,
+    COLLECTION_USERS,
+    DATABASE_ID
+} from './shared.js';
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
 const databases = new Databases(client);

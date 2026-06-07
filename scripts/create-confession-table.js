@@ -1,15 +1,5 @@
 // scripts/create-confessions-table.js
-const { Client, Databases } = require('node-appwrite');
-
-const client = new Client()
-    .setEndpoint('https://sgp.cloud.appwrite.io/v1')  // 你的端点
-    .setProject('lg')              // 替换为你的项目 ID
-    .setKey('standard_f83c7a7b817746d953e3267b0b28b4b38f6c85aa9cd8b0a01fe24b7fe8539b8222d7dbcfc93854233568b4c7cc5e85a0f8fc3f117ac49c099ea7c9259828e3bc2c21e7eeaa3f2fa4263021598e7a2074b56c846b1486ac7b85829301ee1b51d5319b322bdeb708c51bf3d76f8cc0cc76a67a6f1de1611f4ec6b7807d21660438');                    // 替换为你的 API Key
-
-
-const databases = new Databases(client);
-
-const DATABASE_ID = 'lg';
+const { DATABASE_ID, databases } = require('./appwrite-client');
 const COLLECTION_ID = 'confessions';
 
 async function createConfessionsCollection() {

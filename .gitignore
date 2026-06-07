@@ -1,5 +1,6 @@
 .env
 .netlify/
 node_modules/
+**/node_modules/
 data-backups/*.json
 !data-backups/.gitkeep

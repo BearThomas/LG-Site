@@ -1,4 +1,9 @@
-const { Client, Databases, Query } = require('node-appwrite');
+const { Query } = require('node-appwrite');
+const {
+    COLLECTION_POSTS,
+    DATABASE_ID,
+    createDatabases
+} = require('./appwrite');
 
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
@@ -18,12 +23,7 @@ exports.handler = async (event) => {
         return { statusCode: 400, body: JSON.stringify({ error: '缺少必要字段' }) };
     }
 
-    const client = new Client()
-        .setEndpoint(process.env.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1')
-        .setProject(process.env.APPWRITE_PROJECT_ID)
-        .setKey(process.env.APPWRITE_API_KEY);
-
-    const databases = new Databases(client);
+    const databases = createDatabases();
 
     try {
         // 限流校验：查询今日发帖数
@@ -31,8 +31,8 @@ exports.handler = async (event) => {
         today.setHours(0, 0, 0, 0);
 
         const existing = await databases.listDocuments(
-            process.env.DATABASE_ID || 'lg',
-            'posts',
+            DATABASE_ID,
+            COLLECTION_POSTS,
             [
                 Query.equal('authorId', userId),
                 Query.greaterThan('$createdAt', today.toISOString())
@@ -49,8 +49,8 @@ exports.handler = async (event) => {
 
         // 创建帖子
         const post = await databases.createDocument(
-            process.env.DATABASE_ID || 'lg',
-            'posts',
+            DATABASE_ID,
+            COLLECTION_POSTS,
             'unique()',
             {
                 boardId,

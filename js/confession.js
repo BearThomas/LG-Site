@@ -1,10 +1,14 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-
-// ========== Appwrite 配置 ==========
-const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = 'lg';
-const DATABASE_ID = 'lg';
-const COLLECTION_CONFESSIONS = 'confessions';
+import {
+    APPWRITE_ENDPOINT,
+    APPWRITE_PROJECT_ID,
+    COLLECTION_CONFESSIONS,
+    DATABASE_ID,
+    decryptText,
+    escapeHtml,
+    formatTime,
+    restoreSecureKey
+} from './shared.js';
 
 // 初始化
 const client = new Client()
@@ -34,20 +38,7 @@ let pendingReportId = null;
 
 // ========== 页面加载初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // 🌟 核心一步：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-        const cryptoKey = await localforage.getItem('secure_gate_key');
-        
-        if (cryptoKey) {
-            // 挂载到全局变量，供底层的 decryptText() 函数直接闭包消费
-            window.secureKeyBlackBox = cryptoKey;
-            console.log("🏔️ 硬件级安全密钥已成功从本地 IndexedDB 唤醒并挂载！");
-        } else {
-            console.warn("⚠️ 本地未发现安全密钥，私密内容可能无法解密，建议重新登录。");
-        }
-    } catch (dbError) {
-        console.error("读取本地安全数据库失败:", dbError);
-    }
+    await restoreSecureKey();
     checkLoginStatus();
     await loadConfessions(); // ⚡ 开启双源缓存管道
     bindEvents();
@@ -78,39 +69,6 @@ function checkLoginStatus() {
         if (publishBtn) publishBtn.disabled = true;
     }
 }
-
-// ========== 解密函数 ==========
-async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-    
-    // 🌟 直接读取存放在内存黑盒或 IndexedDB 里的不透明钥匙对象
-    const cryptoKey = window.secureKeyBlackBox; 
-    if (!cryptoKey) {
-        console.warn("未发现安全密钥，拒绝解密");
-        return null;
-    }
-    
-    const parts = encryptedText.split(':');
-    const ivHex = parts[0];
-    const cipherHex = parts.slice(1).join(':');
-    
-    const iv = new Uint8Array(ivHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    const ciphertext = new Uint8Array(cipherHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-    
-    try {
-        // 🚀 浏览器在黑盒内部完成解密，密钥字节从未暴露给 JS 上下文
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv }, 
-            cryptoKey, // 👈 传入这个不可导出的对象即可
-            ciphertext
-        );
-        return new TextDecoder().decode(decrypted);
-    } catch (e) {
-        console.warn('解密失败。');
-        return null;
-    }
-}
-
 // ========== 顶部缓存状态同步条控制 ==========
 function showCacheNotice(message, type = 'waiting') {
     if (!confessionList) return;
@@ -532,25 +490,4 @@ function bindEvents() {
     document.addEventListener('click', () => {
         document.getElementById('dropdownMenu')?.classList.remove('show');
     });
-}
-
-// ========== 工具函数 ==========
-function formatTime(date) {
-    const now = new Date();
-    const diff = now - date;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    
-    if (minutes < 1) return '刚刚';
-    if (minutes < 60) return `${minutes}分钟前`;
-    if (hours < 24) return `${hours}小时前`;
-    if (days < 7) return `${days}天前`;
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
 }

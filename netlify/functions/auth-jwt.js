@@ -2,9 +2,6 @@
 // 🛠️ 终极无 SDK 污染纯物理 Fetch 咬合版
 // Made by BearThomas 2026/5/31
 
-// 降级保留 Client 仅备后面可能的需求，核心查询与创建全部换成原生物理 Fetch，彻底绝育 request body 错误！
-const { Client } = require('node-appwrite');
-
 function isValidStudentId(studentId) {
     if (!/^\d{6,12}$/.test(studentId)) return false;
     return true;
