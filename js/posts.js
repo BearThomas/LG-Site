@@ -456,7 +456,7 @@ async function submitPost() {
     const user = JSON.parse(localStorage.getItem('campus_user'));
     
     try {
-        const response = await fetch('/.netlify/functions/create-post', {
+        const response = await fetch('/api/create-post', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

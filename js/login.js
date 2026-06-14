@@ -6,7 +6,7 @@
     'use strict';
 
     // ========== API 配置 ==========
-    const API_BASE = '/.netlify/functions';
+    const API_BASE = '/api';
     
     // ========== DOM 元素 ==========
     const tabs = document.querySelectorAll('.login-tab');
