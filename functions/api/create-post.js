@@ -110,8 +110,16 @@ export async function onRequestPost({ request, env }) {
         today.setHours(0, 0, 0, 0);
 
         const existing = await listDocuments(config, config.collectionPosts, [
-            `equal("authorId", ["${userId}"])`,
-            `greaterThan("$createdAt", "${today.toISOString()}")`
+            JSON.stringify({
+                method: 'equal',
+                attribute: 'authorId',
+                values: [userId]
+            }),
+            JSON.stringify({
+                method: 'greaterThan',
+                attribute: '$createdAt',
+                values: [today.toISOString()]
+            })
         ]);
 
         const dailyLimit = 5;
