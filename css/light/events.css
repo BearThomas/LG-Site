@@ -242,6 +242,69 @@
 }
 
 /* 针对非常窄的苹果小屏（如 iPhone SE）的极限补丁 */
+/* Minimal page theme */
+.events-page {
+    max-width: 940px;
+}
+
+.events-page-title,
+.event-list-content .event-title {
+    color: var(--text);
+}
+
+.filter-group label,
+.event-list-content .event-date,
+.events-empty {
+    color: var(--muted);
+}
+
+.filter-bar,
+.event-list-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+}
+
+.event-list-item:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+}
+
+.filter-group select,
+.filter-group input {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+    border-radius: var(--radius-md);
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.event-tag {
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.event-list-content .event-desc {
+    color: var(--text-soft);
+}
+
+.back-to-top {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: var(--shadow);
+}
+
+.back-to-top:hover {
+    background: var(--accent-hover);
+    transform: none;
+}
+
 @media (max-width: 380px) {
     .event-list-item {
         flex-direction: column; /* 极窄屏下由于空间实在不够，降级为上下纵向排列 */

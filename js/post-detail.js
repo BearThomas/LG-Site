@@ -577,19 +577,4 @@ function bindEvents() {
     if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
     if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
     
-    document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('campus_user');
-        localStorage.removeItem('persistent_jwt');
-        location.reload();
-    });
-    
-    document.getElementById('userAvatar')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const menu = document.getElementById('dropdownMenu');
-        if (menu) menu.classList.toggle('show');
-    });
-    document.addEventListener('click', () => {
-        document.getElementById('dropdownMenu')?.classList.remove('show');
-    });
 }

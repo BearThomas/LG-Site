@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadAllUsers(); 
     await loadPosts(); 
     bindEvents();
+    openRequestedPostModal();
 });
 // ========== 登录状态 ==========
 function checkLoginStatus() {
@@ -531,6 +532,14 @@ function openPostDetail(postId) {
 }
 
 // ========== 事件绑定 ==========
+function openRequestedPostModal() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('new') !== '1' && params.get('action') !== 'new') return;
+
+    window.history.replaceState(null, '', window.location.pathname);
+    openModal();
+}
+
 function bindEvents() {
     if (newPostBtn) newPostBtn.addEventListener('click', openModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
@@ -552,21 +561,6 @@ function bindEvents() {
         });
     }
     
-    document.getElementById('logoutBtn')?.addEventListener('click', (e) => {
-        e.preventDefault();
-        localStorage.removeItem('campus_user');
-        localStorage.removeItem('persistent_jwt'); 
-        location.reload();
-    });
-    
-    document.getElementById('userAvatar')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.getElementById('dropdownMenu').classList.toggle('show');
-    });
-    
-    document.addEventListener('click', () => {
-        document.getElementById('dropdownMenu')?.classList.remove('show');
-    });
 }
 
 // ========== 可见范围管理时间监听 ==========

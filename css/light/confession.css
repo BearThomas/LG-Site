@@ -543,3 +543,94 @@
     50% { opacity: 1; }
     100% { opacity: 0.85; }
 }
+
+/* Minimal page theme */
+.confession-container {
+    max-width: 720px;
+}
+
+.confession-header h1,
+.publish-header,
+.confession-content,
+.modal-header h3 {
+    color: var(--text);
+}
+
+.confession-subtitle,
+.char-count,
+.confession-time,
+.report-tip,
+.empty-state p,
+.loading-state,
+.form-group label {
+    color: var(--muted);
+}
+
+.publish-card,
+.confession-card,
+.empty-state,
+.modal-container,
+.login-tip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+}
+
+.publish-card {
+    border-color: var(--border);
+}
+
+.confession-card:hover {
+    box-shadow: var(--shadow);
+}
+
+.confession-textarea,
+.sort-btn,
+.page-btn,
+.cancel-btn,
+.form-group input,
+.form-group textarea {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.confession-textarea:focus,
+.form-group input:focus,
+.form-group textarea:focus {
+    background: var(--surface);
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-soft);
+}
+
+.sort-btn:hover,
+.confession-action:hover,
+.page-btn:hover:not(:disabled),
+.cancel-btn:hover,
+.modal-close:hover {
+    background: var(--surface-2);
+}
+
+.sort-btn.active,
+.publish-btn,
+.submit-btn,
+.page-btn.active {
+    background: var(--pink) !important;
+    border-color: var(--pink) !important;
+    color: #ffffff !important;
+}
+
+.confession-action.liked,
+.confession-action:hover,
+.login-tip a {
+    color: var(--pink);
+}
+
+.modal-header {
+    border-color: var(--border);
+}
+
+.modal-overlay {
+    background: rgba(15, 17, 21, 0.52);
+}

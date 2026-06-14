@@ -502,3 +502,206 @@ body {
         background: #1e293b;
     }
 }
+
+/* Minimal theme layer */
+:root {
+    color-scheme: light;
+    --bg: #f6f7f9;
+    --surface: #ffffff;
+    --surface-2: #f2f4f7;
+    --text: #111827;
+    --text-soft: #374151;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-soft: #eef4ff;
+    --danger: #dc2626;
+    --success: #059669;
+    --shadow: 0 18px 44px rgba(17, 24, 39, 0.08);
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1115;
+    --surface: #171a21;
+    --surface-2: #20242c;
+    --text: #f3f4f6;
+    --text-soft: #d1d5db;
+    --muted: #9ca3af;
+    --border: #2b3039;
+    --border-strong: #3a414d;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-soft: rgba(96, 165, 250, 0.14);
+    --danger: #f87171;
+    --success: #34d399;
+    --shadow: 0 20px 48px rgba(0, 0, 0, 0.3);
+}
+
+body {
+    background: var(--bg) !important;
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.login-container {
+    max-width: 400px;
+}
+
+.login-logo {
+    margin-bottom: 20px;
+}
+
+.login-logo img {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-lg);
+    box-shadow: none;
+}
+
+.login-logo h1 {
+    color: var(--text);
+    font-family: inherit;
+    letter-spacing: 0;
+}
+
+.login-logo p,
+.login-footer,
+.form-hint {
+    color: var(--muted);
+}
+
+.login-card,
+.verification-modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow);
+    backdrop-filter: none;
+}
+
+.login-tabs {
+    border-bottom-color: var(--border);
+    gap: 8px;
+}
+
+.login-tab {
+    color: var(--muted);
+    border-bottom-color: transparent;
+    font-size: 1rem;
+}
+
+.login-tab:hover,
+.login-tab.active {
+    color: var(--accent);
+}
+
+.login-tab.active {
+    border-bottom-color: var(--accent);
+}
+
+.form-group label,
+.verification-header,
+.verify-question label {
+    color: var(--text);
+}
+
+.form-group input,
+.input-with-prefix,
+.verify-question input {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+    border-radius: var(--radius-md);
+}
+
+.form-group input:focus,
+.input-with-prefix:focus-within,
+.verify-question input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.input-with-prefix .prefix,
+.verification-tip,
+.verification-close {
+    color: var(--muted);
+}
+
+.login-btn,
+.verify-submit-btn {
+    background: var(--accent);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+}
+
+.login-btn:hover,
+.verify-submit-btn:hover {
+    background: var(--accent-hover);
+    transform: none;
+    box-shadow: none;
+}
+
+.verify-cancel-btn {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text-soft);
+    border-radius: var(--radius-md);
+}
+
+.verify-cancel-btn:hover,
+.verification-close:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.verification-header {
+    border-bottom-color: var(--border);
+}
+
+.verify-hint {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.error-message {
+    background: rgba(220, 38, 38, 0.1);
+    border-left-color: var(--danger);
+    color: var(--danger);
+}
+
+.success-message {
+    background: rgba(5, 150, 105, 0.1);
+    border-left-color: var(--success);
+    color: var(--success);
+}
+
+.theme-toggle {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
+}
+
+.theme-toggle:hover {
+    background: var(--surface-2);
+}
+
+.theme-toggle-floating {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 1000;
+}

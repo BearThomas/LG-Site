@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "docs:manifest": "node scripts/generate-docs-manifest.js"
+  },
   "dependencies": {
     "node-appwrite": "^11.1.0"
   }

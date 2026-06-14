@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>龙高北小站 | 帮助文档</title>
+    <link rel="icon" type="image/png" href="./image/LG.png">
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/light/docs.css">
+</head>
+<body>
+    <div class="title-bar">
+        <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo" onclick="location.href='index.html'">
+        <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='./'">首页</li>
+            <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
+            <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
+            <li class="nav-bar-item" onclick="location.href='confession'">表白墙</li>
+            <li class="nav-bar-item active" onclick="location.href='docs'">帮助</li>
+        </ul>
+
+        <div class="user-area" id="userArea">
+            <div class="user-not-login" id="userNotLogin">
+                <a href="login.html" class="login-link">登录</a>
+                <span class="divider">/</span>
+                <a href="login.html#register" class="register-link">注册</a>
+            </div>
+            <div class="user-logged-in" id="userLoggedIn" style="display: none;">
+                <span class="user-name" id="userName">同学</span>
+                <div class="user-dropdown">
+                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <a href="./profile" id="profileLink"> 个人中心 </a>
+                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="docs-shell">
+        <aside class="docs-sidebar">
+            <div class="docs-search">
+                <input type="search" id="docsSearch" placeholder="搜索文档" autocomplete="off">
+            </div>
+            <nav class="docs-tree" id="docsTree" aria-label="帮助文档目录"></nav>
+        </aside>
+
+        <article class="docs-content">
+            <div class="docs-breadcrumb" id="docsBreadcrumb">帮助文档</div>
+            <div class="docs-article" id="docsArticle">
+                <div class="docs-loading">加载中...</div>
+            </div>
+            <div class="docs-pager" id="docsPager"></div>
+        </article>
+    </main>
+
+    <script src="./js/theme-change.js"></script>
+    <script src="./js/nav-bar.js"></script>
+    <script type="module" src="./js/docs.js"></script>
+</body>
+</html>

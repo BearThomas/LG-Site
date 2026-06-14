@@ -172,6 +172,7 @@
             }
             
             localStorage.removeItem('campus_user');
+            localStorage.removeItem('persistent_jwt');
             showNotLoggedIn();
             window.location.reload();
         });

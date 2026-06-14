@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-06-07T03:10:45.802Z",
+  "pages": [
+    {
+      "path": "index.md",
+      "title": "帮助中心",
+      "order": 0
+    },
+    {
+      "path": "01-入门/login.md",
+      "title": "登录与注册",
+      "order": 1
+    },
+    {
+      "path": "02-帖子/create-post.md",
+      "title": "发帖与可见范围",
+      "order": 1
+    },
+    {
+      "path": "03-个人中心/avatar.md",
+      "title": "修改昵称和头像",
+      "order": 1
+    }
+  ],
+  "tree": {
+    "type": "folder",
+    "name": "",
+    "title": "帮助文档",
+    "order": 0,
+    "children": [
+      {
+        "type": "page",
+        "name": "index.md",
+        "path": "index.md",
+        "title": "帮助中心",
+        "order": 0
+      },
+      {
+        "type": "folder",
+        "name": "01-入门",
+        "title": "入门",
+        "order": 1,
+        "children": [
+          {
+            "type": "page",
+            "name": "login.md",
+            "path": "01-入门/login.md",
+            "title": "登录与注册",
+            "order": 1
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "02-帖子",
+        "title": "帖子",
+        "order": 2,
+        "children": [
+          {
+            "type": "page",
+            "name": "create-post.md",
+            "path": "02-帖子/create-post.md",
+            "title": "发帖与可见范围",
+            "order": 1
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "03-个人中心",
+        "title": "个人中心",
+        "order": 3,
+        "children": [
+          {
+            "type": "page",
+            "name": "avatar.md",
+            "path": "03-个人中心/avatar.md",
+            "title": "修改昵称和头像",
+            "order": 1
+          }
+        ]
+      }
+    ]
+  }
+}

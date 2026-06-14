@@ -502,3 +502,101 @@
         padding-bottom: 85px !important;
     }
 }
+
+/* Minimal page theme */
+.post-detail-container {
+    max-width: 820px;
+}
+
+.breadcrumb,
+.post-time,
+.comment-time,
+.comment-tip,
+.comment-action,
+.empty-comments {
+    color: var(--muted);
+}
+
+.breadcrumb a,
+.login-tip a {
+    color: var(--accent);
+}
+
+.post-detail-card,
+.comments-section,
+.login-tip,
+.modal-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+}
+
+.post-detail-title,
+.post-author-name,
+.comments-header h3,
+.comment-author-name,
+.modal-header h3,
+.form-group label {
+    color: var(--text);
+}
+
+.post-detail-content,
+.comment-content {
+    color: var(--text-soft);
+}
+
+.post-detail-meta,
+.post-detail-footer,
+.comment-input-box,
+.comment-item,
+.modal-header {
+    border-color: var(--border);
+}
+
+.post-action-btn,
+.post-stat-btn,
+.cancel-btn,
+.comment-input-wrapper textarea,
+.form-group input,
+.form-group textarea {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+.post-action-btn:hover,
+.post-stat-btn:hover,
+.login-tip,
+.modal-close:hover {
+    background: var(--surface-2);
+}
+
+.comment-input-wrapper textarea:focus,
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.submit-comment-btn,
+.submit-btn {
+    background: var(--accent);
+    color: #ffffff;
+}
+
+.submit-comment-btn:hover,
+.submit-btn:hover {
+    background: var(--accent-hover);
+}
+
+.post-stat-btn.liked {
+    color: var(--pink);
+}
+
+.post-detail-avatar,
+.comment-avatar,
+.comment-author-avatar {
+    border-radius: 50%;
+    overflow: hidden;
+}

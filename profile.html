@@ -126,6 +126,123 @@
             .save-btn.danger:hover {
                 background-color: #e03131;
             }
+
+            /* Minimal profile theme */
+            .profile-wrapper {
+                max-width: 1040px;
+                gap: 22px;
+            }
+
+            .profile-sidebar,
+            .settings-section {
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: var(--radius-xl);
+                box-shadow: var(--shadow-soft);
+            }
+
+            .profile-sidebar h3,
+            .settings-section h2,
+            .form-group label {
+                color: var(--text);
+            }
+
+            .user-id-tag {
+                background: var(--surface-2);
+                color: var(--muted);
+                border-radius: var(--radius-md);
+            }
+
+            .settings-section h2 {
+                border-bottom-color: var(--border);
+            }
+
+            .form-group input {
+                background: var(--surface);
+                border-color: var(--border);
+                color: var(--text);
+                border-radius: var(--radius-md);
+            }
+
+            .form-group input:focus {
+                border-color: var(--accent);
+                box-shadow: 0 0 0 3px var(--accent-soft);
+            }
+
+            .save-btn {
+                background: var(--accent);
+                border-radius: var(--radius-md);
+            }
+
+            .save-btn:hover {
+                background: var(--accent-hover);
+            }
+
+            .save-btn.danger {
+                background: var(--danger);
+            }
+
+            .avatar-preview {
+                box-shadow: none;
+                border: 1px solid var(--border);
+            }
+
+            @media (max-width: 768px) {
+                body {
+                    min-height: 100dvh;
+                    overflow-x: hidden;
+                }
+
+                .profile-wrapper {
+                    width: 100%;
+                    max-width: none;
+                    margin: 14px auto 0;
+                    padding: 0 14px 96px;
+                    gap: 16px;
+                    box-sizing: border-box;
+                }
+
+                .profile-sidebar,
+                .settings-section {
+                    width: 100%;
+                    padding: 18px;
+                    box-sizing: border-box;
+                    border-radius: var(--radius-lg);
+                }
+
+                .profile-main {
+                    width: 100%;
+                    gap: 16px;
+                }
+
+                .avatar-preview {
+                    width: 78px;
+                    height: 78px;
+                    font-size: 1.8rem;
+                    margin-bottom: 12px;
+                }
+
+                .profile-sidebar h3 {
+                    font-size: 1.12rem;
+                    word-break: break-word;
+                }
+
+                .settings-section h2 {
+                    font-size: 1rem;
+                    line-height: 1.4;
+                    margin-bottom: 16px;
+                }
+
+                .form-group input {
+                    min-height: 42px;
+                    font-size: 0.95rem;
+                }
+
+                .save-btn {
+                    width: 100%;
+                    min-height: 42px;
+                }
+            }
         </style>
     </head>
     <body style="height: 100%; background-color: #f8f9fa;">
@@ -139,6 +256,7 @@
                 <li class="nav-bar-item" onclick="location.href='posts'">帖子</li>
                 <li class="nav-bar-item" onclick="location.href='events'">大事记</li>
                 <li class="nav-bar-item" onclick="location.href='confession'">表白墙</li>
+                <li class="nav-bar-item" onclick="location.href='docs'">帮助</li>
             </ul>
             <div class="user-area" id="userArea">
                 <div class="user-not-login" id="userNotLogin">

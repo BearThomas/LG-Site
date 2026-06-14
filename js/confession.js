@@ -470,24 +470,4 @@ function bindEvents() {
         });
     }
     
-    document.getElementById('logoutBtn')?.addEventListener('click', async (e) => {
-        e.preventDefault();
-        try {
-            const { Account } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
-            const account = new Account(client);
-            await account.deleteSession('current');
-        } catch (err) {}
-        localStorage.removeItem('campus_user');
-        localStorage.removeItem('persistent_jwt');
-        location.reload();
-    });
-    
-    document.getElementById('userAvatar')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.getElementById('dropdownMenu').classList.toggle('show');
-    });
-    
-    document.addEventListener('click', () => {
-        document.getElementById('dropdownMenu')?.classList.remove('show');
-    });
 }

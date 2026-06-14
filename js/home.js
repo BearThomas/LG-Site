@@ -58,6 +58,7 @@ let userCache = {};
     
     // 渲染用户状态 UI
     checkLoginStatus();
+    bindHomeActions();
     await loadHomeUsers();
     
     // ⚡ 独立并行启动两路缓存加持的加载流水线
@@ -82,6 +83,20 @@ function checkLoginStatus() {
         if (userNotLogin) userNotLogin.style.display = 'flex';
         if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
+}
+
+function bindHomeActions() {
+    const newPostBtn = document.getElementById('newPostBtn');
+    if (!newPostBtn) return;
+
+    newPostBtn.addEventListener('click', () => {
+        if (!localStorage.getItem('campus_user')) {
+            location.href = 'login.html';
+            return;
+        }
+
+        location.href = 'posts.html?new=1';
+    });
 }
 
 async function loadHomeUsers() {
