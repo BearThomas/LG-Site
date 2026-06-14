@@ -185,7 +185,7 @@ async function loadHomePosts() {
             const parsed = JSON.parse(localCache);
             if (parsed && Array.isArray(parsed.data)) {
                 renderHomePosts(parsed.data);
-                showHomeCacheNotice(postList, 'postCacheNotice', '⚡ 已载入本地动态快照，正在校验云端...', 'waiting');
+                showHomeCacheNotice(postList, 'postCacheNotice', '已载入本地动态快照，正在校验云端...', 'waiting');
                 hasRenderedCache = true;
             }
         } catch (e) {
@@ -279,7 +279,7 @@ async function loadHomePosts() {
     localStorage.setItem(cacheKey, JSON.stringify({ data: finalHomePosts, ts: Date.now() }));
 
     if (hasRenderedCache) {
-        showHomeCacheNotice(postList, 'postCacheNotice', '✨ 动态流已实时同步至最新', 'success');
+        showHomeCacheNotice(postList, 'postCacheNotice', '动态流已实时同步至最新', 'success');
     }
 }
 
@@ -312,11 +312,10 @@ function renderHomePosts(posts) {
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
-                <div class="post-title">${isPinned ? '📌 ' : ''}${escapeHtml(post.title || '无标题')}</div>
+                <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content">${escapeHtml((post.content || '').slice(0, 100))}${post.content?.length > 100 ? '...' : ''}</div>
                 <div class="post-footer">
-                    <span class="post-action">👍 ${post.likes || 0}</span>
-                    <span class="post-action">💬 ${post.commentCount || 0} 评论</span>
+                    <span class="post-action"> ${post.commentCount || 0} 评论</span>
                 </div>
             </div>
         `;
@@ -339,7 +338,7 @@ async function loadHomeConfessions() {
             const parsed = JSON.parse(localCache);
             if (parsed && Array.isArray(parsed.data)) {
                 renderHomeConfessions(parsed.data);
-                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '⚡ 已载入历史手札，正在同步最新心动...', 'waiting');
+                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '已载入历史手札，正在同步最新心动...', 'waiting');
                 hasRenderedCache = true;
             }
         } catch (e) {
@@ -415,7 +414,7 @@ async function loadHomeConfessions() {
     localStorage.setItem(cacheKey, JSON.stringify({ data: finalConfessions, ts: Date.now() }));
 
     if (hasRenderedCache) {
-        showHomeCacheNotice(confessionList, 'confessionCacheNotice', '✨ 表白手札已完成同步更新', 'success');
+        showHomeCacheNotice(confessionList, 'confessionCacheNotice', '表白手札已完成同步更新', 'success');
     }
 }
 
@@ -435,7 +434,6 @@ function renderHomeConfessions(confessions) {
         <div class="confession-card">
             <div class="confession-text">${escapeHtml(c.content)}</div>
             <div class="confession-footer">
-                <span>😶 匿名</span>
                 <span>${formatTime(new Date(c.$createdAt))}</span>
             </div>
         </div>

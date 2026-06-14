@@ -59,7 +59,7 @@
         verifyModal.innerHTML = `
             <div class="verification-modal">
                 <div class="verification-header">
-                    <span>🏫 校园身份验证</span>
+                    <span>校园身份验证</span>
                     <button class="verification-close">&times;</button>
                 </div>
                 <div class="verification-body">

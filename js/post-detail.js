@@ -188,7 +188,7 @@ async function loadPostDetail() {
             if (!currentPost) throw new Error('帖子实体不存在');
             console.log("❄️ 成功激活冷备份归档帖子");
         } catch (localErr) {
-            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>📭 报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
+            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
             return;
         }
     }
@@ -264,7 +264,7 @@ function renderPostDetail() {
                     </div>
                     <div class="post-author-detail">
                         <span class="post-author-name">${escapeHtml(finalName)}</span>
-                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">📌 置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">🔒 已锁定</span>' : ''}</span>
+                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁定</span>' : ''}</span>
                     </div>
                 </div>
                 <div class="post-actions">
@@ -275,8 +275,7 @@ function renderPostDetail() {
         <div class="post-detail-content" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(currentPost.content)}</div>
         <div class="post-detail-footer">
             <button class="post-stat-btn" id="likeBtn" disabled>
-                <span>👍</span>
-                <span id="likeCount">0</span>
+                <span></span>
             </button>
         </div>
     `;
@@ -296,7 +295,7 @@ function renderPostDetail() {
             lockedTip.className = 'login-tip';
             lockedTip.style.backgroundColor = '#fff9db';
             lockedTip.style.borderColor = '#ffe066';
-            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">🔒 该帖子已被管理员锁定，当前处于只读模式，无法追加新回复。</p>';
+            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">该帖子已被管理员锁定，当前处于只读模式，无法追加新回复。</p>';
             commentsList?.insertAdjacentElement('beforebegin', lockedTip);
         }
     }
@@ -368,7 +367,7 @@ function renderComments(comments) {
     if (!comments.length) {
         commentsList.innerHTML = `
             <div class="empty-comments">
-                <div class="empty-icon">💬</div>
+                <div class="empty-icon"></div>
                 <p>暂时还没有评论，快来抢占一楼沙发！</p>
             </div>
         `;

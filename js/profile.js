@@ -98,7 +98,7 @@ async function saveProfile() {
     const newAvatar = document.getElementById('avatarInput').value.trim();
 
     if (!newName) {
-        alert('❌ 名字或昵称不能为空');
+        alert('名字或昵称不能为空');
         return;
     }
 
@@ -125,10 +125,10 @@ async function saveProfile() {
         document.getElementById('profileUsername').textContent = newName;
         updateAvatarPreview(newName, newAvatar);
         
-        alert('✨ 个人中心资料（含自定义头像）已成功保存！');
+        alert('个人中心资料（含自定义头像）已成功保存！');
     } catch (error) {
         console.error('修改个性化名片失败:', error);
-        alert(`❌ 保存失败: ${error.message || '网络通信故障'}`);
+        alert(`保存失败: ${error.message || '网络通信故障'}`);
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = '保存资料';
@@ -141,11 +141,11 @@ async function updatePassword() {
     const newPassword = document.getElementById('newPasswordInput').value.trim();
 
     if (!oldPassword || !newPassword) {
-        alert('❌ 请完整填写原当前密码与安全新密码');
+        alert('请完整填写原当前密码与安全新密码');
         return;
     }
     if (newPassword.length < 6) {
-        alert('❌ 新密码安全强度不足，长度至少为 6 位');
+        alert('新密码安全强度不足，长度至少为 6 位');
         return;
     }
 
@@ -154,14 +154,14 @@ async function updatePassword() {
 
     try {
         await account.updatePassword(newPassword, oldPassword);
-        alert('🔒 密码修改成功！为了安全，系统将重新对齐会话，请重新登录。');
+        alert('密码修改成功！为了安全，系统将重新对齐会话，请重新登录。');
         localStorage.removeItem('campus_user');
         location.href = 'login.html';
     } catch (error) {
         if (error.code === 401 || error.message.includes("Invalid credentials")) {
-            alert('❌ 修改失败：当前的旧密码输入错误，或当前登录会话已过期失效！');
+            alert('修改失败：当前的旧密码输入错误，或当前登录会话已过期失效！');
         } else {
-            alert(`❌ 修改失败: ${error.message || '网络连接异常'}`);
+            alert(`修改失败: ${error.message || '网络连接异常'}`);
         }
     } {
         pwdBtn.disabled = false;

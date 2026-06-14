@@ -124,10 +124,10 @@ const EventsManager = (function() {
         if (weekEvents.length === 0) {
             container.innerHTML = `
                 <div class="event-card">
-                    <span class="event-tag">📭</span>
+                    <span class="event-tag"></span>
                     <div class="event-title">本周暂无大事记</div>
                     <div class="event-desc">敬请期待下周精彩</div>
-                    <div class="event-date">📅 ${formatDate(new Date().toISOString())}</div>
+                    <div class="event-date"> ${formatDate(new Date().toISOString())}</div>
                 </div>
             `;
             return;
@@ -138,7 +138,7 @@ const EventsManager = (function() {
                 <span class="event-tag">${event.tag}</span>
                 <div class="event-title">${event.title}</div>
                 <div class="event-desc">${event.desc}</div>
-                <div class="event-date">📅 ${formatDate(event.date)}</div>
+                <div class="event-date">${formatDate(event.date)}</div>
             </div>
         `).join('');
     }
@@ -153,7 +153,7 @@ const EventsManager = (function() {
         if (filtered.length === 0) {
             container.innerHTML = `
                 <div class="events-empty">
-                    <span style="font-size: 3rem;">📭</span>
+                    <span style="font-size: 3rem;"></span>
                     <p>没有找到匹配的大事记</p>
                 </div>
             `;
@@ -168,7 +168,7 @@ const EventsManager = (function() {
                 <div class="event-list-content">
                     <div class="event-title">${event.title}</div>
                     <div class="event-desc">${event.desc}</div>
-                    <div class="event-date">📅 ${formatDate(event.date)}</div>
+                    <div class="event-date">${formatDate(event.date)}</div>
                 </div>
             </div>
         `).join('');
@@ -184,14 +184,14 @@ const EventsManager = (function() {
         container.innerHTML = `
             <div class="filter-bar">
                 <div class="filter-group">
-                    <label>🏷️ 标签</label>
+                    <label>标签</label>
                     <select id="filterTag">
                         <option value="all">全部</option>
                         ${tags.map(tag => `<option value="${tag}">${tag}</option>`).join('')}
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>📅 时间</label>
+                    <label>时间</label>
                     <select id="filterDate">
                         <option value="all">全部时间</option>
                         <option value="thisWeek">本周</option>
@@ -202,7 +202,7 @@ const EventsManager = (function() {
                     </select>
                 </div>
                 <div class="filter-group filter-search">
-                    <label>🔍 搜索</label>
+                    <label>搜索</label>
                     <input type="text" id="filterKeyword" placeholder="搜索大事记...">
                 </div>
             </div>

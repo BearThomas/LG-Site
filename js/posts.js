@@ -164,7 +164,7 @@ async function loadPosts() {
                     renderPosts(parsedCache.data);
                     totalPages = parsedCache.totalPages || 1;
                     renderPagination();
-                    showCacheNotice('⚡ 正在展示本地缓存，正在同步云端最新内容...', 'waiting');
+                    showCacheNotice('正在展示本地缓存，正在同步云端最新内容...', 'waiting');
                     hasRenderedCache = true;
                 }
             } catch (err) {
@@ -303,7 +303,7 @@ async function loadPosts() {
         }));
 
         if (hasRenderedCache) {
-            showCacheNotice('✨ 列表已成功同步至云端最新内容', 'success');
+            showCacheNotice('列表已成功同步至云端最新内容', 'success');
         }
 
     } catch (error) {
@@ -319,7 +319,7 @@ async function loadPosts() {
 function renderPosts(posts) {
     if (!postsList) return;
     if (!posts.length) {
-        postsList.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>暂无帖子...</p></div>`;
+        postsList.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>暂无帖子...</p></div>`;
         return;
     }
     
@@ -353,9 +353,9 @@ function renderPosts(posts) {
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content-preview">${escapeHtml((post.content || '').slice(0, 150))}${post.content?.length > 150 ? '...' : ''}</div>
                 <div class="post-footer">
-                    <span class="post-stat">👍 0</span>
-                    <span class="post-stat">💬 0</span>
-                    <span class="post-stat">👁️ 0</span>
+                    <span class="post-stat"> 0</span>
+                    <span class="post-stat"> 0</span>
+                    <span class="post-stat"> 0</span>
                 </div>
             </div>
         `;

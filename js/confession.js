@@ -32,10 +32,6 @@ const confessionList = document.getElementById('confessionList');
 const pagination = document.getElementById('pagination');
 const loginTip = document.getElementById('loginTip');
 
-// 弹窗
-const reportModal = document.getElementById('reportModal');
-let pendingReportId = null;
-
 // ========== 页面加载初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
     await restoreSecureKey();
@@ -69,6 +65,7 @@ function checkLoginStatus() {
         if (publishBtn) publishBtn.disabled = true;
     }
 }
+
 // ========== 顶部缓存状态同步条控制 ==========
 function showCacheNotice(message, type = 'waiting') {
     if (!confessionList) return;
@@ -112,7 +109,7 @@ async function loadConfessions() {
                     totalPages = parsedCache.totalPages || 1;
                     renderPagination();
                     
-                    showCacheNotice('⚡ 正在展示本地缓存，正在唤醒最新的心动记忆...', 'waiting');
+                    showCacheNotice(' 正在展示本地缓存，正在唤醒最新的心动记忆...', 'waiting');
                     hasRenderedCache = true;
                 }
             } catch (err) {
@@ -122,7 +119,7 @@ async function loadConfessions() {
 
         // 若无任何缓存，则退回传统骨架加载提示
         if (!hasRenderedCache) {
-            confessionList.innerHTML = '<div class="loading-state">💗 正在装载心动记忆...</div>';
+            confessionList.innerHTML = '<div class="loading-state"> 正在装载心动记忆...</div>';
         }
 
         // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
@@ -220,7 +217,7 @@ async function loadConfessions() {
 
         // 如果先前加载了本地缓存，弹出优雅的同步完成通告
         if (hasRenderedCache) {
-            showCacheNotice('✨ 表白墙已成功同步至最新内容', 'success');
+            showCacheNotice(' 表白墙已成功同步至最新内容', 'success');
         }
         
     } catch (error) {
@@ -238,14 +235,11 @@ function renderConfessions(confessions) {
     if (!confessions.length) {
         confessionList.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">💌</div>
                 <p>还没有表白，快来写下第一封吧！</p>
             </div>
         `;
         return;
     }
-    
-    const likedIds = JSON.parse(localStorage.getItem('likedConfessions') || '[]');
     
     confessionList.innerHTML = confessions.map(c => {
         const confessionId = c.$id || c.id;
@@ -253,8 +247,8 @@ function renderConfessions(confessions) {
         
         const createdAt = new Date(confessionCreatedAt);
         const timeStr = formatTime(createdAt);
-        const isLiked = likedIds.includes(confessionId);
         
+        // 🌟 核心清理：移除了 confession-actions 动作栏，不再渲染点赞和举报按钮
         return `
             <div class="confession-card" data-id="${confessionId}">
                 <div class="confession-content">${escapeHtml(c.content)}</div>
@@ -262,66 +256,10 @@ function renderConfessions(confessions) {
                     <div class="confession-meta">
                         <span class="confession-time">${timeStr}</span>
                     </div>
-                    <div class="confession-actions">
-                        <button class="confession-action like-btn ${isLiked ? 'liked' : ''}" data-id="${confessionId}">
-                            <span>${isLiked ? '❤️' : '🤍'}</span>
-                            <span class="like-count">${c.likes || 0}</span>
-                        </button>
-                        <button class="confession-action report" data-id="${confessionId}">
-                            <span>🚩</span>
-                            <span>举报</span>
-                        </button>
-                    </div>
                 </div>
             </div>
         `;
     }).join('');
-    
-    // 点赞与举报绑定保持不变
-    document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleLike(btn.dataset.id);
-        });
-    });
-    
-    document.querySelectorAll('.confession-action.report').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openReportModal(btn.dataset.id);
-        });
-    });
-}
-
-// ========== 点赞（本地模拟） ==========
-function toggleLike(confessionId) {
-    const likedIds = JSON.parse(localStorage.getItem('likedConfessions') || '[]');
-    const index = likedIds.indexOf(confessionId);
-    
-    if (index > -1) {
-        likedIds.splice(index, 1);
-    } else {
-        likedIds.push(confessionId);
-    }
-    
-    localStorage.setItem('likedConfessions', JSON.stringify(likedIds));
-    
-    const card = document.querySelector(`.confession-card[data-id="${confessionId}"]`);
-    if (!card) return;
-    
-    const likeBtn = card.querySelector('.like-btn');
-    const likeCountSpan = likeBtn.querySelector('.like-count');
-    const currentLikes = parseInt(likeCountSpan.textContent) || 0;
-    
-    if (index > -1) {
-        likeBtn.classList.remove('liked');
-        likeBtn.querySelector('span').textContent = '🤍';
-        likeCountSpan.textContent = Math.max(0, currentLikes - 1);
-    } else {
-        likeBtn.classList.add('liked');
-        likeBtn.querySelector('span').textContent = '❤️';
-        likeCountSpan.textContent = currentLikes + 1;
-    }
 }
 
 // ========== 发表表白 ==========
@@ -374,23 +312,6 @@ async function publishConfession() {
             publishBtn.disabled = false;
             publishBtn.textContent = '匿名发布';
         }
-    }
-}
-
-// ========== 举报 ==========
-function openReportModal(confessionId) {
-    pendingReportId = confessionId;
-    if (reportModal) reportModal.style.display = 'flex';
-}
-
-async function submitReport() {
-    if (!pendingReportId) return;
-    try {
-        alert('举报已提交，管理员会尽快处理');
-        if (reportModal) reportModal.style.display = 'none';
-        pendingReportId = null;
-    } catch (error) {
-        alert('举报失败');
     }
 }
 
@@ -455,19 +376,4 @@ function bindEvents() {
             loadConfessions(); // 排序更改，将自动应用对应排序的隔离缓存
         });
     });
-    
-    document.getElementById('closeReportModal')?.addEventListener('click', () => {
-        if (reportModal) reportModal.style.display = 'none';
-    });
-    document.getElementById('cancelReportBtn')?.addEventListener('click', () => {
-        if (reportModal) reportModal.style.display = 'none';
-    });
-    document.getElementById('confirmReportBtn')?.addEventListener('click', submitReport);
-    
-    if (reportModal) {
-        reportModal.addEventListener('click', (e) => {
-            if (e.target === reportModal) reportModal.style.display = 'none';
-        });
-    }
-    
 }
