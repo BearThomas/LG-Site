@@ -1310,18 +1310,48 @@
     .editor-modal-body {
         max-height: none;
         padding: 16px;
+        padding-bottom: calc(24px + env(safe-area-inset-bottom));
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .editor-layout {
         display: block;
         min-height: 0;
+        flex: 0 0 auto;
+    }
+
+    .editor-pane {
+        display: block;
+    }
+
+    .editor-content-group {
+        display: block;
+        margin-bottom: 20px;
     }
 
     .editor-content-group textarea {
-        height: auto;
-        min-height: calc(100dvh - 360px);
+        height: 44dvh;
+        min-height: 280px;
+        max-height: none;
         resize: vertical;
+    }
+
+    #postModal .editor-layout {
+        margin-bottom: 18px;
+    }
+
+    #postModal .editor-modal-body > .form-group {
+        padding-top: 4px;
+    }
+
+    #postModal #specificUsersArea {
+        padding-bottom: 4px;
+    }
+
+    .editor-modal-body .form-actions {
+        position: static;
+        margin-top: 18px;
     }
 
     .preview-pane {
