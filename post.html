@@ -88,20 +88,34 @@
 
     <!-- 编辑帖子弹窗 -->
     <div class="modal-overlay" id="editModal" style="display: none;">
-        <div class="modal-container">
+        <div class="modal-container editor-modal-container">
             <div class="modal-header">
                 <h3>编辑帖子</h3>
-                <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                <div class="editor-header-actions">
+                    <button type="button" class="preview-toggle-btn" id="toggleEditPreviewBtn">预览</button>
+                    <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>标题</label>
-                    <input type="text" id="editTitle" placeholder="输入标题" maxlength="100">
+
+            <div class="modal-body editor-modal-body">
+                <div class="editor-layout">
+                    <div class="editor-pane">
+                        <div class="form-group">
+                            <label>标题</label>
+                            <input type="text" id="editTitle" placeholder="输入标题" maxlength="100">
+                        </div>
+
+                        <div class="form-group editor-content-group">
+                            <label>内容</label>
+                            <textarea id="editContent" placeholder="正文支持 Markdown" maxlength="10000"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="preview-pane markdown-body" id="editPreviewPane">
+                        <div class="preview-empty">预览将在这里显示</div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>内容</label>
-                    <textarea id="editContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
-                </div>
+
                 <div class="form-actions">
                     <button class="cancel-btn" id="cancelEditBtn">取消</button>
                     <button class="submit-btn" id="submitEditBtn">保存</button>

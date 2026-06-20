@@ -510,6 +510,10 @@ function openEditModal() {
     if (editTitleEl) editTitleEl.value = currentPost.title;
     if (editContentEl) editContentEl.value = currentPost.content;
     if (editModal) editModal.style.display = 'flex';
+    updateEditPreview();
+
+    document.getElementById('editTitle')?.addEventListener('input', updateEditPreview);
+    document.getElementById('editContent')?.addEventListener('input', updateEditPreview);
 }
 
 async function submitEdit() {
@@ -577,4 +581,41 @@ function bindEvents() {
     if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
     if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
     
+    document.getElementById('toggleEditPreviewBtn')?.addEventListener('click', toggleEditPreview);
+
+    document.getElementById('editPreviewPane')?.addEventListener('click', (e) => {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            e.currentTarget.classList.remove('mobile-preview-open');
+        }
+    });
+}
+
+
+function updateEditPreview() {
+    const title = document.getElementById('editTitle')?.value || '';
+    const content = document.getElementById('editContent')?.value || '';
+    const pane = document.getElementById('editPreviewPane');
+    if (!pane) return;
+
+    pane.innerHTML = `
+        <h1>${escapeHtml(title || '无标题')}</h1>
+        ${renderMarkdown(content || '*暂无内容*')}
+    `;
+}
+
+function toggleEditPreview() {
+    const pane = document.getElementById('editPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+    if (!pane || !layout) return;
+
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    updateEditPreview();
+
+    if (isMobile) {
+        pane.classList.add('mobile-preview-open');
+    } else {
+        pane.classList.toggle('preview-hidden');
+        layout.classList.toggle('preview-closed');
+    }
 }

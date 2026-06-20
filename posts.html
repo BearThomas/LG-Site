@@ -117,50 +117,185 @@
 
     <!-- 发帖弹窗 -->
     <div class="modal-overlay" id="postModal" style="display: none;">
-        <div class="modal-container">
+        <div class="modal-container editor-modal-container">
             <div class="modal-header">
                 <h3>发新帖</h3>
-                <button class="modal-close" id="closeModalBtn">&times;</button>
+
+                <div class="editor-header-actions">
+                    <button
+                        type="button"
+                        class="preview-toggle-btn"
+                        id="togglePostPreviewBtn">
+                        预览
+                    </button>
+
+                    <button
+                        class="modal-close"
+                        id="closeModalBtn">
+                        &times;
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>标题</label>
-                    <input type="text" id="postTitle" placeholder="输入标题（最多100字）" maxlength="100">
+
+            <div class="modal-body editor-modal-body">
+
+                <div class="editor-layout">
+
+                    <!-- 左侧编辑器 -->
+                    <div class="editor-pane">
+
+                        <div class="form-group">
+                            <label>标题</label>
+                            <input
+                                type="text"
+                                id="postTitle"
+                                placeholder="输入标题（最多100字）"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group editor-content-group">
+                            <label>内容（支持 Markdown）</label>
+
+                            <textarea
+                                id="postContent"
+                                placeholder="# 一级标题
+
+        ## 二级标题
+
+        **加粗**
+        *斜体*
+
+        - 列表1
+        - 列表2
+
+        > 引用内容
+
+        ```js
+        console.log('Hello World');
+        ```"
+                                maxlength="10000"></textarea>
+                        </div>
+
+                    </div>
+
+                    <!-- 右侧预览 -->
+                    <div
+                        class="preview-pane markdown-body"
+                        id="postPreviewPane">
+
+                        <div class="preview-empty">
+
+                            <h2>Markdown 预览</h2>
+
+                            <p>
+                                在左侧输入内容后，
+                                这里会实时显示最终效果。
+                            </p>
+
+                        </div>
+
+                    </div>
+
                 </div>
-                <div class="form-group">
-                    <label>内容</label>
-                    <textarea id="postContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
-                </div>
+
+                <!-- 可见范围 -->
                 <div class="form-group">
                     <label>可见范围</label>
+
                     <select id="visibilityType">
-                        <option value="all"> 全员可见</option>
-                        <option value="specific"> 指定学号可见</option>
+                        <option value="all">
+                            🌍 全员可见
+                        </option>
+
+                        <option value="specific">
+                            🔒 指定学号可见
+                        </option>
                     </select>
                 </div>
-                <!-- 指定学号区域（默认隐藏） -->
-                <div id="specificUsersArea" style="display: none;">
+
+                <!-- 指定用户区域 -->
+                <div id="specificUsersArea" style="display:none;">
+
                     <div class="form-group">
+
                         <label>添加可见用户</label>
+
                         <div class="user-search-box">
-                            <input type="text" id="userSearchInput" placeholder="输入学号搜索..." maxlength="12" autocomplete="off">
-                            <button type="button" class="search-btn" id="searchUserBtn"><?xml version="1.0" encoding="utf-8"?>
-<!-- License: Apache. Made by Iconscout: https://github.com/Iconscout/unicons -->
-<svg fill="#000000" width="15px" height="15px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21.71,20.29,18,16.61A9,9,0,1,0,16.61,18l3.68,3.68a1,1,0,0,0,1.42,0A1,1,0,0,0,21.71,20.29ZM11,18a7,7,0,1,1,7-7A7,7,0,0,1,11,18Z"/></svg></button>
+
+                            <input
+                                type="text"
+                                id="userSearchInput"
+                                placeholder="输入学号搜索..."
+                                maxlength="12"
+                                autocomplete="off">
+
+                            <button
+                                type="button"
+                                class="search-btn"
+                                id="searchUserBtn">
+
+                                <svg
+                                    fill="#000000"
+                                    width="15px"
+                                    height="15px"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+
+                                    <path d="M21.71,20.29,18,16.61A9,9,0,1,0,16.61,18l3.68,3.68a1,1,0,0,0,1.42,0A1,1,0,0,0,21.71,20.29ZM11,18a7,7,0,1,1,7-7A7,7,0,0,1,11,18Z"/>
+
+                                </svg>
+
+                            </button>
+
                         </div>
-                        <div class="search-results" id="searchResults" style="display: none;"></div>
+
+                        <div
+                            class="search-results"
+                            id="searchResults"
+                            style="display:none;">
+                        </div>
+
                     </div>
+
                     <div class="form-group">
-                        <label>已选用户 (<span id="selectedCount">0</span>人)</label>
-                        <div class="selected-users" id="selectedUsers">
-                            <div class="no-users-hint">尚未添加用户</div>
+
+                        <label>
+                            已选用户
+                            (<span id="selectedCount">0</span>人)
+                        </label>
+
+                        <div
+                            class="selected-users"
+                            id="selectedUsers">
+
+                            <div class="no-users-hint">
+                                尚未添加用户
+                            </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div class="form-actions">
-                    <button type="button" class="cancel-btn" id="cancelPostBtn">取消</button>
-                    <button type="button" class="submit-btn" id="submitPostBtn">发布</button>
+
+                    <button
+                        type="button"
+                        class="cancel-btn"
+                        id="cancelPostBtn">
+                        取消
+                    </button>
+
+                    <button
+                        type="button"
+                        class="submit-btn"
+                        id="submitPostBtn">
+                        发布
+                    </button>
+
                 </div>
+
             </div>
         </div>
     </div>

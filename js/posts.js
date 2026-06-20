@@ -561,7 +561,15 @@ function bindEvents() {
             loadPosts(); 
         });
     }
-    
+    postTitle?.addEventListener('input', updatePostPreview);
+    postContent?.addEventListener('input', updatePostPreview);
+    document.getElementById('togglePostPreviewBtn')?.addEventListener('click', togglePostPreview);
+
+    document.getElementById('postPreviewPane')?.addEventListener('click', (e) => {
+        if (window.matchMedia('(max-width: 768px)').matches) {
+            e.currentTarget.classList.remove('mobile-preview-open');
+        }
+    });
 }
 
 // ========== 可见范围管理时间监听 ==========
@@ -671,3 +679,32 @@ function renderSelectedUsers() {
     });
 }
 // for update
+
+function updatePostPreview() {
+    const title = postTitle?.value || '';
+    const content = postContent?.value || '';
+    const pane = document.getElementById('postPreviewPane');
+    if (!pane) return;
+
+    pane.innerHTML = `
+        <h1>${escapeHtml(title || '无标题')}</h1>
+        ${renderMarkdown(content || '*暂无内容*')}
+    `;
+}
+
+function togglePostPreview() {
+    const pane = document.getElementById('postPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+    if (!pane || !layout) return;
+
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    updatePostPreview();
+
+    if (isMobile) {
+        pane.classList.add('mobile-preview-open');
+    } else {
+        pane.classList.toggle('preview-hidden');
+        layout.classList.toggle('preview-closed');
+    }
+}
