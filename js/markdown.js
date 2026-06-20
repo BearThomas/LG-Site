@@ -6,42 +6,46 @@ marked.setOptions({
     breaks: true
 });
 
-export function renderMarkdown(markdown) {
-    const raw = marked.parse(String(markdown || ''));
+const sanitizeConfig = {
+    ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'em', 'del', 'blockquote',
+        'ul', 'ol', 'li',
+        'h1', 'h2', 'h3', 'h4',
+        'code', 'pre',
+        'a',
+        'hr',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td'
+    ],
+    ALLOWED_ATTR: ['href', 'title', 'target', 'rel']
+};
 
-    return DOMPurify.sanitize(raw, {
-        USE_PROFILES: { html: true },
-        ALLOWED_TAGS: [
-            'p', 'br', 'strong', 'em', 'del', 'blockquote',
-            'ul', 'ol', 'li',
-            'h1', 'h2', 'h3', 'h4',
-            'code', 'pre',
-            'a',
-            'hr',
-            'table', 'thead', 'tbody', 'tr', 'th', 'td'
-        ],
-        ALLOWED_ATTR: ['href', 'title', 'target', 'rel']
-    });
+export function renderMarkdown(markdown = '') {
+    const raw = marked.parse(String(markdown || ''));
+    return DOMPurify.sanitize(raw, sanitizeConfig);
 }
 
 export function markdownToPreview(markdown, maxLength = 150) {
-    const raw = String(markdown || '');
+    const cleaned = String(markdown || '')
+        .replace(/```[\s\S]*?```/g, ' ')
+        .replace(/~~~[\s\S]*?~~~/g, ' ')
+        .replace(/`([^`]+)`/g, '$1');
 
-    const withoutCodeBlock = raw.replace(/```[\s\S]*?```/g, ' ');
-    const withoutInlineCode = withoutCodeBlock.replace(/`([^`]+)`/g, '$1');
-
-    const plain = withoutInlineCode
-        .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-        .replace(/^#{1,6}\s+/gm, '')
-        .replace(/^>\s?/gm, '')
-        .replace(/^[-*+]\s+/gm, '')
-        .replace(/^\d+\.\s+/gm, '')
-        .replace(/[*_~>#-]/g, '')
+    const safeHtml = renderMarkdown(cleaned);
+    const plain = htmlToText(safeHtml)
         .replace(/\s+/g, ' ')
         .trim();
 
-    return plain.length > maxLength
-        ? `${plain.slice(0, maxLength)}...`
+    const chars = Array.from(plain);
+    return chars.length > maxLength
+        ? `${chars.slice(0, maxLength).join('').trim()}...`
         : plain;
+}
+
+function htmlToText(html) {
+    if (typeof DOMParser === 'undefined') {
+        return String(html || '').replace(/<[^>]*>/g, ' ');
+    }
+
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    return doc.body.textContent || '';
 }

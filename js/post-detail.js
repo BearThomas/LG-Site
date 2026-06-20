@@ -510,10 +510,7 @@ function openEditModal() {
     if (editTitleEl) editTitleEl.value = currentPost.title;
     if (editContentEl) editContentEl.value = currentPost.content;
     if (editModal) editModal.style.display = 'flex';
-    updateEditPreview();
-
-    document.getElementById('editTitle')?.addEventListener('input', updateEditPreview);
-    document.getElementById('editContent')?.addEventListener('input', updateEditPreview);
+    resetEditPreviewState();
 }
 
 async function submitEdit() {
@@ -533,7 +530,7 @@ async function submitEdit() {
             editedAt: new Date().toISOString()
         });
         
-        if (editModal) editModal.style.display = 'none';
+        closeEditModal();
         await loadPostDetail();
     } catch (error) {
         console.error('修改帖子失败:', error);
@@ -571,25 +568,33 @@ function bindEvents() {
         });
     }
     
-    document.getElementById('closeEditModalBtn')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
-    document.getElementById('cancelEditBtn')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', closeEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', closeEditModal);
     document.getElementById('submitEditBtn')?.addEventListener('click', submitEdit);
+    document.getElementById('editTitle')?.addEventListener('input', updateEditPreview);
+    document.getElementById('editContent')?.addEventListener('input', updateEditPreview);
     
     document.getElementById('cancelDeleteBtn')?.addEventListener('click', () => { if (deleteModal) deleteModal.style.display = 'none'; });
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     
-    if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
+    if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
     if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
     
     document.getElementById('toggleEditPreviewBtn')?.addEventListener('click', toggleEditPreview);
 
     document.getElementById('editPreviewPane')?.addEventListener('click', (e) => {
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            e.currentTarget.classList.remove('mobile-preview-open');
-        }
+        const backBtn = e.target.closest('[data-preview-back]');
+        if (!backBtn) return;
+        e.preventDefault();
+        closeEditMobilePreview();
     });
 }
 
+
+function closeEditModal() {
+    closeEditMobilePreview();
+    if (editModal) editModal.style.display = 'none';
+}
 
 function updateEditPreview() {
     const title = document.getElementById('editTitle')?.value || '';
@@ -598,9 +603,25 @@ function updateEditPreview() {
     if (!pane) return;
 
     pane.innerHTML = `
-        <h1>${escapeHtml(title || '无标题')}</h1>
-        ${renderMarkdown(content || '*暂无内容*')}
+        <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
+        <article class="preview-document">
+            <h1>${escapeHtml(title || '无标题')}</h1>
+            ${renderMarkdown(content || '*暂无内容*')}
+        </article>
     `;
+}
+
+function resetEditPreviewState() {
+    const pane = document.getElementById('editPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+
+    pane?.classList.remove('mobile-preview-open', 'preview-hidden');
+    layout?.classList.remove('preview-closed');
+    updateEditPreview();
+}
+
+function closeEditMobilePreview() {
+    document.getElementById('editPreviewPane')?.classList.remove('mobile-preview-open');
 }
 
 function toggleEditPreview() {

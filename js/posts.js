@@ -1,6 +1,6 @@
-// js/home.js
+// js/posts.js
 // Made by BearThomas 2026/5/31
-import { markdownToPreview } from './markdown.js';
+import { markdownToPreview, renderMarkdown } from './markdown.js';
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import {
     APPWRITE_ENDPOINT,
@@ -93,8 +93,8 @@ function checkLoginStatus() {
 async function loadBoards() {
     try {
         if (currentBoard.$id === 'main') {
-            if (currentBoardName) currentBoardName.textContent = '主板块';
-            if (boardMemberCount) boardMemberCount.textContent = '42 人';
+            if (currentBoardName) currentBoardName.textContent = '';
+            if (boardMemberCount) boardMemberCount.textContent = '';
         }
 
         if (currentUser && currentBoard.$id !== 'main') {
@@ -522,9 +522,12 @@ function openModal() {
     
     const specificUsersArea = document.getElementById('specificUsersArea');
     if (specificUsersArea) specificUsersArea.style.display = 'none';
+
+    resetPostPreviewState();
 }
 
 function closeModal() {
+    closePostMobilePreview();
     if (postModal) postModal.style.display = 'none';
 }
 
@@ -566,9 +569,10 @@ function bindEvents() {
     document.getElementById('togglePostPreviewBtn')?.addEventListener('click', togglePostPreview);
 
     document.getElementById('postPreviewPane')?.addEventListener('click', (e) => {
-        if (window.matchMedia('(max-width: 768px)').matches) {
-            e.currentTarget.classList.remove('mobile-preview-open');
-        }
+        const backBtn = e.target.closest('[data-preview-back]');
+        if (!backBtn) return;
+        e.preventDefault();
+        closePostMobilePreview();
     });
 }
 
@@ -687,9 +691,25 @@ function updatePostPreview() {
     if (!pane) return;
 
     pane.innerHTML = `
-        <h1>${escapeHtml(title || '无标题')}</h1>
-        ${renderMarkdown(content || '*暂无内容*')}
+        <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
+        <article class="preview-document">
+            <h1>${escapeHtml(title || '无标题')}</h1>
+            ${renderMarkdown(content || '*暂无内容*')}
+        </article>
     `;
+}
+
+function resetPostPreviewState() {
+    const pane = document.getElementById('postPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+
+    pane?.classList.remove('mobile-preview-open', 'preview-hidden');
+    layout?.classList.remove('preview-closed');
+    updatePostPreview();
+}
+
+function closePostMobilePreview() {
+    document.getElementById('postPreviewPane')?.classList.remove('mobile-preview-open');
 }
 
 function togglePostPreview() {
