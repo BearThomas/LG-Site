@@ -1233,7 +1233,7 @@ textarea::placeholder {
 @media (max-width: 768px) {
     .editor-modal-container {
         /* width: 100vw; */
-        height: 100vh;
+        height: 90%;
         max-height: 100vh;
         border-radius: 0;
     }
