@@ -273,7 +273,7 @@ function renderPostDetail() {
                 </div>
             </div>
         </div>
-        <div class="post-detail-content" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(currentPost.content)}</div>
+        <div class="post-detail-content markdown-body">${renderMarkdown(currentPost.content)}</div>
         <div class="post-detail-footer">
             <button class="post-stat-btn" id="likeBtn" disabled>
                 <span></span>
