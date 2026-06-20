@@ -260,6 +260,7 @@
                 avatar: '',
                 encryptKey: result.encryptKey,
                 token: result.sessionSecret, // 🔑 后端直接给到的核心安全长效钥匙
+                appToken: result.appToken || '',
                 loginTime: Date.now()
             }));
 

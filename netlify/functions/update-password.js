@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 function clean(value) {
     return String(value || '').replace(/^['"]|['"]$/g, '').trim();
 }
@@ -6,7 +8,8 @@ function getConfig() {
     return {
         endpoint: clean(process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1'),
         projectId: clean(process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg'),
-        apiKey: clean(process.env.APPWRITE_API_KEY)
+        apiKey: clean(process.env.APPWRITE_API_KEY),
+        tokenSecret: clean(process.env.AUTH_TOKEN_SECRET || process.env.APP_AUTH_SECRET || process.env.APPWRITE_API_KEY)
     };
 }
 
@@ -57,6 +60,38 @@ async function verifySession(config, userId, sessionSecret) {
     }
 }
 
+function verifyAppToken(config, userId, appToken) {
+    if (!appToken || !config.tokenSecret) return false;
+
+    const [payloadPart, signaturePart] = String(appToken).split('.');
+    if (!payloadPart || !signaturePart) {
+        const error = new Error('登录凭证无效，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    const expected = crypto.createHmac('sha256', config.tokenSecret).update(payloadPart).digest('base64url');
+    if (expected !== signaturePart) {
+        const error = new Error('登录凭证无效，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
+    if (normalizeUserId(payload.sub) !== userId || Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) {
+        const error = new Error('登录凭证已过期，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    return true;
+}
+
+async function verifyIdentity(config, userId, credentials = {}) {
+    if (verifyAppToken(config, userId, credentials.appToken)) return;
+    await verifySession(config, userId, credentials.sessionSecret);
+}
+
 async function verifyOldPassword(config, studentId, oldPassword) {
     const response = await fetch(`${config.endpoint}/account/sessions/email`, {
         method: 'POST',
@@ -100,7 +135,7 @@ exports.handler = async (event) => {
 
     try {
         const config = getConfig();
-        const { studentId, oldPassword, newPassword, sessionSecret } = JSON.parse(event.body || '{}');
+        const { studentId, oldPassword, newPassword, sessionSecret, appToken } = JSON.parse(event.body || '{}');
         const cleanStudentId = normalizeUserId(studentId);
 
         if (!config.apiKey) return json(500, { error: 'APPWRITE_API_KEY 未配置' });
@@ -109,7 +144,7 @@ exports.handler = async (event) => {
         }
         if (String(newPassword).length < 8) return json(400, { error: '新密码长度至少为 8 位' });
 
-        await verifySession(config, cleanStudentId, sessionSecret);
+        await verifyIdentity(config, cleanStudentId, { sessionSecret, appToken });
         await verifyOldPassword(config, cleanStudentId, oldPassword);
         await updateUserPassword(config, cleanStudentId, newPassword);
 

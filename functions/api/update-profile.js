@@ -7,6 +7,7 @@ function getConfig(env) {
         endpoint: clean(env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1'),
         projectId: clean(env.APPWRITE_PROJECT_ID || env.APPWRITE_PROJECT || 'lg'),
         apiKey: clean(env.APPWRITE_API_KEY),
+        tokenSecret: clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY),
         databaseId: clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg'),
         collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users')
     };
@@ -76,6 +77,57 @@ async function verifySession(config, userId, sessionSecret) {
     }
 }
 
+function base64UrlDecode(value) {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const binary = atob(base64);
+    return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+async function verifyAppToken(config, userId, appToken) {
+    if (!appToken || !config.tokenSecret) return false;
+
+    const [payloadPart, signaturePart] = String(appToken).split('.');
+    if (!payloadPart || !signaturePart) {
+        const error = new Error('登录凭证无效，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadPart)));
+    if (normalizeUserId(payload.sub) !== userId || Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) {
+        const error = new Error('登录凭证已过期，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(config.tokenSecret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['verify']
+    );
+    const ok = await crypto.subtle.verify(
+        'HMAC',
+        key,
+        base64UrlDecode(signaturePart),
+        new TextEncoder().encode(payloadPart)
+    );
+
+    if (!ok) {
+        const error = new Error('登录凭证无效，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+
+    return true;
+}
+
+async function verifyIdentity(config, userId, credentials = {}) {
+    if (await verifyAppToken(config, userId, credentials.appToken)) return;
+    await verifySession(config, userId, credentials.sessionSecret);
+}
+
 function isAllowedAvatarUrl(avatar) {
     return !avatar || avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/');
 }
@@ -83,7 +135,7 @@ function isAllowedAvatarUrl(avatar) {
 export async function onRequestPost({ request, env }) {
     try {
         const config = getConfig(env);
-        const { userId, name, avatar, sessionSecret } = await request.json();
+        const { userId, name, avatar, sessionSecret, appToken } = await request.json();
         const cleanUserId = normalizeUserId(userId);
         const cleanName = String(name || '').trim();
         const cleanAvatar = String(avatar || '').trim();
@@ -108,7 +160,7 @@ export async function onRequestPost({ request, env }) {
             return Response.json({ error: '头像链接需要以 http://、https:// 或 / 开头' }, { status: 400 });
         }
 
-        await verifySession(config, cleanUserId, sessionSecret);
+        await verifyIdentity(config, cleanUserId, { sessionSecret, appToken });
 
         const userDoc = await appwriteFetch(
             config,

@@ -493,7 +493,8 @@ async function submitComment() {
                 postId,
                 content,
                 userId: currentUser.studentId,
-                sessionSecret: currentUser.token
+                sessionSecret: currentUser.token,
+                appToken: currentUser.appToken
             })
         });
 
@@ -530,7 +531,8 @@ async function deleteComment(commentId) {
             body: JSON.stringify({
                 commentId,
                 userId: currentUser?.studentId,
-                sessionSecret: currentUser?.token
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
             })
         });
 

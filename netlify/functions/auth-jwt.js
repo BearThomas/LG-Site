@@ -2,9 +2,30 @@
 // 🛠️ 终极无 SDK 污染纯物理 Fetch 咬合版
 // Made by BearThomas 2026/5/31
 
+const crypto = require('crypto');
+
 function isValidStudentId(studentId) {
     if (!/^\d{6,12}$/.test(studentId)) return false;
     return true;
+}
+
+function clean(value) {
+    return String(value || '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function signAppToken(studentId) {
+    const secret = clean(process.env.AUTH_TOKEN_SECRET || process.env.APP_AUTH_SECRET || process.env.APPWRITE_API_KEY);
+    if (!secret) return '';
+
+    const now = Math.floor(Date.now() / 1000);
+    const payload = Buffer.from(JSON.stringify({
+        sub: studentId,
+        iat: now,
+        exp: now + 60 * 60 * 24 * 30
+    })).toString('base64url');
+    const signature = crypto.createHmac('sha256', secret).update(payload).digest('base64url');
+
+    return `${payload}.${signature}`;
 }
 
 exports.handler = async (event) => {
@@ -80,7 +101,8 @@ exports.handler = async (event) => {
                 studentId: studentId,
                 name: `同学${studentId.slice(-4)}`,
                 encryptKey: process.env.ENCRYPT_KEY,
-                sessionSecret: sessionResult.secret || '' // 把合规的持久化 Secret 交付给前端落地
+                sessionSecret: sessionResult.secret || '', // 把合规的持久化 Secret 交付给前端落地
+                appToken: signAppToken(studentId)
             })
         };
 

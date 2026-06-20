@@ -2,6 +2,42 @@ function isValidStudentId(studentId) {
     return /^\d{6,12}$/.test(studentId);
 }
 
+function clean(value) {
+    return String(value || '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function base64UrlEncode(input) {
+    const bytes = input instanceof Uint8Array ? input : new TextEncoder().encode(String(input));
+    let binary = '';
+    bytes.forEach(byte => {
+        binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function signAppToken(env, studentId) {
+    const secret = clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY);
+    if (!secret) return '';
+
+    const now = Math.floor(Date.now() / 1000);
+    const payload = base64UrlEncode(JSON.stringify({
+        sub: studentId,
+        iat: now,
+        exp: now + 60 * 60 * 24 * 30
+    }));
+
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+
+    return `${payload}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
+
 export async function onRequestPost({ request, env }) {
     try {
         const { studentId, password } = await request.json();
@@ -76,7 +112,8 @@ export async function onRequestPost({ request, env }) {
             studentId,
             name: `同学${studentId.slice(-4)}`,
             encryptKey: env.ENCRYPT_KEY,
-            sessionSecret: sessionResult.secret || ''
+            sessionSecret: sessionResult.secret || '',
+            appToken: await signAppToken(env, studentId)
         });
     } catch (error) {
         console.error('[Fatal Auth Error]:', error);

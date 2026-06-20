@@ -130,7 +130,8 @@ async function saveProfile() {
                 userId: currentUser.studentId || currentUser.userId,
                 name: newName,
                 avatar: newAvatar,
-                sessionSecret: currentUser.token
+                sessionSecret: currentUser.token,
+                appToken: currentUser.appToken
             })
         });
 
@@ -185,7 +186,8 @@ async function updatePassword() {
                 studentId: currentUser.studentId || currentUser.userId,
                 oldPassword,
                 newPassword,
-                sessionSecret: currentUser.token
+                sessionSecret: currentUser.token,
+                appToken: currentUser.appToken
             })
         });
 
