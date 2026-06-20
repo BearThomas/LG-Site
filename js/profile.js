@@ -1,6 +1,6 @@
 // js/profile.js
 // Made by BearThomas 2026/5/30
-import { Client, Databases, Account } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -10,9 +10,22 @@ import {
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
 const databases = new Databases(client);
-const account = new Account(client);
 
 let currentUser = null;
+
+function applyAppwriteAuth(savedUser) {
+    const token = savedUser?.token;
+    if (!token) return;
+
+    if (typeof client.setSession === 'function') {
+        client.setSession(token);
+        return;
+    }
+
+    if (typeof token === 'string' && token.split('.').length === 3) {
+        client.setJWT(token);
+    }
+}
 
 // ========== 页面初始化入口 ==========
 async function initProfile() {
@@ -25,19 +38,22 @@ async function initProfile() {
 
     try {
         currentUser = JSON.parse(userData);
+        applyAppwriteAuth(currentUser);
     } catch (err) {
         localStorage.removeItem('campus_user');
         location.href = 'login.html';
         return;
     }
 
-    const validUid = currentUser.userId || currentUser.studentId || currentUser.$id;
+    const validUid = currentUser.studentId || currentUser.userId || currentUser.$id;
     if (!validUid) {
         alert('登录凭证不完整，请重新登录');
         location.href = 'login.html';
         return;
     }
-    currentUser.userId = validUid; 
+    const cleanUid = String(validUid).replace(/^student_/, '');
+    currentUser.userId = cleanUid;
+    currentUser.studentId = currentUser.studentId || cleanUid;
 
     // 1. 瞬间本地回显 (防止白屏)
     document.getElementById('profileUserId').textContent = `ID: ${currentUser.userId}`;
@@ -107,23 +123,31 @@ async function saveProfile() {
     saveBtn.textContent = '正在同步云端...';
 
     try {
-        // 1. 同步更变 Appwrite Auth 账户中心的全局显示名称
-        await account.updateName(newName);
-
-        // 2. 将新的昵称和头像图片链接（URL字符串）共同砸进用户扩展数据库文档
-        await databases.updateDocument(DATABASE_ID, COLLECTION_USERS, currentUser.userId, {
-            name: newName,
-            avatar: newAvatar || null // 如果没填就归于 null 释放
+        const response = await fetch('/api/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: currentUser.studentId || currentUser.userId,
+                name: newName,
+                avatar: newAvatar,
+                sessionSecret: currentUser.token
+            })
         });
 
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '保存失败');
+        }
+
         // 3. 实时翻新本地高速缓存，确保系统顶栏、主页侧边栏无视刷新直观同步
-        currentUser.name = newName;
-        currentUser.avatar = newAvatar;
+        currentUser.name = result.name || newName;
+        currentUser.avatar = result.avatar || newAvatar;
         localStorage.setItem('campus_user', JSON.stringify(currentUser));
 
         // 刷新左侧卡片预览
-        document.getElementById('profileUsername').textContent = newName;
-        updateAvatarPreview(newName, newAvatar);
+        document.getElementById('profileUsername').textContent = currentUser.name;
+        updateAvatarPreview(currentUser.name, currentUser.avatar);
         
         alert('个人中心资料（含自定义头像）已成功保存！');
     } catch (error) {
@@ -144,27 +168,41 @@ async function updatePassword() {
         alert('请完整填写原当前密码与安全新密码');
         return;
     }
-    if (newPassword.length < 6) {
-        alert('新密码安全强度不足，长度至少为 6 位');
+    if (newPassword.length < 8) {
+        alert('新密码安全强度不足，长度至少为 8 位');
         return;
     }
 
     const pwdBtn = document.getElementById('updatePasswordBtn');
     pwdBtn.disabled = true;
+    pwdBtn.textContent = '正在修改...';
 
     try {
-        await account.updatePassword(newPassword, oldPassword);
+        const response = await fetch('/api/update-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                studentId: currentUser.studentId || currentUser.userId,
+                oldPassword,
+                newPassword,
+                sessionSecret: currentUser.token
+            })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '修改失败');
+        }
+
         alert('密码修改成功！为了安全，系统将重新对齐会话，请重新登录。');
         localStorage.removeItem('campus_user');
         location.href = 'login.html';
     } catch (error) {
-        if (error.code === 401 || error.message.includes("Invalid credentials")) {
-            alert('修改失败：当前的旧密码输入错误，或当前登录会话已过期失效！');
-        } else {
-            alert(`修改失败: ${error.message || '网络连接异常'}`);
-        }
-    } {
+        alert(`修改失败: ${error.message || '网络连接异常'}`);
+    } finally {
         pwdBtn.disabled = false;
+        pwdBtn.textContent = '修改账户密码';
     }
 }
 

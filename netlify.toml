@@ -16,6 +16,11 @@
 [functions.js]
   node_version = "18"
 
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
 # 防止静态路由刷新 404
 [[redirects]]
   from = "/*"

@@ -48,6 +48,20 @@ const commentAvatar = document.getElementById('commentAvatar');
 const editModal = document.getElementById('editModal');
 const deleteModal = document.getElementById('deleteModal');
 
+function applyAppwriteAuth(savedUser) {
+    const token = savedUser?.token;
+    if (!token) return;
+
+    if (typeof client.setSession === 'function') {
+        client.setSession(token);
+        return;
+    }
+
+    if (typeof token === 'string' && token.split('.').length === 3) {
+        client.setJWT(token);
+    }
+}
+
 // ========== ⚡ 页面加载初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
     await restoreSecureKey();
@@ -86,10 +100,7 @@ function checkLoginStatus() {
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
-            
-            if (currentUser.token) {
-                client.setJWT(currentUser.token);
-            }
+            applyAppwriteAuth(currentUser);
             
             if (userNotLogin) userNotLogin.style.display = 'none';
             if (userLoggedIn) userLoggedIn.style.display = 'flex';
@@ -307,14 +318,8 @@ async function loadComments() {
     try {
         if (!commentsList) return;
 
-        const [appwriteRes, localRes] = await Promise.all([
-            databases.listDocuments(DATABASE_ID, COLLECTION_COMMENTS, [
-                Query.equal('postId', postId),
-                Query.orderAsc('$createdAt')
-            ]).catch(err => {
-                console.warn('实时云评论通信故障:', err.message);
-                return { documents: [] };
-            }),
+        const [cloudComments, localRes] = await Promise.all([
+            loadCloudComments(),
             (async () => {
                 try {
                     const url = `./public/data-backups/comments.json`;
@@ -346,7 +351,7 @@ async function loadComments() {
         });
 
         const seen = new Set();
-        const allComments = [...appwriteRes.documents.map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
+        const allComments = [...cloudComments.map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
             .filter(c => {
                 if(seen.has(c.$id)) return false;
                 seen.add(c.$id);
@@ -359,6 +364,22 @@ async function loadComments() {
         renderComments(allComments);
     } catch (error) {
         console.error('装载评论流水线挂裂:', error);
+    }
+}
+
+async function loadCloudComments() {
+    try {
+        const response = await fetch(`/api/list-comments?postId=${encodeURIComponent(postId)}`);
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.error || '评论列表加载失败');
+        }
+
+        return Array.isArray(result.documents) ? result.documents : [];
+    } catch (error) {
+        console.warn('实时云评论通信故障:', error.message);
+        return [];
     }
 }
 
@@ -465,13 +486,22 @@ async function submitComment() {
     }
     
     try {
-        // 向 Appwrite 云端投递数据
-        await databases.createDocument(DATABASE_ID, COLLECTION_COMMENTS, 'unique()', {
-            postId: postId,
-            content: content,
-            authorId: currentUser.studentId,
-            authorName: `同学${currentUser.studentId.slice(-4)}`
+        const response = await fetch('/api/create-comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                postId,
+                content,
+                userId: currentUser.studentId,
+                sessionSecret: currentUser.token
+            })
         });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '回复提交失败');
+        }
         
         // 只有成功发送后，才清空文本框
         commentContent.value = '';
@@ -480,7 +510,7 @@ async function submitComment() {
         await loadComments();
     } catch (error) {
         console.error('回复投递异常失败:', error);
-        alert('回复提交失败，请重试');
+        alert(error.message || '回复提交失败，请重试');
     } finally {
         // 🔓 【解锁】：无论云端是成功还是报错（进入 finally），执行完后必须把锁解开，允许下一次正常发言
         if (submitCommentBtn) {
@@ -494,11 +524,26 @@ async function submitComment() {
 async function deleteComment(commentId) {
     if (!confirm('确定彻底撤销这条评论吗？')) return;
     try {
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_COMMENTS, commentId);
+        const response = await fetch('/api/delete-comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                commentId,
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token
+            })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '删除失败');
+        }
+
         await loadComments();
     } catch (error) {
         console.error('执行删除回复操作失败:', error);
-        alert('删除失败，请稍后重试');
+        alert(error.message || '删除失败，请稍后重试');
     }
 }
 
