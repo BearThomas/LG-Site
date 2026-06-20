@@ -285,14 +285,22 @@ async function publishConfession() {
     publishBtn.textContent = '发布中...';
     
     try {
-        await databases.createDocument(DATABASE_ID, COLLECTION_CONFESSIONS, 'unique()', {
-            content: content,
-            authorId: currentUser.studentId,
-            authorName: '匿名',
-            toName: null,
-            status: 0,
-            likes: 0
+        const response = await fetch('/api/create-confession', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                content,
+                userId: currentUser.studentId
+            })
         });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || '发表失败');
+        }
         
         confessionContent.value = '';
         if (charCount) charCount.textContent = '0';
