@@ -1,4 +1,5 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { markdownToPreview } from './markdown.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -313,7 +314,7 @@ function renderHomePosts(posts) {
                     </div>
                 </div>
                 <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标题')}</div>
-                <div class="post-content">${escapeHtml((post.content || '').slice(0, 100))}${post.content?.length > 100 ? '...' : ''}</div>
+                <div class="post-content">${escapeHtml(markdownToPreview(post.content, 100))}</div>
                 <div class="post-footer">
                     <span class="post-action"> ${post.commentCount || 0} 评论</span>
                 </div>

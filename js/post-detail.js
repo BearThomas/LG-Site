@@ -1,6 +1,7 @@
 // js/post-detail.js
 // Made by BearThomas 2026/5/30
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { renderMarkdown } from './markdown.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,

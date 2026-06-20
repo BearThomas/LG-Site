@@ -1,5 +1,6 @@
 // js/home.js
 // Made by BearThomas 2026/5/31
+import { markdownToPreview } from './markdown.js';
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import {
     APPWRITE_ENDPOINT,
@@ -351,7 +352,7 @@ function renderPosts(posts) {
                     </div>
                 </div>
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
-                <div class="post-content-preview">${escapeHtml((post.content || '').slice(0, 150))}${post.content?.length > 150 ? '...' : ''}</div>
+                <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content, 150))}</div>
                 <div class="post-footer">
                     <span class="post-stat"> 0</span>
                     <span class="post-stat"> 0</span>
