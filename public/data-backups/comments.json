@@ -1,6 +1,46 @@
 {
-  "total": 0,
-  "documents": [],
+  "total": 3,
+  "documents": [
+    {
+      "postId": "6a368f3d055a45157ddd",
+      "content": "123",
+      "authorId": "20240338",
+      "authorName": "同学0338",
+      "$id": "6a36961cf0640dbd8933",
+      "$sequence": "5",
+      "$createdAt": "2026-06-20T13:31:08.985+00:00",
+      "$updatedAt": "2026-06-20T13:31:08.985+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a1bc87a402fcb882609",
+      "content": "熊除羽我爱你啊～老婆～",
+      "authorId": "20240307",
+      "authorName": "同学0307",
+      "$id": "6a3696d837ad2d3794cc",
+      "$sequence": "6",
+      "$createdAt": "2026-06-20T13:34:16.228+00:00",
+      "$updatedAt": "2026-06-20T13:34:16.228+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a368f3d055a45157ddd",
+      "content": "NB",
+      "authorId": "20240338",
+      "authorName": "同学0338",
+      "$id": "6a369b0e77beca182166",
+      "$sequence": "7",
+      "$createdAt": "2026-06-20T13:52:14.491+00:00",
+      "$updatedAt": "2026-06-20T13:52:14.491+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    }
+  ],
   "encrypted": true,
   "encryptedFields": [
     "content",
