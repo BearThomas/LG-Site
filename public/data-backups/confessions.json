@@ -1,108 +1,62 @@
 {
-  "total": 6,
+  "total": 4,
   "documents": [
     {
-      "content": "2111111111111",
+      "content": "其实我喜欢你",
       "authorId": "20240338",
       "authorName": "匿名",
       "toName": null,
       "status": 0,
       "likes": 0,
-      "$id": "69e4891a290ad01af04e",
-      "$sequence": "1",
-      "$createdAt": "2026-04-19T07:49:46.169+00:00",
-      "$updatedAt": "2026-04-19T07:49:46.169+00:00",
-      "$permissions": [
-        "read(\"user:20240338\")",
-        "update(\"user:20240338\")",
-        "delete(\"user:20240338\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "confessions"
-    },
-    {
-      "content": "111111111111111",
-      "authorId": "20240338",
-      "authorName": "匿名",
-      "toName": null,
-      "status": 0,
-      "likes": 0,
-      "$id": "69e4974a24175bf37116",
-      "$sequence": "2",
-      "$createdAt": "2026-04-19T08:50:18.148+00:00",
-      "$updatedAt": "2026-04-19T08:50:18.148+00:00",
-      "$permissions": [
-        "read(\"user:20240338\")",
-        "update(\"user:20240338\")",
-        "delete(\"user:20240338\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "confessions"
-    },
-    {
-      "content": "我喜欢钟思拓",
-      "authorId": "20240338",
-      "authorName": "匿名",
-      "toName": null,
-      "status": 0,
-      "likes": 0,
-      "$id": "69e4db6f8c459d2fd4e6",
-      "$sequence": "3",
-      "$createdAt": "2026-04-19T13:41:03.575+00:00",
-      "$updatedAt": "2026-04-19T13:41:03.575+00:00",
-      "$permissions": [
-        "read(\"user:20240338\")",
-        "update(\"user:20240338\")",
-        "delete(\"user:20240338\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "confessions"
-    },
-    {
-      "content": "11111111111",
-      "authorId": "20240860",
-      "authorName": "匿名",
-      "toName": null,
-      "status": 0,
-      "likes": 0,
-      "$id": "6a12a950d9db25c341e0",
-      "$sequence": "4",
-      "$createdAt": "2026-05-24T07:31:28.893+00:00",
-      "$updatedAt": "2026-05-24T07:31:28.893+00:00",
-      "$permissions": [
-        "read(\"user:20240860\")",
-        "update(\"user:20240860\")",
-        "delete(\"user:20240860\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "confessions"
-    },
-    {
-      "content": "12345",
-      "authorId": "20240338",
-      "authorName": "匿名",
-      "toName": null,
-      "status": 0,
-      "likes": 0,
-      "$id": "6a36089a592772eeb4da",
-      "$sequence": "5",
-      "$createdAt": "2026-06-20T03:27:22.365+00:00",
-      "$updatedAt": "2026-06-20T03:27:22.365+00:00",
+      "$id": "6a3e24c093e251d76e5c",
+      "$sequence": "7",
+      "$createdAt": "2026-06-26T07:05:36.606+00:00",
+      "$updatedAt": "2026-06-26T07:05:36.606+00:00",
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "confessions"
     },
     {
-      "content": "熊除羽我爱你老婆",
-      "authorId": "20240307",
+      "content": "坤哥好爱你",
+      "authorId": "20260724",
       "authorName": "匿名",
       "toName": null,
       "status": 0,
       "likes": 0,
-      "$id": "6a369028b96c6215064f",
-      "$sequence": "6",
-      "$createdAt": "2026-06-20T13:05:44.760+00:00",
-      "$updatedAt": "2026-06-20T13:05:44.760+00:00",
+      "$id": "6a3e5f69cf7055865c59",
+      "$sequence": "8",
+      "$createdAt": "2026-06-26T11:15:53.850+00:00",
+      "$updatedAt": "2026-06-26T11:15:53.850+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "confessions"
+    },
+    {
+      "content": "兄弟牛逼呀",
+      "authorId": "20240312",
+      "authorName": "匿名",
+      "toName": null,
+      "status": 0,
+      "likes": 0,
+      "$id": "6a3e60f4f30876a4c0b1",
+      "$sequence": "9",
+      "$createdAt": "2026-06-26T11:22:28.996+00:00",
+      "$updatedAt": "2026-06-26T11:22:28.996+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "confessions"
+    },
+    {
+      "content": "那啥，其实我是秦始皇，v我50块车票钱，等我复国封你做大将军",
+      "authorId": "20240327",
+      "authorName": "匿名",
+      "toName": null,
+      "status": 0,
+      "likes": 0,
+      "$id": "6a3e62e580c5287e723d",
+      "$sequence": "10",
+      "$createdAt": "2026-06-26T11:30:45.528+00:00",
+      "$updatedAt": "2026-06-26T11:30:45.528+00:00",
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "confessions"
@@ -111,6 +65,7 @@
   "encrypted": true,
   "encryptedFields": [
     "content",
-    "authorName"
+    "authorName",
+    "authorId"
   ]
 }
