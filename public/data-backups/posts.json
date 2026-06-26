@@ -59,8 +59,10 @@
   "encrypted": true,
   "encryptedFields": [
     "content",
+    "context",
     "title",
     "authorName",
+    "authorId",
     "targetGroups"
   ]
 }
