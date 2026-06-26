@@ -1,5 +1,5 @@
 // netlify/functions/auth-register.js
-// 注册云函数（已完全修复 Appwrite SDK 参数错位导致的匿名与403/401冲突漏洞）
+// 注册云函数：创建 Appwrite Auth 用户 + 数据库用户文档 + 自动标记虚拟邮箱为已验证
 
 const { Permission, Role } = require('node-appwrite');
 const {
@@ -23,38 +23,62 @@ function isValidStudentId(studentId) {
     return true;
 }
 
-// 从学号提取班级（用于自动分配）
+// 从学号提取班级
 function extractClass(studentId) {
     const year = studentId.slice(0, 4);
     const classNum = studentId.slice(4, 6);
     return `${year}届${classNum}班`;
 }
 
+// 自动标记邮箱为已验证
+async function markEmailVerified(users, userId) {
+    if (typeof users.updateEmailVerification === 'function') {
+        return await users.updateEmailVerification(userId, true);
+    }
+
+    if (typeof users.updateEmail === 'function') {
+        return await users.updateEmail(userId, undefined, true);
+    }
+
+    console.warn('⚠️ 当前 node-appwrite SDK 未暴露邮箱验证更新方法，已跳过自动验证');
+    return null;
+}
+
 exports.handler = async (event) => {
-    // 强制限制请求方法
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+        return {
+            statusCode: 405,
+            body: JSON.stringify({ error: 'Method not allowed' })
+        };
     }
 
     try {
-        const { studentId, password, name } = JSON.parse(event.body);
+        const { studentId, password, name } = JSON.parse(event.body || '{}');
 
-        // 1. 严格的前端输入刚性校验
         if (!studentId || !password) {
-            return { statusCode: 400, body: JSON.stringify({ error: '学号和密码不能为空' }) };
-        }
-        if (password.length < 8) {  // Appwrite 官方认证系统安全硬性要求至少 8 位
-            return { statusCode: 400, body: JSON.stringify({ error: '密码至少8位' }) };
-        }
-        if (!isValidStudentId(studentId)) {
-            return { statusCode: 400, body: JSON.stringify({ error: '学号格式不正确' }) };
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: '学号和密码不能为空' })
+            };
         }
 
-        // 2. 初始化高权 Appwrite 后端控制客户端
+        if (password.length < 8) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: '密码至少8位' })
+            };
+        }
+
+        if (!isValidStudentId(studentId)) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: '学号格式不正确' })
+            };
+        }
+
         const users = createUsers();
         const databases = createDatabases();
 
-        // 3. 检查学号是否已在数据库集合中存在（双重安全防御）
         try {
             await databases.getDocument(DATABASE_ID, COLLECTION_USERS, studentId);
             return {
@@ -62,26 +86,27 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ error: '该学号已注册' })
             };
         } catch (e) {
-            // 404 状态码表示不存在该文档，属于正常状态，可以放行创建
             if (e.code !== 404) {
                 console.error('检查用户存在时出错:', e);
             }
         }
 
-        // 🌟 4. 创建 Appwrite 认证用户 (核心修复：对齐官方 SDK 严格的参数位置签名)
-        // 标准顺位：users.create(userId, email, phone, password, name)
         let authUser;
-        const displayName = name || `同学${studentId.slice(-4)}`; // 提取学号后四位作为缺省初始昵称
-        
+        const displayName = name || `同学${studentId.slice(-4)}`;
+        const virtualEmail = `${studentId}@campus.local`;
+
         try {
             authUser = await users.create(
-                studentId,                           // 1. userId (明确绑定为学号字符串)
-                `${studentId}@campus.local`,         // 2. email (⭐ 虚拟邮箱归位！彻底终结匿名黑户陷阱)
-                undefined,                           // 3. phone (无手机绑定，传 undefined)
-                password,                            // 4. password (明文密码，供 Auth 底层加密托管)
-                displayName                          // 5. name (真正的用户实名昵称)
+                studentId,
+                virtualEmail,
+                undefined,
+                password,
+                displayName
             );
-            console.log('✅ Appwrite Auth 实名账号同步创建成功:', authUser.$id);
+
+            await markEmailVerified(users, authUser.$id);
+
+            console.log('✅ Appwrite Auth 账号创建成功，并尝试标记邮箱已验证:', authUser.$id);
         } catch (error) {
             if (error.code === 409) {
                 return {
@@ -92,29 +117,27 @@ exports.handler = async (event) => {
             throw error;
         }
 
-        // 5. 在数据库 users 集合中联动创建个性化用户扩展记录
         const userClass = extractClass(studentId);
-        const DEFAULT_PERMISSIONS = 31; // 默认权限掩码
-        
+        const DEFAULT_PERMISSIONS = 31;
+
         await databases.createDocument(
             DATABASE_ID,
             COLLECTION_USERS,
-            studentId,  // 强制用学号作为集合内的 Document ID，方便后续前端一键查询
+            studentId,
             {
                 userId: studentId,
                 name: displayName,
                 avatar: null,
-                email: `${studentId}@campus.local`,
+                email: virtualEmail,
                 role: 'normal',
                 permissions: parseInt(DEFAULT_PERMISSIONS),
-                joinedBoards: ['main'],  // 默认打通主板块
+                joinedBoards: ['main'],
                 ownedBoards: [],
                 class: userClass,
                 mutedUntil: null,
                 banned: false
             },
             [
-                // 数据行级权限隔离：只有用户本人和 admin 团队有权读写此名片
                 Permission.read(Role.user(studentId)),
                 Permission.update(Role.user(studentId)),
                 Permission.delete(Role.user(studentId)),
@@ -122,27 +145,41 @@ exports.handler = async (event) => {
                 Permission.write(Role.team('admin'))
             ]
         );
-        console.log('✅ Appwrite Databases 映射扩展文档同步创建成功');
 
-        // 6. 自动扫描并加入班级专属板块
+        console.log('✅ Appwrite Databases 用户扩展文档创建成功');
+
         const classBoardId = `class_${studentId.slice(0, 4)}_${studentId.slice(4, 6)}`;
+
         try {
-            const classBoard = await databases.getDocument(DATABASE_ID, COLLECTION_BOARDS, classBoardId);
-            // 原子递增板块成员数计数器
-            await databases.updateDocument(DATABASE_ID, COLLECTION_BOARDS, classBoardId, {
-                memberCount: (classBoard.memberCount || 0) + 1
-            });
-            // 将自动识别出的班级板块追加进用户的已加入阵营
-            await databases.updateDocument(DATABASE_ID, COLLECTION_USERS, studentId, {
-                joinedBoards: ['main', classBoardId]
-            });
-            console.log(`🎉 账号已自动无感编入班级板块: ${classBoardId}`);
+            const classBoard = await databases.getDocument(
+                DATABASE_ID,
+                COLLECTION_BOARDS,
+                classBoardId
+            );
+
+            await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTION_BOARDS,
+                classBoardId,
+                {
+                    memberCount: (classBoard.memberCount || 0) + 1
+                }
+            );
+
+            await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTION_USERS,
+                studentId,
+                {
+                    joinedBoards: ['main', classBoardId]
+                }
+            );
+
+            console.log(`🎉 账号已自动加入班级板块: ${classBoardId}`);
         } catch (e) {
-            // 班级板块在系统内未建立时，静默跳过，不阻断主线注册
-            console.log('班级板块未预设，跳过自动编入逻辑:', classBoardId);
+            console.log('班级板块未预设，跳过自动加入:', classBoardId);
         }
 
-        // 注册大获全胜，返回许可
         return {
             statusCode: 200,
             body: JSON.stringify({
@@ -154,10 +191,13 @@ exports.handler = async (event) => {
         };
 
     } catch (error) {
-        console.error('💥 Register 云函数灾难性捕获:', error);
+        console.error('💥 Register 云函数捕获错误:', error);
+
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: '注册失败，请稍后重试: ' + error.message })
+            body: JSON.stringify({
+                error: '注册失败，请稍后重试: ' + error.message
+            })
         };
     }
 };
