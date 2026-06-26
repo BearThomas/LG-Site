@@ -16,9 +16,9 @@
     },
     {
       "postId": "6a1bc87a402fcb882609",
-      "content": "24daab6356c250ac5c45d948fc3c8506:7a79dd0600f28f4eccd431888064ac154a63b8e81aa6d1fe9504b87c180a0aa0322dd1075460d63cc81cc22d9479f7ff",
-      "authorId": "20240307",
-      "authorName": "48696da89fec6fa8ee6e439d960c08dd:157174b22392951878af85ba50c77bf1",
+      "content": "08d4fe21374e43acf2d74dcbef268d60:496ac6f61ed1da6daa0b643011350cd98fd26ebaccebdff6ade007d99976d5cc35653a51d81a70796257bd050a04024c",
+      "authorId": "4998af1911191ad1a7d3814f5e18f6bb:b7889b2951f9d506358128ecab09b93d",
+      "authorName": "d73d5f92a8363655f7447da5a0e33c7e:9e7074ae2f8d121a424fa4a1f3c9aa0c",
       "$id": "6a3696d837ad2d3794cc",
       "$sequence": "6",
       "$createdAt": "2026-06-20T13:34:16.228+00:00",
@@ -83,6 +83,8 @@
   "encrypted": true,
   "encryptedFields": [
     "content",
-    "authorName"
+    "context",
+    "authorName",
+    "authorId"
   ]
 }
