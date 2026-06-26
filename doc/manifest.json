@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-07T03:10:45.802Z",
+  "generatedAt": "2026-06-26T08:15:07.449Z",
   "pages": [
     {
       "path": "index.md",
@@ -7,19 +7,54 @@
       "order": 0
     },
     {
-      "path": "01-入门/login.md",
-      "title": "登录与注册",
+      "path": "01-快速开始/login.md",
+      "title": "注册与登录",
       "order": 1
     },
     {
-      "path": "02-帖子/create-post.md",
-      "title": "发帖与可见范围",
-      "order": 1
+      "path": "02-帖子/post.md",
+      "title": "发布帖子",
+      "order": 2
     },
     {
-      "path": "03-个人中心/avatar.md",
-      "title": "修改昵称和头像",
-      "order": 1
+      "path": "02-帖子/markdown.md",
+      "title": "Markdown 编辑器",
+      "order": 3
+    },
+    {
+      "path": "03-个人中心/profile.md",
+      "title": "个人中心",
+      "order": 4
+    },
+    {
+      "path": "04-表白墙/confession.md",
+      "title": "表白墙",
+      "order": 5
+    },
+    {
+      "path": "07-大事记/history.md",
+      "title": "大事记",
+      "order": 6
+    },
+    {
+      "path": "08-其他/theme.md",
+      "title": "深色模式",
+      "order": 7
+    },
+    {
+      "path": "08-其他/law.md",
+      "title": "社区规范",
+      "order": 8
+    },
+    {
+      "path": "08-其他/QA.md",
+      "title": "常见问题",
+      "order": 9
+    },
+    {
+      "path": "05-浏览与互动/communicate.md",
+      "title": "浏览与互动",
+      "order": 1000
     }
   ],
   "tree": {
@@ -37,15 +72,15 @@
       },
       {
         "type": "folder",
-        "name": "01-入门",
-        "title": "入门",
+        "name": "01-快速开始",
+        "title": "快速开始",
         "order": 1,
         "children": [
           {
             "type": "page",
             "name": "login.md",
-            "path": "01-入门/login.md",
-            "title": "登录与注册",
+            "path": "01-快速开始/login.md",
+            "title": "注册与登录",
             "order": 1
           }
         ]
@@ -58,10 +93,17 @@
         "children": [
           {
             "type": "page",
-            "name": "create-post.md",
-            "path": "02-帖子/create-post.md",
-            "title": "发帖与可见范围",
-            "order": 1
+            "name": "post.md",
+            "path": "02-帖子/post.md",
+            "title": "发布帖子",
+            "order": 2
+          },
+          {
+            "type": "page",
+            "name": "markdown.md",
+            "path": "02-帖子/markdown.md",
+            "title": "Markdown 编辑器",
+            "order": 3
           }
         ]
       },
@@ -73,10 +115,84 @@
         "children": [
           {
             "type": "page",
-            "name": "avatar.md",
-            "path": "03-个人中心/avatar.md",
-            "title": "修改昵称和头像",
-            "order": 1
+            "name": "profile.md",
+            "path": "03-个人中心/profile.md",
+            "title": "个人中心",
+            "order": 4
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "04-表白墙",
+        "title": "表白墙",
+        "order": 4,
+        "children": [
+          {
+            "type": "page",
+            "name": "confession.md",
+            "path": "04-表白墙/confession.md",
+            "title": "表白墙",
+            "order": 5
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "05-浏览与互动",
+        "title": "浏览与互动",
+        "order": 5,
+        "children": [
+          {
+            "type": "page",
+            "name": "communicate.md",
+            "path": "05-浏览与互动/communicate.md",
+            "title": "浏览与互动",
+            "order": 1000
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "07-大事记",
+        "title": "大事记",
+        "order": 7,
+        "children": [
+          {
+            "type": "page",
+            "name": "history.md",
+            "path": "07-大事记/history.md",
+            "title": "大事记",
+            "order": 6
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "08-其他",
+        "title": "其他",
+        "order": 8,
+        "children": [
+          {
+            "type": "page",
+            "name": "theme.md",
+            "path": "08-其他/theme.md",
+            "title": "深色模式",
+            "order": 7
+          },
+          {
+            "type": "page",
+            "name": "law.md",
+            "path": "08-其他/law.md",
+            "title": "社区规范",
+            "order": 8
+          },
+          {
+            "type": "page",
+            "name": "QA.md",
+            "path": "08-其他/QA.md",
+            "title": "常见问题",
+            "order": 9
           }
         ]
       }
