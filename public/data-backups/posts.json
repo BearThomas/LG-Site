@@ -1,5 +1,5 @@
 {
-  "total": 3,
+  "total": 4,
   "documents": [
     {
       "boardId": "main",
@@ -51,6 +51,24 @@
       "$sequence": "30",
       "$createdAt": "2026-06-26T11:05:21.111+00:00",
       "$updatedAt": "2026-06-26T11:05:21.111+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "posts"
+    },
+    {
+      "boardId": "main",
+      "title": "嘿嘿，更新了一下备份系统",
+      "content": "刚刚瞅一眼备份结果给我瞅出BUG，里面的内容和学生ID都没加密，肉眼都能看出来\n\n然后刚刚就修了一下",
+      "authorId": "student_20240360",
+      "authorName": "20240360",
+      "viewPermission": 1,
+      "targetGroups": [],
+      "status": 0,
+      "editedAt": null,
+      "$id": "6a3e72a8552aa2f819f7",
+      "$sequence": "31",
+      "$createdAt": "2026-06-26T12:38:00.349+00:00",
+      "$updatedAt": "2026-06-26T12:38:00.349+00:00",
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "posts"
