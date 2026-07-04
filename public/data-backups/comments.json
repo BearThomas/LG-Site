@@ -1,5 +1,5 @@
 {
-  "total": 3,
+  "total": 9,
   "documents": [
     {
       "postId": "6a368f3d055a45157ddd",
@@ -16,9 +16,9 @@
     },
     {
       "postId": "6a1bc87a402fcb882609",
-      "content": "熊除羽我爱你啊～老婆～",
-      "authorId": "20240307",
-      "authorName": "同学0307",
+      "content": "efee65c37bb12a25db2d2f1a41b19c87:12429e7059b5ab37b03258553910a206f1f0bd943cbe0538d529bdc9a87297fd8c29d3611dba6d84446b65747ebeee48",
+      "authorId": "b62459e59b0c6b0b16b86b990a808461:2654bed660c3351f7160d8bc356575ef",
+      "authorName": "c2dd4c01a4ab8ff53a672d356d1ced89:7bd690e19d00ebfe7fd2ff3a753982dc",
       "$id": "6a3696d837ad2d3794cc",
       "$sequence": "6",
       "$createdAt": "2026-06-20T13:34:16.228+00:00",
@@ -39,11 +39,91 @@
       "$permissions": [],
       "$databaseId": "lg",
       "$collectionId": "comments"
+    },
+    {
+      "postId": "6a368f3d055a45157ddd",
+      "content": "发生什么了",
+      "authorId": "20240730",
+      "authorName": "同学0730",
+      "$id": "6a3e55b8b0e715b66e8b",
+      "$sequence": "8",
+      "$createdAt": "2026-06-26T10:34:32.725+00:00",
+      "$updatedAt": "2026-06-26T10:34:32.725+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a3e56e2682e5c52b9fe",
+      "content": "嗯，现在是4个",
+      "authorId": "20240338",
+      "authorName": "同学0338",
+      "$id": "6a3e57c90957d6eb2278",
+      "$sequence": "9",
+      "$createdAt": "2026-06-26T10:43:21.039+00:00",
+      "$updatedAt": "2026-06-26T10:43:21.039+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a3e5cf11b04d9b04951",
+      "content": "感谢支持",
+      "authorId": "20240338",
+      "authorName": "同学0338",
+      "$id": "6a3e6d55e75653d5b87b",
+      "$sequence": "10",
+      "$createdAt": "2026-06-26T12:15:17.948+00:00",
+      "$updatedAt": "2026-06-26T12:15:17.948+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "评论头像是不是有问题",
+      "authorId": "20240360",
+      "authorName": "同学0360",
+      "$id": "6a3e72bd002cbf4cbf06",
+      "$sequence": "11",
+      "$createdAt": "2026-06-26T12:38:21.001+00:00",
+      "$updatedAt": "2026-06-26T12:38:21.001+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "又好像没问题哈",
+      "authorId": "20240360",
+      "authorName": "同学0360",
+      "$id": "6a3e72c6ef8048394f36",
+      "$sequence": "12",
+      "$createdAt": "2026-06-26T12:38:30.981+00:00",
+      "$updatedAt": "2026-06-26T12:38:30.981+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
+    },
+    {
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "然后补充一下，大事记内容都是之间测试用的，还没换，有什么想法可以跟我说，我可以加进去",
+      "authorId": "20240360",
+      "authorName": "同学0360",
+      "$id": "6a3e72f3333b9187552a",
+      "$sequence": "13",
+      "$createdAt": "2026-06-26T12:39:15.210+00:00",
+      "$updatedAt": "2026-06-26T12:39:15.210+00:00",
+      "$permissions": [],
+      "$databaseId": "lg",
+      "$collectionId": "comments"
     }
   ],
   "encrypted": true,
   "encryptedFields": [
     "content",
-    "authorName"
+    "context",
+    "authorName",
+    "authorId"
   ]
 }
