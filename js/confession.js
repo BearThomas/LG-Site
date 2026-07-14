@@ -1,4 +1,5 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -23,6 +24,7 @@ let currentSort = 'latest';
 let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 15;
+let confessionsSnapshot = [];
 
 // DOM 元素
 const confessionContent = document.getElementById('confessionContent');
@@ -38,6 +40,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkLoginStatus();
     await loadConfessions(); // ⚡ 开启双源缓存管道
     bindEvents();
+    setupPullToRefresh({
+        onRefresh: async () => {
+            currentPage = 1;
+            await loadConfessions({ forceRefresh: true });
+        }
+    });
 });
 
 // ========== 登录状态 ==========
@@ -123,14 +131,14 @@ async function listAllConfessionDocuments(baseQueries) {
 }
 
 // ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
-async function loadConfessions() {
+async function loadConfessions({ forceRefresh = false } = {}) {
     try {
         if (!confessionList) return;
 
         const currentUserId = currentUser?.studentId || 'guest';
         // 🚀 构建隔离防污染的唯一 Cache Key [用户+排序策略+页码]
         const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
-        const localCache = localStorage.getItem(cacheKey);
+        const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
 
         let hasRenderedCache = false;
 
@@ -152,8 +160,8 @@ async function loadConfessions() {
         }
 
         // 若无任何缓存，则退回传统骨架加载提示
-        if (!hasRenderedCache) {
-            confessionList.innerHTML = '<div class="loading-state"> 正在装载心动记忆...</div>';
+        if (!hasRenderedCache && !forceRefresh) {
+            confessionList.innerHTML = createListSkeleton('confession', 5);
         }
 
         // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
@@ -229,20 +237,10 @@ async function loadConfessions() {
             }
         });
 
-        // 统一计算分页切片
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const paged = allConfessions.slice(start, start + PAGE_SIZE);
-        totalPages = Math.ceil(allConfessions.length / PAGE_SIZE) || 1;
-
-        // 【步骤 C】：将最终清洗过的纯净序列覆盖写入视图，并重刷本地缓存
-        renderConfessions(paged);
-        renderPagination();
-
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: paged,
-            totalPages: totalPages,
-            updateAt: Date.now()
-        }));
+        confessionsSnapshot = allConfessions;
+        totalPages = Math.ceil(confessionsSnapshot.length / PAGE_SIZE) || 1;
+        currentPage = Math.min(currentPage, totalPages);
+        renderConfessionsSnapshotPage();
 
         // 如果先前加载了本地缓存，弹出优雅的同步完成通告
         if (hasRenderedCache) {
@@ -256,6 +254,22 @@ async function loadConfessions() {
             confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网络</p></div>';
         }
     }
+}
+
+function renderConfessionsSnapshotPage() {
+    confessionsSnapshot.sort((a, b) => currentSort === 'latest'
+        ? new Date(b.$createdAt) - new Date(a.$createdAt)
+        : (b.likes || 0) - (a.likes || 0));
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const paged = confessionsSnapshot.slice(start, start + PAGE_SIZE);
+    totalPages = Math.ceil(confessionsSnapshot.length / PAGE_SIZE) || 1;
+    renderConfessions(paged);
+    renderPagination();
+
+    const currentUserId = currentUser?.studentId || 'guest';
+    const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
+    localStorage.setItem(cacheKey, JSON.stringify({ data: paged, totalPages, updateAt: Date.now() }));
 }
 
 // 视图渲染
@@ -390,7 +404,8 @@ function renderPagination() {
             } else {
                 return;
             }
-            loadConfessions();
+            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
+            else loadConfessions();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -412,7 +427,8 @@ function bindEvents() {
             btn.classList.add('active');
             currentSort = btn.dataset.sort;
             currentPage = 1;
-            loadConfessions(); // 排序更改，将自动应用对应排序的隔离缓存
+            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
+            else loadConfessions();
         });
     });
 }

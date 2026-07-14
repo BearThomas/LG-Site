@@ -1,6 +1,7 @@
 // js/posts.js
 // Made by BearThomas 2026/5/31
 import { markdownToPreview, renderMarkdown } from './markdown.js';
+import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import {
     APPWRITE_ENDPOINT,
@@ -37,6 +38,7 @@ const PAGE_SIZE = 10;
 let userCache = {}; 
 let allUsers = null;
 let selectedUserIds = new Set(); 
+let postsSnapshot = [];
 
 // DOM 元素
 const postsList = document.getElementById('postsList');
@@ -59,11 +61,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     await restoreSecureKey();
     checkLoginStatus();
     await loadBoards();
-    // 让全量用户快照提前注入内存缓存，确保渲染时有据可查
-    await loadAllUsers(); 
-    await loadPosts(); 
+    // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
+    await Promise.all([loadAllUsers(), loadPosts()]);
+    if (postsSnapshot.length) renderPostsSnapshotPage();
     bindEvents();
     openRequestedPostModal();
+    setupPullToRefresh({
+        onRefresh: async () => {
+            currentPage = 1;
+            await Promise.all([loadAllUsers(), loadPosts({ forceRefresh: true })]);
+            if (postsSnapshot.length) renderPostsSnapshotPage();
+        }
+    });
 });
 // ========== 登录状态 ==========
 function checkLoginStatus() {
@@ -155,7 +164,7 @@ async function loadAllUsers() {
     }
 }
 
-async function listAllPostDocuments(baseQueries) {
+async function listAllPostDocuments(baseQueries, onFirstBatch) {
     const documents = [];
     let offset = 0;
     const batchSize = 100;
@@ -167,6 +176,7 @@ async function listAllPostDocuments(baseQueries) {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
         const batch = response.documents || [];
         documents.push(...batch);
+        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
 
         if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
         offset += batch.length;
@@ -175,14 +185,44 @@ async function listAllPostDocuments(baseQueries) {
     return documents;
 }
 
+async function loadColdPostDocuments() {
+    try {
+        const backupRes = await fetch('./public/data-backups/posts.json');
+        if (!backupRes.ok) return [];
+
+        const backupData = await backupRes.json();
+        let docs = backupData.documents || backupData || [];
+        if (!backupData.encrypted) return docs;
+
+        docs = await Promise.all(docs.map(async post => {
+            let targetGroups = [];
+            if (post.targetGroups !== '已隐藏') {
+                const decrypted = await decryptText(post.targetGroups);
+                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+            }
+            return {
+                ...post,
+                content: await decryptText(post.content),
+                title: await decryptText(post.title),
+                authorName: await decryptText(post.authorName),
+                targetGroups
+            };
+        }));
+        return docs;
+    } catch (error) {
+        console.log('无冷备份数据', error);
+        return [];
+    }
+}
+
 // ========== 加载帖子（安全增强版） ==========
-async function loadPosts() {
+async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
         
         const currentUserId = currentUser?.studentId || 'guest';
         const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
-        const localCache = localStorage.getItem(cacheKey);
+        const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
 
         let hasRenderedCache = false;
 
@@ -201,8 +241,8 @@ async function loadPosts() {
             }
         }
 
-        if (!hasRenderedCache) {
-            postsList.innerHTML = '<div class="loading-state">正在从云端安全拉取数据...</div>';
+        if (!hasRenderedCache && !forceRefresh) {
+            postsList.innerHTML = createListSkeleton('post', 5);
         }
 
         const queries = [
@@ -210,46 +250,27 @@ async function loadPosts() {
             Query.orderDesc('$createdAt')
         ];
 
-        let hotPosts = [];
-        try {
-            hotPosts = await listAllPostDocuments(queries);
-        } catch (e) {
-            console.warn('热数据加载失败，仅显示冷备份:', e.message);
-        }
-
-        let coldPosts = [];
-        try {
-            const url = `./public/data-backups/posts.json`;
-            const backupRes = await fetch(url);
-            if (backupRes.ok) {
-                const backupData = await backupRes.json();
-                let docs = backupData.documents || backupData || [];
-                
-                if (backupData.encrypted) {
-                    docs = await Promise.all(docs.map(async post => {
-                        let targetGroups = [];
-                        if (post.targetGroups !== '已隐藏') {
-                            const decrypted = await decryptText(post.targetGroups);
-                            try {
-                                targetGroups = JSON.parse(decrypted || '[]');
-                            } catch {
-                                targetGroups = [];
-                            }
-                        }
-                        return {
-                            ...post,
-                            content: await decryptText(post.content),
-                            title: await decryptText(post.title),
-                            authorName: await decryptText(post.authorName),
-                            targetGroups: targetGroups
-                        };
-                    }));
+        const [hotPosts, coldPosts] = await Promise.all([
+            listAllPostDocuments(queries, firstBatch => {
+                if (hasRenderedCache || currentPage !== 1) return;
+                const preview = firstBatch.filter(post => {
+                    if (post.title == null || post.content == null) return false;
+                    const permission = Number(post.viewPermission) || 1;
+                    if (permission === 1) return true;
+                    return permission === 8 && currentUserId !== 'guest' &&
+                        normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
+                }).slice(0, PAGE_SIZE);
+                if (preview.length) {
+                    renderPosts(preview);
+                    showCacheNotice('已加载最新一批，正在后台整理完整列表...', 'waiting');
+                    hasRenderedCache = true;
                 }
-                coldPosts = docs;
-            }
-        } catch (e) {
-            console.log('无冷备份数据', e);
-        }
+            }).catch(error => {
+                console.warn('热数据加载失败，仅显示冷备份:', error.message);
+                return [];
+            }),
+            loadColdPostDocuments()
+        ]);
 
         const normalizePost = (post, isCold) => {
             return {
@@ -313,18 +334,10 @@ async function loadPosts() {
             return false;
         });
 
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const paged = visiblePosts.slice(start, start + PAGE_SIZE);
-        totalPages = Math.ceil(visiblePosts.length / PAGE_SIZE) || 1;
-
-        renderPosts(paged);
-        renderPagination();
-
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: paged,
-            totalPages: totalPages,
-            updateAt: Date.now()
-        }));
+        postsSnapshot = visiblePosts;
+        totalPages = Math.ceil(postsSnapshot.length / PAGE_SIZE) || 1;
+        currentPage = Math.min(currentPage, totalPages);
+        renderPostsSnapshotPage();
 
         if (hasRenderedCache) {
             showCacheNotice('列表已成功同步至云端最新内容', 'success');
@@ -337,6 +350,22 @@ async function loadPosts() {
             postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
         }
     }
+}
+
+function renderPostsSnapshotPage() {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const paged = postsSnapshot.slice(start, start + PAGE_SIZE);
+    totalPages = Math.ceil(postsSnapshot.length / PAGE_SIZE) || 1;
+    renderPosts(paged);
+    renderPagination();
+
+    const currentUserId = currentUser?.studentId || 'guest';
+    const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
+    localStorage.setItem(cacheKey, JSON.stringify({
+        data: paged,
+        totalPages,
+        updateAt: Date.now()
+    }));
 }
 
 // ========== 🌟 智能化改写：不信任数据源渲染 ==========
@@ -426,7 +455,11 @@ function renderPagination() {
             } else {
                 return;
             }
-            loadPosts();
+            if (postsSnapshot.length) {
+                renderPostsSnapshotPage();
+            } else {
+                loadPosts();
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });

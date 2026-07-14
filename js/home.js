@@ -1,5 +1,6 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import { markdownToPreview } from './markdown.js';
+import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -63,11 +64,16 @@ let userCache = {};
     // 渲染用户状态 UI
     checkLoginStatus();
     bindHomeActions();
-    await loadHomeUsers();
-    
-    // ⚡ 独立并行启动两路缓存加持的加载流水线
-    loadHomePosts();        
-    loadHomeConfessions();  
+    await Promise.all([loadHomeUsers(), loadHomePosts(), loadHomeConfessions()]);
+    setupPullToRefresh({
+        onRefresh: async () => {
+            await Promise.all([
+                loadHomeUsers(),
+                loadHomePosts({ forceRefresh: true }),
+                loadHomeConfessions({ forceRefresh: true })
+            ]);
+        }
+    });
 })();
 
 // ========== 检查并同步登录状态 UI ==========
@@ -175,13 +181,13 @@ function showHomeCacheNotice(containerEl, noticeId, message, type = 'waiting') {
 }
 
 // ========== 【高级缓存重构】加载首页帖子（最新5条） ==========
-async function loadHomePosts() {
+async function loadHomePosts({ forceRefresh = false } = {}) {
     const postList = document.getElementById('postList');
     if (!postList) return;
 
     const currentUserId = currentUser?.studentId || 'guest';
     const cacheKey = `cache_home_posts_${currentUserId}`;
-    const localCache = localStorage.getItem(cacheKey);
+    const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
     let hasRenderedCache = false;
 
     // 【步骤 1】秒开快速捞取本地缓存快照
@@ -198,8 +204,8 @@ async function loadHomePosts() {
         }
     }
 
-    if (!hasRenderedCache) {
-        postList.innerHTML = '<div class="loading-state">加载中...</div>';
+    if (!hasRenderedCache && !forceRefresh) {
+        postList.innerHTML = createListSkeleton('post', 3);
     }
 
     // 【步骤 2】后台并行洗流热、冷数据
@@ -328,13 +334,13 @@ function renderHomePosts(posts) {
 }
 
 // ========== 【高级缓存重构】加载首页表白墙（最新10条） ==========
-async function loadHomeConfessions() {
+async function loadHomeConfessions({ forceRefresh = false } = {}) {
     const confessionList = document.getElementById('confessionList');
     if (!confessionList) return;
 
     const currentUserId = currentUser?.studentId || 'guest';
     const cacheKey = `cache_home_confessions_${currentUserId}`;
-    const localCache = localStorage.getItem(cacheKey);
+    const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
     let hasRenderedCache = false;
 
     // 【步骤 1】捞取本地缓存快照
@@ -351,8 +357,8 @@ async function loadHomeConfessions() {
         }
     }
 
-    if (!hasRenderedCache) {
-        confessionList.innerHTML = '<div class="loading-state">装载中...</div>';
+    if (!hasRenderedCache && !forceRefresh) {
+        confessionList.innerHTML = createListSkeleton('confession', 3);
     }
 
     // 【步骤 2】并行加载清洗热数据与冷备份
