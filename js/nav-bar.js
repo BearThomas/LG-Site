@@ -61,6 +61,11 @@
         
         try {
             const user = JSON.parse(userData);
+            if (user.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                showNotLoggedIn();
+                return;
+            }
             const myUid = (user.studentId || user.userId || '').toString().trim();
 
             // 🚀 【阶梯一：先从缓存读，秒展示（绝不等待网络，防止视觉卡顿）】

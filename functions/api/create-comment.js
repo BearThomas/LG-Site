@@ -9,7 +9,8 @@ function getConfig(env) {
         apiKey: clean(env.APPWRITE_API_KEY),
         tokenSecret: clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY),
         databaseId: clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg'),
-        collectionComments: clean(env.APPWRITE_COLLECTION_COMMENTS || 'comments')
+        collectionComments: clean(env.APPWRITE_COLLECTION_COMMENTS || 'comments'),
+        collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users')
     };
 }
 
@@ -160,6 +161,11 @@ export async function onRequestPost({ request, env }) {
         }
 
         await verifyIdentity(config, cleanUserId, { sessionSecret, appToken });
+        await appwriteFetch(
+            config,
+            `/databases/${config.databaseId}/collections/${config.collectionUsers}/documents/${cleanUserId}`,
+            { method: 'GET' }
+        );
 
         const comment = await appwriteFetch(
             config,

@@ -11,7 +11,8 @@ function getConfig() {
         apiKey: clean(process.env.APPWRITE_API_KEY),
         tokenSecret: clean(process.env.AUTH_TOKEN_SECRET || process.env.APP_AUTH_SECRET || process.env.APPWRITE_API_KEY),
         databaseId: clean(process.env.APPWRITE_DATABASE_ID || process.env.DATABASE_ID || 'lg'),
-        collectionComments: clean(process.env.APPWRITE_COLLECTION_COMMENTS || 'comments')
+        collectionComments: clean(process.env.APPWRITE_COLLECTION_COMMENTS || 'comments'),
+        collectionUsers: clean(process.env.APPWRITE_COLLECTION_USERS || 'users')
     };
 }
 
@@ -130,6 +131,11 @@ exports.handler = async (event) => {
         if (cleanContent.length > 500) return json(400, { error: '评论不能超过 500 字' });
 
         await verifyIdentity(config, cleanUserId, { sessionSecret, appToken });
+        await appwriteFetch(
+            config,
+            `/databases/${config.databaseId}/collections/${config.collectionUsers}/documents/${cleanUserId}`,
+            { method: 'GET' }
+        );
 
         const comment = await appwriteFetch(
             config,

@@ -126,13 +126,17 @@
                 const response = await fetch(`${API_BASE}/verify-question`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'verify', answers })
+                    body: JSON.stringify({
+                        action: 'verify',
+                        answers,
+                        studentId: pendingRegistration?.studentId || ''
+                    })
                 });
                 const result = await response.json();
                 if (result.passed) {
                     showSuccess('验证通过！');
                     closeModal();
-                    onSubmit();
+                    onSubmit(result.verificationToken);
                 } else {
                     showError(result.message || '验证失败，请重试');
                 }
@@ -166,12 +170,12 @@
     }
 
     // ========== 执行注册 ==========
-    async function doRegister(studentId, password) {
+    async function doRegister(studentId, password, verificationToken) {
         try {
             const response = await fetch(`${API_BASE}/auth-register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId, password })
+                body: JSON.stringify({ studentId, password, verificationToken })
             });
             const data = await response.json();
             if (response.ok) {
@@ -261,6 +265,7 @@
                 encryptKey: result.encryptKey,
                 token: result.sessionSecret, // 🔑 后端直接给到的核心安全长效钥匙
                 appToken: result.appToken || '',
+                authVersion: 2,
                 loginTime: Date.now()
             }));
 
@@ -297,9 +302,10 @@
         if (password !== confirmPassword) { showError('两次密码不一致'); return; }
 
         const pendingData = { studentId, password };
+        pendingRegistration = pendingData;
         
-        await fetchAndShowVerification(() => {
-            doRegister(pendingData.studentId, pendingData.password);
+        await fetchAndShowVerification((verificationToken) => {
+            doRegister(pendingData.studentId, pendingData.password, verificationToken);
         });
     });
 

@@ -8,8 +8,69 @@ function getConfig(env) {
         projectId: clean(env.APPWRITE_PROJECT_ID || env.APPWRITE_PROJECT || 'lg'),
         apiKey: clean(env.APPWRITE_API_KEY),
         databaseId: clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg'),
-        collectionPosts: clean(env.APPWRITE_COLLECTION_POSTS || 'posts')
+        collectionPosts: clean(env.APPWRITE_COLLECTION_POSTS || 'posts'),
+        collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users'),
+        tokenSecret: clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY)
     };
+}
+
+function normalizeUserId(userId) {
+    return String(userId || '').trim().replace(/^student_/, '');
+}
+
+function base64UrlDecode(value) {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+    const binary = atob(base64);
+    return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+async function verifySession(config, userId, sessionSecret) {
+    if (!sessionSecret) {
+        const error = new Error('登录会话已过期，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+    const response = await fetch(`${config.endpoint}/account`, {
+        headers: {
+            'X-Appwrite-Project': config.projectId,
+            'X-Appwrite-Session': sessionSecret
+        }
+    });
+    const account = await response.json().catch(() => ({}));
+    if (!response.ok || normalizeUserId(account.$id) !== userId) {
+        const error = new Error(response.ok ? '登录身份不匹配' : '登录会话已过期，请重新登录');
+        error.status = response.ok ? 403 : 401;
+        throw error;
+    }
+}
+
+async function verifyAppToken(config, userId, appToken) {
+    if (!appToken || !config.tokenSecret) return false;
+    try {
+        const [payloadPart, signaturePart] = String(appToken).split('.');
+        if (!payloadPart || !signaturePart) throw new Error();
+        const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadPart)));
+        if (normalizeUserId(payload.sub) !== userId || Number(payload.exp || 0) < Math.floor(Date.now() / 1000)) {
+            throw new Error();
+        }
+        const key = await crypto.subtle.importKey(
+            'raw', new TextEncoder().encode(config.tokenSecret),
+            { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+        );
+        if (!await crypto.subtle.verify('HMAC', key, base64UrlDecode(signaturePart), new TextEncoder().encode(payloadPart))) {
+            throw new Error();
+        }
+        return true;
+    } catch {
+        const error = new Error('登录凭证无效或已过期，请重新登录');
+        error.status = 401;
+        throw error;
+    }
+}
+
+async function verifyIdentity(config, userId, credentials) {
+    if (await verifyAppToken(config, userId, credentials.appToken)) return;
+    await verifySession(config, userId, credentials.sessionSecret);
 }
 
 function appwriteHeaders(config) {
@@ -93,9 +154,10 @@ export async function onRequestPost({ request, env }) {
         return Response.json({ error: '无效的请求体' }, { status: 400 });
     }
 
-    const { userId, boardId, title, content, viewPermission, targetUsers } = body;
+    const { userId, boardId, title, content, viewPermission, targetUsers, sessionSecret, appToken } = body;
+    const cleanUserId = normalizeUserId(userId);
 
-    if (!userId || !boardId || !title || !content) {
+    if (!cleanUserId || !boardId || !title || !content) {
         return Response.json({ error: '缺少必要字段' }, { status: 400 });
     }
 
@@ -106,6 +168,14 @@ export async function onRequestPost({ request, env }) {
             return Response.json({ error: 'APPWRITE_API_KEY 未配置' }, { status: 500 });
         }
 
+        await verifyIdentity(config, cleanUserId, { sessionSecret, appToken });
+        await appwriteFetch(
+            config,
+            `/databases/${config.databaseId}/collections/${config.collectionUsers}/documents/${cleanUserId}`,
+            { method: 'GET' }
+        );
+        const authorId = `student_${cleanUserId}`;
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -113,7 +183,7 @@ export async function onRequestPost({ request, env }) {
             JSON.stringify({
                 method: 'equal',
                 attribute: 'authorId',
-                values: [userId]
+                values: [authorId]
             }),
             JSON.stringify({
                 method: 'greaterThan',
@@ -139,8 +209,8 @@ export async function onRequestPost({ request, env }) {
                 boardId,
                 title,
                 content,
-                authorId: userId,
-                authorName: String(userId).replace('student_', ''),
+                authorId,
+                authorName: cleanUserId,
                 viewPermission: viewPermission || 1,
                 status: 0,
                 targetGroups: targetUsers || []
@@ -156,7 +226,7 @@ export async function onRequestPost({ request, env }) {
 
         return Response.json(
             { error: error.message || '发帖失败' },
-            { status: 500 }
+            { status: error.status || 500 }
         );
     }
 }

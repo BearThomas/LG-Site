@@ -47,7 +47,21 @@ function checkLoginStatus() {
     const userLoggedIn = document.getElementById('userLoggedIn');
     
     if (userData) {
-        currentUser = JSON.parse(userData);
+        try {
+            currentUser = JSON.parse(userData);
+        } catch {
+            localStorage.removeItem('campus_user');
+            currentUser = null;
+        }
+        if (!currentUser || currentUser.authVersion !== 2) {
+            localStorage.removeItem('campus_user');
+            currentUser = null;
+            if (userNotLogin) userNotLogin.style.display = 'flex';
+            if (userLoggedIn) userLoggedIn.style.display = 'none';
+            if (loginTip) loginTip.style.display = 'block';
+            if (publishBtn) publishBtn.disabled = true;
+            return;
+        }
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
         
@@ -88,6 +102,26 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
+async function listAllConfessionDocuments(baseQueries) {
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        if (offset > 0) pageQueries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return documents;
+}
+
 // ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
 async function loadConfessions() {
     try {
@@ -95,7 +129,7 @@ async function loadConfessions() {
 
         const currentUserId = currentUser?.studentId || 'guest';
         // 🚀 构建隔离防污染的唯一 Cache Key [用户+排序策略+页码]
-        const cacheKey = `cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`;
+        const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
         const localCache = localStorage.getItem(cacheKey);
 
         let hasRenderedCache = false;
@@ -124,7 +158,6 @@ async function loadConfessions() {
 
         // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
         const queries = [
-            Query.limit(PAGE_SIZE),
             Query.equal('status', 0)
         ];
         
@@ -134,12 +167,8 @@ async function loadConfessions() {
             queries.push(Query.orderDesc('likes'));
         }
         
-        if (currentPage > 1) {
-            queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
-        }
-
         const [appwriteRes, localRes] = await Promise.all([
-            databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, queries).catch(err => {
+            listAllConfessionDocuments(queries).then(documents => ({ documents })).catch(err => {
                 console.warn('⚠️ 实时表白墙读取失败，降级等待冷备份:', err.message);
                 return { documents: [] };
             }),
@@ -223,7 +252,7 @@ async function loadConfessions() {
     } catch (error) {
         console.error('装载表白墙最新内容挂裂:', error);
         const currentUserId = currentUser?.studentId || 'guest';
-        if (!localStorage.getItem(`cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`)) {
+        if (!localStorage.getItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`)) {
             confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网络</p></div>';
         }
     }
@@ -292,7 +321,9 @@ async function publishConfession() {
             },
             body: JSON.stringify({
                 content,
-                userId: currentUser.studentId
+                userId: currentUser.studentId,
+                sessionSecret: currentUser.token || '',
+                appToken: currentUser.appToken || ''
             })
         });
 
@@ -307,7 +338,7 @@ async function publishConfession() {
         
         // ⚡ 【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
         const currentUserId = currentUser?.studentId || 'guest';
-        localStorage.removeItem(`cache_confessions_${currentUserId}_${currentSort}_p1`);
+        localStorage.removeItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p1`);
         
         currentPage = 1;
         await loadConfessions();

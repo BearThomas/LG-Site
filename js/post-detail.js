@@ -100,6 +100,13 @@ function checkLoginStatus() {
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
+            if (currentUser.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                currentUser = null;
+                if (userNotLogin) userNotLogin.style.display = 'flex';
+                if (userLoggedIn) userLoggedIn.style.display = 'none';
+                return;
+            }
             applyAppwriteAuth(currentUser);
             
             if (userNotLogin) userNotLogin.style.display = 'none';

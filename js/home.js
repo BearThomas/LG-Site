@@ -13,6 +13,7 @@ import {
     formatTime,
     getPostAuthorDisplay,
     loadUserDirectory,
+    normalizeUserId,
     renderAuthorAvatar,
     restoreSecureKey
 } from './shared.js';
@@ -38,7 +39,7 @@ let userCache = {};
     if (userData) {
         try {
             const saved = JSON.parse(userData);
-            if (saved && saved.studentId) {
+            if (saved && saved.authVersion === 2 && saved.studentId) {
                 currentUser = {
                     studentId: saved.studentId,
                     userId: saved.userId || `student_${saved.studentId}`,
@@ -46,6 +47,8 @@ let userCache = {};
                     name: saved.name || '同学'
                 };
                 console.log(`✅ 欢迎回来，${currentUser.name}！已挂载本地长效会话通道。`);
+            } else {
+                localStorage.removeItem('campus_user');
             }
         } catch (e) {
             console.warn('解析本地用户凭证失败:', e);
@@ -131,7 +134,8 @@ function isPostVisible(post, userBoards) {
 
     const viewPermission = Number(post.viewPermission) || 1;
     // 🛡️ 堵死原代码明文下的 undefined === undefined 访客越权伪装作者漏洞
-    const isAuthor = currentUser && currentUser.studentId && post.authorId && (post.authorId === currentUser.studentId);
+    const isAuthor = currentUser && currentUser.studentId && post.authorId &&
+        normalizeUserId(post.authorId) === normalizeUserId(currentUser.studentId);
     
     if (viewPermission === 1) return true; // 所有人可见
     if (viewPermission === 8) return isAuthor; // 仅作者可见

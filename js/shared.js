@@ -153,9 +153,21 @@ export function indexUsersById(documents) {
 }
 
 export async function loadUserDirectory(databases, Query) {
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-        // Query.limit(100)
-    ]);
-    console.log(response);
-    return indexUsersById(response.documents);
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+        const queries = [Query.limit(batchSize)];
+        if (offset > 0) queries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, queries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return indexUsersById(documents);
 }

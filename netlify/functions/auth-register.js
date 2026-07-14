@@ -2,6 +2,7 @@
 // 注册云函数：创建 Appwrite Auth 用户 + 数据库用户文档 + 自动标记虚拟邮箱为已验证
 
 const { Permission, Role } = require('node-appwrite');
+const crypto = require('crypto');
 const {
     COLLECTION_BOARDS,
     COLLECTION_USERS,
@@ -9,6 +10,35 @@ const {
     createDatabases,
     createUsers
 } = require('./appwrite');
+
+function clean(value) {
+    return String(value || '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function verifyRegistrationToken(studentId, token) {
+    const secret = clean(process.env.AUTH_TOKEN_SECRET || process.env.APP_AUTH_SECRET || process.env.APPWRITE_API_KEY);
+    if (!secret || !token) return false;
+
+    const [payloadPart, signaturePart] = String(token).split('.');
+    if (!payloadPart || !signaturePart) return false;
+
+    try {
+        const payload = JSON.parse(Buffer.from(payloadPart, 'base64url').toString('utf8'));
+        if (
+            String(payload.sub) !== String(studentId) ||
+            payload.purpose !== 'campus-registration' ||
+            Number(payload.exp || 0) < Math.floor(Date.now() / 1000)
+        ) {
+            return false;
+        }
+
+        const expected = crypto.createHmac('sha256', secret).update(payloadPart).digest();
+        const actual = Buffer.from(signaturePart, 'base64url');
+        return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+    } catch {
+        return false;
+    }
+}
 
 // 学号格式校验
 function isValidStudentId(studentId) {
@@ -44,6 +74,22 @@ async function markEmailVerified(users, userId) {
     return null;
 }
 
+async function verifyExistingAuthPassword(studentId, password) {
+    const endpoint = clean(process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1');
+    const projectId = clean(process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg');
+    const response = await fetch(`${endpoint}/account/sessions/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Appwrite-Project': projectId },
+        body: JSON.stringify({ email: `${studentId}@campus.local`, password })
+    });
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        const error = new Error(result.message || '该学号已有未完成账号，请使用原密码继续注册');
+        error.status = 409;
+        throw error;
+    }
+}
+
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
         return {
@@ -53,7 +99,7 @@ exports.handler = async (event) => {
     }
 
     try {
-        const { studentId, password, name } = JSON.parse(event.body || '{}');
+        const { studentId, password, name, verificationToken } = JSON.parse(event.body || '{}');
 
         if (!studentId || !password) {
             return {
@@ -73,6 +119,13 @@ exports.handler = async (event) => {
             return {
                 statusCode: 400,
                 body: JSON.stringify({ error: '学号格式不正确' })
+            };
+        }
+
+        if (!verifyRegistrationToken(studentId, verificationToken)) {
+            return {
+                statusCode: 403,
+                body: JSON.stringify({ error: '校园身份验证无效或已过期，请重新验证' })
             };
         }
 
@@ -109,12 +162,13 @@ exports.handler = async (event) => {
             console.log('✅ Appwrite Auth 账号创建成功，并尝试标记邮箱已验证:', authUser.$id);
         } catch (error) {
             if (error.code === 409) {
-                return {
-                    statusCode: 409,
-                    body: JSON.stringify({ error: '该学号已注册' })
-                };
+                await verifyExistingAuthPassword(studentId, password);
+                authUser = await users.get(studentId);
+                await markEmailVerified(users, authUser.$id);
+                console.log('继续完成旧版未完成账号的注册:', authUser.$id);
+            } else {
+                throw error;
             }
-            throw error;
         }
 
         const userClass = extractClass(studentId);
@@ -194,7 +248,7 @@ exports.handler = async (event) => {
         console.error('💥 Register 云函数捕获错误:', error);
 
         return {
-            statusCode: 500,
+            statusCode: error.status || 500,
             body: JSON.stringify({
                 error: '注册失败，请稍后重试: ' + error.message
             })

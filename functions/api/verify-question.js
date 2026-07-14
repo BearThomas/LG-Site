@@ -5,6 +5,37 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'Content-Type'
 };
 
+function clean(value) {
+    return String(value || '').replace(/^['"]|['"]$/g, '').trim();
+}
+
+function base64UrlEncode(input) {
+    const bytes = input instanceof Uint8Array ? input : new TextEncoder().encode(String(input));
+    let binary = '';
+    bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function createVerificationToken(env, studentId) {
+    const secret = clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY);
+    if (!secret) throw new Error('注册验证密钥未配置');
+
+    const payload = base64UrlEncode(JSON.stringify({
+        sub: String(studentId),
+        purpose: 'campus-registration',
+        exp: Math.floor(Date.now() / 1000) + 10 * 60
+    }));
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+    return `${payload}.${base64UrlEncode(new Uint8Array(signature))}`;
+}
+
 export async function onRequestOptions() {
     return new Response('', {
         status: 200,
@@ -14,7 +45,7 @@ export async function onRequestOptions() {
 
 export async function onRequestPost({ request, env }) {
     try {
-        const { action, answers } = await request.json();
+        const { action, answers, studentId } = await request.json();
 
         const questionsJson = env.CAMPUS_VERIFY_QUESTIONS;
 
@@ -43,9 +74,15 @@ export async function onRequestPost({ request, env }) {
         }
 
         if (action === 'verify') {
-            if (!answers || !Array.isArray(answers) || answers.length === 0) {
+            if (!/^\d{6,8}$/.test(String(studentId || ''))) {
                 return Response.json(
-                    { error: '请回答所有问题' },
+                    { error: '学号格式不正确' },
+                    { status: 400, headers: corsHeaders }
+                );
+            }
+            if (!answers || !Array.isArray(answers) || answers.length !== 2 || new Set(answers.map(a => String(a.id))).size !== 2) {
+                return Response.json(
+                    { error: '请完整回答两道不同的问题' },
                     { status: 400, headers: corsHeaders }
                 );
             }
@@ -81,6 +118,9 @@ export async function onRequestPost({ request, env }) {
             }
 
             const passed = correctCount === answers.length;
+            const verificationToken = passed
+                ? await createVerificationToken(env, studentId)
+                : '';
 
             return Response.json(
                 {
@@ -88,6 +128,7 @@ export async function onRequestPost({ request, env }) {
                     correctCount,
                     totalCount: answers.length,
                     results,
+                    verificationToken,
                     message: passed ? '验证通过' : `答对了 ${correctCount}/${answers.length} 题，请重试`
                 },
                 { headers: corsHeaders }

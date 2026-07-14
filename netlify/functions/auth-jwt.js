@@ -46,6 +46,8 @@ exports.handler = async (event) => {
         const finalEndpoint = (process.env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1').replace(/['"]/g, '').trim();
         const finalProject = (process.env.APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT || 'lg').replace(/['"]/g, '').trim();
         const finalApiKey = process.env.APPWRITE_API_KEY ? String(process.env.APPWRITE_API_KEY).replace(/['"]/g, '').trim() : '';
+        const finalDatabase = clean(process.env.APPWRITE_DATABASE_ID || process.env.DATABASE_ID || 'lg');
+        const finalUsersCollection = clean(process.env.APPWRITE_COLLECTION_USERS || 'users');
 
         // 1. 物理检查用户
         let getResponse = await fetch(`${finalEndpoint}/users/${studentId}`, {
@@ -53,21 +55,32 @@ exports.handler = async (event) => {
             headers: { 'X-Appwrite-Project': finalProject, 'X-Appwrite-Key': finalApiKey }
         });
 
-        // 2. 如果不存在，现场无感建档
+        // 登录接口只负责认证，禁止在这里绕过注册流程自动建号
         if (getResponse.status === 404) {
-            await fetch(`${finalEndpoint}/users`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Appwrite-Project': finalProject, 'X-Appwrite-Key': finalApiKey },
-                body: JSON.stringify({
-                    userId: studentId,
-                    email: `${studentId}@campus.local`,
-                    password: password,
-                    name: `同学${studentId.slice(-4)}`
-                })
-            });
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: '该学号尚未注册，请先完成注册' })
+            };
+        }
+        if (!getResponse.ok) {
+            throw new Error('账号状态检查失败，请稍后重试');
         }
 
-        // 3. 现场直接在后端通过密码为用户创建合规 Session，完美绕过前端浏览器的 403 跨域 Cookie 限制！
+        // 只有完成正式注册、已写入用户资料库的账号才允许登录。
+        // 这也会拦截旧版本登录接口曾经自动创建的“幽灵账号”。
+        const profileResponse = await fetch(
+            `${finalEndpoint}/databases/${finalDatabase}/collections/${finalUsersCollection}/documents/${studentId}`,
+            { headers: { 'X-Appwrite-Project': finalProject, 'X-Appwrite-Key': finalApiKey } }
+        );
+        if (profileResponse.status === 404) {
+            return {
+                statusCode: 401,
+                body: JSON.stringify({ error: '该学号尚未完成注册，请先注册' })
+            };
+        }
+        if (!profileResponse.ok) throw new Error('注册状态检查失败，请稍后重试');
+
+        // 2. 仅为已注册用户创建 Session
         console.log(`📡 [Backend Auth] 正在后端隧道为用户 ${studentId} 建立官方长效 Session...`);
         const sessionResponse = await fetch(`${finalEndpoint}/account/sessions/email`, {
             method: 'POST',

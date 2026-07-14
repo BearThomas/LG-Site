@@ -53,6 +53,8 @@ export async function onRequestPost({ request, env }) {
         const finalEndpoint = (env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1').replace(/['"]/g, '').trim();
         const finalProject = (env.APPWRITE_PROJECT_ID || env.APPWRITE_PROJECT || 'lg').replace(/['"]/g, '').trim();
         const finalApiKey = env.APPWRITE_API_KEY ? String(env.APPWRITE_API_KEY).replace(/['"]/g, '').trim() : '';
+        const finalDatabase = clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg');
+        const finalUsersCollection = clean(env.APPWRITE_COLLECTION_USERS || 'users');
 
         const getResponse = await fetch(`${finalEndpoint}/users/${studentId}`, {
             method: 'GET',
@@ -63,26 +65,32 @@ export async function onRequestPost({ request, env }) {
         });
 
         if (getResponse.status === 404) {
-            const createResponse = await fetch(`${finalEndpoint}/users`, {
-                method: 'POST',
+            return Response.json(
+                { error: '该学号尚未注册，请先完成注册' },
+                { status: 401 }
+            );
+        }
+
+        if (!getResponse.ok) {
+            throw new Error('账号状态检查失败，请稍后重试');
+        }
+
+        const profileResponse = await fetch(
+            `${finalEndpoint}/databases/${finalDatabase}/collections/${finalUsersCollection}/documents/${studentId}`,
+            {
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-Appwrite-Project': finalProject,
                     'X-Appwrite-Key': finalApiKey
-                },
-                body: JSON.stringify({
-                    userId: studentId,
-                    email: `${studentId}@campus.local`,
-                    password,
-                    name: `同学${studentId.slice(-4)}`
-                })
-            });
-
-            if (!createResponse.ok) {
-                const createResult = await createResponse.json().catch(() => ({}));
-                throw new Error(createResult.message || '创建用户失败');
+                }
             }
+        );
+        if (profileResponse.status === 404) {
+            return Response.json(
+                { error: '该学号尚未完成注册，请先注册' },
+                { status: 401 }
+            );
         }
+        if (!profileResponse.ok) throw new Error('注册状态检查失败，请稍后重试');
 
         const sessionResponse = await fetch(`${finalEndpoint}/account/sessions/email`, {
             method: 'POST',

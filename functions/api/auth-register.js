@@ -9,8 +9,49 @@ function getConfig(env) {
         apiKey: clean(env.APPWRITE_API_KEY),
         databaseId: clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg'),
         collectionBoards: clean(env.APPWRITE_COLLECTION_BOARDS || 'boards'),
-        collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users')
+        collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users'),
+        tokenSecret: clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY)
     };
+}
+
+function base64UrlDecode(value) {
+    const normalized = String(value).replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const binary = atob(padded);
+    return Uint8Array.from(binary, char => char.charCodeAt(0));
+}
+
+async function verifyRegistrationToken(config, studentId, token) {
+    if (!config.tokenSecret || !token) return false;
+    const [payloadPart, signaturePart] = String(token).split('.');
+    if (!payloadPart || !signaturePart) return false;
+
+    try {
+        const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadPart)));
+        if (
+            String(payload.sub) !== String(studentId) ||
+            payload.purpose !== 'campus-registration' ||
+            Number(payload.exp || 0) < Math.floor(Date.now() / 1000)
+        ) {
+            return false;
+        }
+
+        const key = await crypto.subtle.importKey(
+            'raw',
+            new TextEncoder().encode(config.tokenSecret),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['verify']
+        );
+        return crypto.subtle.verify(
+            'HMAC',
+            key,
+            base64UrlDecode(signaturePart),
+            new TextEncoder().encode(payloadPart)
+        );
+    } catch {
+        return false;
+    }
 }
 
 function appwriteHeaders(config) {
@@ -119,10 +160,28 @@ async function createAuthUser(config, studentId, password, displayName) {
     });
 }
 
+async function recoverExistingAuthUser(config, studentId, password) {
+    const response = await fetch(`${config.endpoint}/account/sessions/email`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Appwrite-Project': config.projectId
+        },
+        body: JSON.stringify({ email: `${studentId}@campus.local`, password })
+    });
+    if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        const error = new Error(result.message || '该学号已有未完成账号，请使用原密码继续注册');
+        error.status = 409;
+        throw error;
+    }
+    return appwriteFetch(config, `/users/${studentId}`, { method: 'GET' });
+}
+
 export async function onRequestPost({ request, env }) {
     try {
         const config = getConfig(env);
-        const { studentId, password, name } = await request.json();
+        const { studentId, password, name, verificationToken } = await request.json();
 
         if (!studentId || !password) {
             return Response.json({ error: '学号和密码不能为空' }, { status: 400 });
@@ -134,6 +193,10 @@ export async function onRequestPost({ request, env }) {
 
         if (!isValidStudentId(studentId)) {
             return Response.json({ error: '学号格式不正确' }, { status: 400 });
+        }
+
+        if (!await verifyRegistrationToken(config, studentId, verificationToken)) {
+            return Response.json({ error: '校园身份验证无效或已过期，请重新验证' }, { status: 403 });
         }
 
         if (!config.apiKey) {
@@ -161,13 +224,11 @@ export async function onRequestPost({ request, env }) {
             console.log('Appwrite Auth 账号创建成功:', authUser.$id);
         } catch (error) {
             if (error.status === 409 || error.code === 409) {
-                return Response.json(
-                    { error: '该学号已注册' },
-                    { status: 409 }
-                );
+                authUser = await recoverExistingAuthUser(config, studentId, password);
+                console.log('继续完成旧版未完成账号的注册:', authUser.$id);
+            } else {
+                throw error;
             }
-
-            throw error;
         }
 
         const userClass = extractClass(studentId);
@@ -228,7 +289,7 @@ export async function onRequestPost({ request, env }) {
 
         return Response.json(
             { error: '注册失败，请稍后重试: ' + (error.message || '未知错误') },
-            { status: 500 }
+            { status: error.status || 500 }
         );
     }
 }

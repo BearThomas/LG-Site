@@ -38,6 +38,9 @@ async function initProfile() {
 
     try {
         currentUser = JSON.parse(userData);
+        if (currentUser.authVersion !== 2) {
+            throw new Error('旧登录凭证已失效');
+        }
         applyAppwriteAuth(currentUser);
     } catch (err) {
         localStorage.removeItem('campus_user');

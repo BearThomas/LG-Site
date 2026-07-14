@@ -13,6 +13,7 @@ import {
     formatTime,
     getPostAuthorDisplay,
     loadUserDirectory,
+    normalizeUserId,
     renderAuthorAvatar,
     restoreSecureKey
 } from './shared.js';
@@ -73,6 +74,13 @@ function checkLoginStatus() {
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
+            if (currentUser.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                currentUser = null;
+                if (userNotLogin) userNotLogin.style.display = 'flex';
+                if (userLoggedIn) userLoggedIn.style.display = 'none';
+                return;
+            }
             if (userNotLogin) userNotLogin.style.display = 'none';
             if (userLoggedIn) userLoggedIn.style.display = 'flex';
             
@@ -147,13 +155,33 @@ async function loadAllUsers() {
     }
 }
 
+async function listAllPostDocuments(baseQueries) {
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        if (offset > 0) pageQueries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return documents;
+}
+
 // ========== 加载帖子（安全增强版） ==========
 async function loadPosts() {
     try {
         if (!postsList) return;
         
         const currentUserId = currentUser?.studentId || 'guest';
-        const cacheKey = `cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
+        const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
         const localCache = localStorage.getItem(cacheKey);
 
         let hasRenderedCache = false;
@@ -179,19 +207,12 @@ async function loadPosts() {
 
         const queries = [
             Query.equal('boardId', currentBoard.$id),
-            // Query.limit(100),  
             Query.orderDesc('$createdAt')
         ];
-        console.log("Query:", queries);
-        
-        if (currentPage > 1) {
-            queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
-        }
 
         let hotPosts = [];
         try {
-            const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, queries);
-            hotPosts = response.documents;
+            hotPosts = await listAllPostDocuments(queries);
         } catch (e) {
             console.warn('热数据加载失败，仅显示冷备份:', e.message);
         }
@@ -280,7 +301,8 @@ async function loadPosts() {
         const visiblePosts = filteredPosts.filter(post => {
             if (post.title === null || post.content === null) return false;
             const viewPermission = Number(post.viewPermission) || 1;
-            const isAuthor = currentUser && currentUser.studentId && post.authorId && (post.authorId === currentUserId);
+            const isAuthor = currentUser && currentUser.studentId && post.authorId &&
+                normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
             
             if (viewPermission === 1) return true;  
             if (viewPermission === 8) return isAuthor; 
@@ -311,7 +333,7 @@ async function loadPosts() {
     } catch (error) {
         console.error('加载最新数据失败:', error);
         const currentUserId = currentUser?.studentId || 'guest';
-        if (!localStorage.getItem(`cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`)) {
+        if (!localStorage.getItem(`cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`)) {
             postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
         }
     }
@@ -465,6 +487,8 @@ async function submitPost() {
             },
             body: JSON.stringify({
                 userId: `student_${user.studentId}`,
+                sessionSecret: user.token || '',
+                appToken: user.appToken || '',
                 boardId: currentBoard.$id,
                 title,
                 content,
@@ -476,7 +500,7 @@ async function submitPost() {
         if (response.ok) {
             alert('发布成功！');
             const currentUserId = currentUser?.studentId || 'guest';
-            localStorage.removeItem(`cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p1`);
+            localStorage.removeItem(`cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p1`);
             
             selectedUserIds.clear();
             renderSelectedUsers();
