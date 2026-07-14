@@ -1,5 +1,5 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
-import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
+import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -20,6 +20,7 @@ const databases = new Databases(client);
 
 // 全局状态
 let currentUser = null;
+let secureKeyReady = Promise.resolve(null);
 let currentSort = 'latest';
 let currentPage = 1;
 let totalPages = 1;
@@ -36,7 +37,7 @@ const loginTip = document.getElementById('loginTip');
 
 // ========== 页面加载初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     await loadConfessions(); // ⚡ 开启双源缓存管道
     bindEvents();
@@ -110,7 +111,7 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
-async function listAllConfessionDocuments(baseQueries) {
+async function listAllConfessionDocuments(baseQueries, onFirstBatch) {
     const documents = [];
     let offset = 0;
     const batchSize = 100;
@@ -122,6 +123,7 @@ async function listAllConfessionDocuments(baseQueries) {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
         const batch = response.documents || [];
         documents.push(...batch);
+        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
 
         if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
         offset += batch.length;
@@ -176,7 +178,17 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         }
         
         const [appwriteRes, localRes] = await Promise.all([
-            listAllConfessionDocuments(queries).then(documents => ({ documents })).catch(err => {
+            listAllConfessionDocuments(queries, firstBatch => {
+                if (hasRenderedCache || currentPage !== 1) return;
+                const quickItems = firstBatch.filter(item =>
+                    item.content != null && Number(item.status || 0) === 0
+                ).slice(0, PAGE_SIZE);
+                if (quickItems.length) {
+                    renderConfessions(quickItems);
+                    showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
+                    hasRenderedCache = true;
+                }
+            }).then(documents => ({ documents })).catch(err => {
                 console.warn('⚠️ 实时表白墙读取失败，降级等待冷备份:', err.message);
                 return { documents: [] };
             }),
@@ -189,6 +201,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                         let docs = data.documents || data || [];
                         
                         if (data.encrypted) {
+                            await secureKeyReady;
                             docs = await Promise.all(docs.map(async doc => ({
                                 ...doc,
                                 content: await decryptText(doc.content),
@@ -269,7 +282,9 @@ function renderConfessionsSnapshotPage() {
 
     const currentUserId = currentUser?.studentId || 'guest';
     const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
-    localStorage.setItem(cacheKey, JSON.stringify({ data: paged, totalPages, updateAt: Date.now() }));
+    scheduleAfterPaint(() => {
+        localStorage.setItem(cacheKey, JSON.stringify({ data: paged, totalPages, updateAt: Date.now() }));
+    });
 }
 
 // 视图渲染

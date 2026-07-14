@@ -1,6 +1,6 @@
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import { markdownToPreview } from './markdown.js';
-import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
+import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -27,13 +27,14 @@ const client = new Client()
 let databases;
 let currentUser = null;
 let userCache = {};
+let secureKeyReady = Promise.resolve(null);
 
 // ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
     console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
 
     // 【步骤 1】：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
 
     // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
     const userData = localStorage.getItem('campus_user');
@@ -216,6 +217,16 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
             Query.limit(25) // 取25条确保过滤后足够填满前5条
         ]);
         hotPosts = response.documents;
+        if (!hasRenderedCache) {
+            const quickPosts = hotPosts.filter(post =>
+                post.title != null && post.content != null && (Number(post.viewPermission) || 1) === 1
+            ).slice(0, 5);
+            if (quickPosts.length) {
+                renderHomePosts(quickPosts);
+                showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
+                hasRenderedCache = true;
+            }
+        }
     } catch (e) {
         console.warn('云端热帖子加载失败，仅检索备份:', e.message);
     }
@@ -229,6 +240,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
             let docs = backupData.documents || backupData || [];
             
             if (backupData.encrypted) {
+                await secureKeyReady;
                 docs = await Promise.all(docs.map(async post => {
                     let targetGroups = [];
                     if (post.targetGroups !== '已隐藏') {
@@ -287,7 +299,9 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
 
     // 【步骤 6】复写 DOM 并刷新高速缓存
     renderHomePosts(finalHomePosts);
-    localStorage.setItem(cacheKey, JSON.stringify({ data: finalHomePosts, ts: Date.now() }));
+    scheduleAfterPaint(() => {
+        localStorage.setItem(cacheKey, JSON.stringify({ data: finalHomePosts, ts: Date.now() }));
+    });
 
     if (hasRenderedCache) {
         showHomeCacheNotice(postList, 'postCacheNotice', '动态流已实时同步至最新', 'success');
@@ -370,6 +384,16 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
             Query.limit(20)
         ]);
         hotConfessions = response.documents;
+        if (!hasRenderedCache) {
+            const quickConfessions = hotConfessions.filter(item =>
+                item.content != null && Number(item.status || 0) === 0
+            ).slice(0, 10);
+            if (quickConfessions.length) {
+                renderHomeConfessions(quickConfessions);
+                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
+                hasRenderedCache = true;
+            }
+        }
     } catch (e) {
         console.warn('云端实时表白拉取失败:', e.message);
     }
@@ -383,6 +407,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
             let docs = backupData.documents || backupData || [];
 
             if (backupData.encrypted) {
+                await secureKeyReady;
                 docs = await Promise.all(docs.map(async c => ({
                     ...c,
                     content: await decryptText(c.content), 
@@ -422,7 +447,9 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
 
     // 【步骤 5】洗版展现并刷新缓存
     renderHomeConfessions(finalConfessions);
-    localStorage.setItem(cacheKey, JSON.stringify({ data: finalConfessions, ts: Date.now() }));
+    scheduleAfterPaint(() => {
+        localStorage.setItem(cacheKey, JSON.stringify({ data: finalConfessions, ts: Date.now() }));
+    });
 
     if (hasRenderedCache) {
         showHomeCacheNotice(confessionList, 'confessionCacheNotice', '表白手札已完成同步更新', 'success');

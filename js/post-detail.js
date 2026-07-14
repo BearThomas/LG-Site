@@ -2,6 +2,7 @@
 // Made by BearThomas 2026/5/30
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import { renderMarkdown } from './markdown.js';
+import { createListSkeleton } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -14,6 +15,7 @@ import {
     formatBoardName,
     formatTime,
     loadUserDirectory,
+    normalizeUserId,
     restoreSecureKey
 } from './shared.js';
 
@@ -28,6 +30,8 @@ const databases = new Databases(client);
 let currentUser = null;
 let currentPost = null;
 let postId = null;
+let secureKeyReady = Promise.resolve(null);
+let canRenderCurrentPost = false;
 
 // 🌟 核心新增：全局实名用户内存高速缓存字典
 let userCache = {};
@@ -64,7 +68,7 @@ function applyAppwriteAuth(savedUser) {
 
 // ========== ⚡ 页面加载初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
     
@@ -74,10 +78,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     checkLoginStatus();
-    // 🌟 关键注入：必须在加载帖子及评论详情前，将全量活跃用户名片快照安全拉入内存
-    await loadAllUsers(); 
-    await loadPostDetail(); 
     bindEvents();
+    if (postDetailCard) postDetailCard.innerHTML = createListSkeleton('post', 1);
+
+    // 正文和用户资料并行；正文优先显示，用户名片到达后再静默补全作者信息。
+    const userDirectoryTask = loadAllUsers();
+    await loadPostDetail();
+    void userDirectoryTask.then(() => {
+        if (currentPost && canRenderCurrentPost) renderPostDetail();
+    });
 });
 
 // ========== 🌟 一键预载全量用户到详情页本地缓存字典 ==========
@@ -153,7 +162,8 @@ function isPostVisible(post, userBoards) {
         return false; 
     }
     const viewPermission = post.viewPermission || 1;
-    const isAuthor = currentUser && currentUser.studentId === post.authorId;
+    const isAuthor = currentUser &&
+        normalizeUserId(currentUser.studentId) === normalizeUserId(post.authorId);
     
     if (viewPermission === 1) return true;  
     if (viewPermission === 8) return isAuthor; 
@@ -172,13 +182,12 @@ function isPostVisible(post, userBoards) {
 // ========== 加载帖子详情 ==========
 async function loadPostDetail() {
     try {
-        if (postDetailCard) postDetailCard.innerHTML = '<div class="loading-state">安全审查中...</div>';
-        
         currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId);
         console.log("🔥 成功获取热数据帖子");
     } catch (error) {
         console.warn('云端未发现指定热数据，正在排查数据冷备份...');
         try {
+            await secureKeyReady;
             const url = `./public/data-backups/posts.json`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('冷备份读取失败');
@@ -212,8 +221,11 @@ async function loadPostDetail() {
         }
     }
 
-    const userBoards = await getUserJoinedBoards();
+    const permission = Number(currentPost.viewPermission) || 1;
+    const requiresBoardLookup = permission === 2 || permission === 4;
+    const userBoards = requiresBoardLookup ? await getUserJoinedBoards() : ['main'];
     if (!isPostVisible(currentPost, userBoards)) {
+        canRenderCurrentPost = false;
         if (postDetailCard) {
             postDetailCard.innerHTML = `
                 <div class="empty-state">
@@ -229,6 +241,7 @@ async function loadPostDetail() {
 
     if (boardName) boardName.textContent = formatBoardName(currentPost.boardId);
     document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
+    canRenderCurrentPost = true;
     renderPostDetail();
     await loadComments(); 
 }
@@ -240,7 +253,8 @@ function renderPostDetail() {
     const isPinned = (postStatus & 1) !== 0;
     const isLocked = (postStatus & 2) !== 0;
     
-    const isAuthor = currentUser && currentUser.studentId === currentPost.authorId;
+    const isAuthor = currentUser &&
+        normalizeUserId(currentUser.studentId) === normalizeUserId(currentPost.authorId);
     const postCreatedAt = currentPost.$createdAt || currentPost.createdAt;
     const timeStr = formatTime(new Date(postCreatedAt));
     

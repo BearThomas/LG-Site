@@ -1,7 +1,7 @@
 // js/posts.js
 // Made by BearThomas 2026/5/31
 import { markdownToPreview, renderMarkdown } from './markdown.js';
-import { createListSkeleton, setupPullToRefresh } from './feed-experience.js';
+import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
 import {
     APPWRITE_ENDPOINT,
@@ -28,6 +28,7 @@ const databases = new Databases(client);
 
 // ========== 全局状态 ==========
 let currentUser = null;
+let secureKeyReady = Promise.resolve(null);
 let currentBoard = { $id: 'main', name: '主板块' };
 let currentTimeFilter = 'all'; // 存储当前选中的时间：all, today, week, month
 let currentPage = 1;
@@ -58,7 +59,7 @@ const postBoardSelect = document.getElementById('postBoardSelect');
 // ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
 
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     await loadBoards();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
@@ -194,6 +195,7 @@ async function loadColdPostDocuments() {
         let docs = backupData.documents || backupData || [];
         if (!backupData.encrypted) return docs;
 
+        await secureKeyReady;
         docs = await Promise.all(docs.map(async post => {
             let targetGroups = [];
             if (post.targetGroups !== '已隐藏') {
@@ -361,11 +363,13 @@ function renderPostsSnapshotPage() {
 
     const currentUserId = currentUser?.studentId || 'guest';
     const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
-    localStorage.setItem(cacheKey, JSON.stringify({
-        data: paged,
-        totalPages,
-        updateAt: Date.now()
-    }));
+    scheduleAfterPaint(() => {
+        localStorage.setItem(cacheKey, JSON.stringify({
+            data: paged,
+            totalPages,
+            updateAt: Date.now()
+        }));
+    });
 }
 
 // ========== 🌟 智能化改写：不信任数据源渲染 ==========

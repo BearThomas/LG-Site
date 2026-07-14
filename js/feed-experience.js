@@ -22,6 +22,29 @@ export function createListSkeleton(type = 'post', count = 4) {
     `;
 }
 
+export function scheduleAfterPaint(task) {
+    const execute = () => {
+        try {
+            task();
+        } catch (error) {
+            console.warn('后台缓存写入失败:', error);
+        }
+    };
+    const runWhenIdle = () => {
+        if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(execute, { timeout: 1500 });
+        } else {
+            window.setTimeout(execute, 0);
+        }
+    };
+
+    if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(runWhenIdle));
+    } else {
+        runWhenIdle();
+    }
+}
+
 export function setupPullToRefresh({ onRefresh, threshold = 72 } = {}) {
     if (typeof onRefresh !== 'function' || !window.matchMedia(MOBILE_QUERY).matches) {
         return { destroy() {} };
