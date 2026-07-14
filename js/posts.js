@@ -182,6 +182,7 @@ async function loadPosts() {
             // Query.limit(100),  
             Query.orderDesc('$createdAt')
         ];
+        console.log("Query:", queries);
         
         if (currentPage > 1) {
             queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
