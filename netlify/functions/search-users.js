@@ -30,7 +30,7 @@ exports.handler = async (event) => {
             COLLECTION_USERS,
             [
                 Query.contains('userId', keyword),
-                Query.limit(10)
+                // Query.limit(10)
             ]
         );
 

@@ -179,7 +179,7 @@ async function loadPosts() {
 
         const queries = [
             Query.equal('boardId', currentBoard.$id),
-            Query.limit(100),  
+            // Query.limit(100),  
             Query.orderDesc('$createdAt')
         ];
         
