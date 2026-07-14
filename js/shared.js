@@ -156,6 +156,6 @@ export async function loadUserDirectory(databases, Query) {
     const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
         // Query.limit(100)
     ]);
-
+    console.log(response);
     return indexUsersById(response.documents);
 }
