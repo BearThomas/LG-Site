@@ -1,0 +1,16 @@
+﻿{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "lg-site",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lg",
+      "database_id": "31e5fcd9-e15b-492c-90d3-c4119fa7f39a"
+    }
+  ]
+}
