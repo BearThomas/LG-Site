@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T12:31:03.700Z",
+  "generatedAt": "2026-07-15T13:31:49.755Z",
   "pages": [
     {
       "path": "index.md",
@@ -12,7 +12,17 @@
       "order": 1
     },
     {
+      "path": "01-快速开始/login.md",
+      "title": "注册与登录",
+      "order": 1
+    },
+    {
       "path": "02-#U5e16#U5b50/post.md",
+      "title": "发布帖子",
+      "order": 2
+    },
+    {
+      "path": "02-帖子/post.md",
       "title": "发布帖子",
       "order": 2
     },
@@ -22,7 +32,17 @@
       "order": 3
     },
     {
+      "path": "02-帖子/markdown.md",
+      "title": "Markdown 编辑器",
+      "order": 3
+    },
+    {
       "path": "03-#U4e2a#U4eba#U4e2d#U5fc3/profile.md",
+      "title": "个人中心",
+      "order": 4
+    },
+    {
+      "path": "03-个人中心/profile.md",
       "title": "个人中心",
       "order": 4
     },
@@ -32,7 +52,17 @@
       "order": 5
     },
     {
+      "path": "04-表白墙/confession.md",
+      "title": "表白墙",
+      "order": 5
+    },
+    {
       "path": "07-#U5927#U4e8b#U8bb0/history.md",
+      "title": "大事记",
+      "order": 6
+    },
+    {
+      "path": "07-大事记/history.md",
       "title": "大事记",
       "order": 6
     },
@@ -42,7 +72,17 @@
       "order": 7
     },
     {
+      "path": "08-其他/theme.md",
+      "title": "深色模式",
+      "order": 7
+    },
+    {
       "path": "08-#U5176#U4ed6/law.md",
+      "title": "社区规范",
+      "order": 8
+    },
+    {
+      "path": "08-其他/law.md",
       "title": "社区规范",
       "order": 8
     },
@@ -52,7 +92,17 @@
       "order": 9
     },
     {
+      "path": "08-其他/QA.md",
+      "title": "常见问题",
+      "order": 9
+    },
+    {
       "path": "05-#U6d4f#U89c8#U4e0e#U4e92#U52a8/communicate.md",
+      "title": "浏览与互动",
+      "order": 1000
+    },
+    {
+      "path": "05-浏览与互动/communicate.md",
       "title": "浏览与互动",
       "order": 1000
     }
@@ -87,6 +137,21 @@
       },
       {
         "type": "folder",
+        "name": "01-快速开始",
+        "title": "快速开始",
+        "order": 1,
+        "children": [
+          {
+            "type": "page",
+            "name": "login.md",
+            "path": "01-快速开始/login.md",
+            "title": "注册与登录",
+            "order": 1
+          }
+        ]
+      },
+      {
+        "type": "folder",
         "name": "02-#U5e16#U5b50",
         "title": "#U5e16#U5b50",
         "order": 2,
@@ -109,6 +174,28 @@
       },
       {
         "type": "folder",
+        "name": "02-帖子",
+        "title": "帖子",
+        "order": 2,
+        "children": [
+          {
+            "type": "page",
+            "name": "post.md",
+            "path": "02-帖子/post.md",
+            "title": "发布帖子",
+            "order": 2
+          },
+          {
+            "type": "page",
+            "name": "markdown.md",
+            "path": "02-帖子/markdown.md",
+            "title": "Markdown 编辑器",
+            "order": 3
+          }
+        ]
+      },
+      {
+        "type": "folder",
         "name": "03-#U4e2a#U4eba#U4e2d#U5fc3",
         "title": "#U4e2a#U4eba#U4e2d#U5fc3",
         "order": 3,
@@ -117,6 +204,21 @@
             "type": "page",
             "name": "profile.md",
             "path": "03-#U4e2a#U4eba#U4e2d#U5fc3/profile.md",
+            "title": "个人中心",
+            "order": 4
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "03-个人中心",
+        "title": "个人中心",
+        "order": 3,
+        "children": [
+          {
+            "type": "page",
+            "name": "profile.md",
+            "path": "03-个人中心/profile.md",
             "title": "个人中心",
             "order": 4
           }
@@ -139,6 +241,21 @@
       },
       {
         "type": "folder",
+        "name": "04-表白墙",
+        "title": "表白墙",
+        "order": 4,
+        "children": [
+          {
+            "type": "page",
+            "name": "confession.md",
+            "path": "04-表白墙/confession.md",
+            "title": "表白墙",
+            "order": 5
+          }
+        ]
+      },
+      {
+        "type": "folder",
         "name": "05-#U6d4f#U89c8#U4e0e#U4e92#U52a8",
         "title": "#U6d4f#U89c8#U4e0e#U4e92#U52a8",
         "order": 5,
@@ -154,6 +271,21 @@
       },
       {
         "type": "folder",
+        "name": "05-浏览与互动",
+        "title": "浏览与互动",
+        "order": 5,
+        "children": [
+          {
+            "type": "page",
+            "name": "communicate.md",
+            "path": "05-浏览与互动/communicate.md",
+            "title": "浏览与互动",
+            "order": 1000
+          }
+        ]
+      },
+      {
+        "type": "folder",
         "name": "07-#U5927#U4e8b#U8bb0",
         "title": "#U5927#U4e8b#U8bb0",
         "order": 7,
@@ -162,6 +294,21 @@
             "type": "page",
             "name": "history.md",
             "path": "07-#U5927#U4e8b#U8bb0/history.md",
+            "title": "大事记",
+            "order": 6
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "07-大事记",
+        "title": "大事记",
+        "order": 7,
+        "children": [
+          {
+            "type": "page",
+            "name": "history.md",
+            "path": "07-大事记/history.md",
             "title": "大事记",
             "order": 6
           }
@@ -191,6 +338,35 @@
             "type": "page",
             "name": "QA.md",
             "path": "08-#U5176#U4ed6/QA.md",
+            "title": "常见问题",
+            "order": 9
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "08-其他",
+        "title": "其他",
+        "order": 8,
+        "children": [
+          {
+            "type": "page",
+            "name": "theme.md",
+            "path": "08-其他/theme.md",
+            "title": "深色模式",
+            "order": 7
+          },
+          {
+            "type": "page",
+            "name": "law.md",
+            "path": "08-其他/law.md",
+            "title": "社区规范",
+            "order": 8
+          },
+          {
+            "type": "page",
+            "name": "QA.md",
+            "path": "08-其他/QA.md",
             "title": "常见问题",
             "order": 9
           }

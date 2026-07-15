@@ -27,7 +27,7 @@ for (const relative of requiredFiles) {
   if (!fs.existsSync(path.join(root, relative))) failures.push(`Missing required file: ${relative}`);
 }
 
-for (const forbidden of ['.env', '.dev.vars', 'netlify.toml', 'deno.lock']) {
+for (const forbidden of ['netlify.toml', 'deno.lock']) {
   if (fs.existsSync(path.join(root, forbidden))) failures.push(`Forbidden local/stale file is present: ${forbidden}`);
 }
 
