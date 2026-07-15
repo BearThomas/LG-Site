@@ -1,6 +1,6 @@
 // js/post-detail.js
 // Made by BearThomas 2026/5/30
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import { renderMarkdown } from './markdown.js';
 import { createListSkeleton } from './feed-experience.js';
 import {
@@ -185,10 +185,17 @@ async function loadPostDetail() {
         currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId);
         console.log("🔥 成功获取热数据帖子");
     } catch (error) {
-        console.warn('云端未发现指定热数据，正在排查数据冷备份...');
+        const status = Number(error.code || 0);
+        if (status >= 400 && status < 500) {
+            if (postDetailCard) {
+                postDetailCard.innerHTML = `<div class="empty-state"><p>${escapeHtml(error.message || '当前帖子不存在或无权查看')}</p></div>`;
+            }
+            return;
+        }
+        console.warn('D1 暂时不可用，正在排查 public 冷备份...');
         try {
             await secureKeyReady;
-            const url = `./public/data-backups/posts.json`;
+            const url = `./public/data-fallback/posts.json`;
             const res = await fetch(url);
             if (!res.ok) throw new Error('冷备份读取失败');
             
@@ -339,29 +346,29 @@ async function loadComments() {
     try {
         if (!commentsList) return;
 
-        const [cloudComments, localRes] = await Promise.all([
-            loadCloudComments(),
-            (async () => {
-                try {
-                    const url = `./public/data-backups/comments.json`;
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        let docs = data.documents || data || [];
-                        
-                        if (data.encrypted) {
-                            docs = await Promise.all(docs.map(async c => ({
-                                ...c,
-                                content: await decryptText(c.content),
-                                authorName: await decryptText(c.authorName)
-                            })));
-                        }
-                        return docs.filter(c => c.postId === postId);
+        const cloudComments = await loadCloudComments();
+        let localRes = [];
+        if (cloudComments === null) {
+            try {
+                const res = await fetch('./public/data-fallback/comments.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    localRes = data.documents || data || [];
+                    if (data.encrypted) {
+                        await secureKeyReady;
+                        localRes = await Promise.all(localRes.map(async comment => ({
+                            ...comment,
+                            content: await decryptText(comment.content),
+                            authorName: await decryptText(comment.authorName),
+                            authorId: await decryptText(comment.authorId)
+                        })));
                     }
-                } catch (e) {}
-                return [];
-            })()
-        ]);
+                    localRes = localRes.filter(comment => comment.postId === postId);
+                }
+            } catch (error) {
+                console.warn('public 评论备份也无法读取:', error.message);
+            }
+        }
 
         const normalizeComment = (c) => ({
             $id: c.$id || c.id,
@@ -372,8 +379,9 @@ async function loadComments() {
         });
 
         const seen = new Set();
-        const allComments = [...cloudComments.map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
+        const allComments = [...(cloudComments || []).map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
             .filter(c => {
+                if (!c.content || !c.authorId) return false;
                 if(seen.has(c.$id)) return false;
                 seen.add(c.$id);
                 return true;
@@ -390,7 +398,13 @@ async function loadComments() {
 
 async function loadCloudComments() {
     try {
-        const response = await fetch(`/api/list-comments?postId=${encodeURIComponent(postId)}`);
+        const headers = {};
+        if (currentUser?.appToken) headers['X-LG-Token'] = currentUser.appToken;
+        if (currentUser?.token) headers['X-Appwrite-Session'] = currentUser.token;
+        const response = await fetch(
+            `/api/list-comments?postId=${encodeURIComponent(postId)}`,
+            { headers }
+        );
         const result = await response.json().catch(() => ({}));
 
         if (!response.ok) {
@@ -399,8 +413,8 @@ async function loadCloudComments() {
 
         return Array.isArray(result.documents) ? result.documents : [];
     } catch (error) {
-        console.warn('实时云评论通信故障:', error.message);
-        return [];
+        console.warn('D1 评论通信故障:', error.message);
+        return null;
     }
 }
 

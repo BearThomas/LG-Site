@@ -1,4 +1,4 @@
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import { markdownToPreview } from './markdown.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import {
@@ -19,7 +19,7 @@ import {
     restoreSecureKey
 } from './shared.js';
 
-// 初始化 Appwrite (仅作为只读数据拉取客户端)
+// 初始化兼容客户端：业务数据实际通过同源 D1 API 获取
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
@@ -33,7 +33,7 @@ let secureKeyReady = Promise.resolve(null);
 (async function init() {
     console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
 
-    // 【步骤 1】：从数据库里无感请出那把“不可导出”的黑盒钥匙对象
+    // 【步骤 1】：清理旧版本遗留的浏览器端备份密钥
     secureKeyReady = restoreSecureKey();
 
     // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
@@ -211,12 +211,14 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
 
     // 【步骤 2】后台并行洗流热、冷数据
     let hotPosts = [];
+    let hotPostsLoaded = false;
     try {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
             Query.orderDesc('$createdAt'),
             Query.limit(25) // 取25条确保过滤后足够填满前5条
         ]);
         hotPosts = response.documents;
+        hotPostsLoaded = true;
         if (!hasRenderedCache) {
             const quickPosts = hotPosts.filter(post =>
                 post.title != null && post.content != null && (Number(post.viewPermission) || 1) === 1
@@ -232,8 +234,9 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     }
 
     let coldPosts = [];
-    try {
-        const url = './public/data-backups/posts.json';
+    if (!hotPostsLoaded) {
+        try {
+        const url = './public/data-fallback/posts.json';
         const res = await fetch(url);
         if (res.ok) {
             const backupData = await res.json();
@@ -258,8 +261,9 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
             }
             coldPosts = docs;
         }
-    } catch (e) {
-        console.log('无冷备份帖子数据', e);
+        } catch (e) {
+            console.log('无冷备份帖子数据', e);
+        }
     }
 
     // 【步骤 3】数据格式归一化映射
@@ -377,6 +381,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
 
     // 【步骤 2】并行加载清洗热数据与冷备份
     let hotConfessions = [];
+    let hotConfessionsLoaded = false;
     try {
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, [
             Query.equal('status', 0),
@@ -384,6 +389,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
             Query.limit(20)
         ]);
         hotConfessions = response.documents;
+        hotConfessionsLoaded = true;
         if (!hasRenderedCache) {
             const quickConfessions = hotConfessions.filter(item =>
                 item.content != null && Number(item.status || 0) === 0
@@ -399,8 +405,9 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     }
 
     let coldConfessions = [];
-    try {
-        const url = './public/data-backups/confessions.json';
+    if (!hotConfessionsLoaded) {
+        try {
+        const url = './public/data-fallback/confessions.json';
         const res = await fetch(url);
         if (res.ok) {
             const backupData = await res.json();
@@ -416,8 +423,9 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
             }
             coldConfessions = docs;
         }
-    } catch (e) {
-        console.log('未发现表白冷备份数据', e);
+        } catch (e) {
+            console.log('未发现表白冷备份数据', e);
+        }
     }
 
     // 【步骤 3】清洗格式、全局去重并硬性隔离错密脏数据

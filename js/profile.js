@@ -1,6 +1,6 @@
 // js/profile.js
 // Made by BearThomas 2026/5/30
-import { Client, Databases } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases } from './d1-appwrite-compat.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,

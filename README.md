@@ -1,80 +1,266 @@
-# 🏫 龙高北 聚合页 (非官方)
+# LG-Site：Cloudflare D1 版
 
-> 一个专为校内同学设计的轻量级信息交流角。
-> **非学校官方项目，由学生独立维护。**
+这是 LG-Site 从 Appwrite Database 迁移到 Cloudflare D1 后的项目版本。
 
-## 📡 项目简介
-
-这是一个基于 **JAMstack + BaaS** 架构的轻量级校园站点。提供一个**周末限定**的自由信息发布与聚合空间。
-
-**核心特点：**
-- 💸 **真·零成本运行**：每月花费 0 元，利用 Netlify + Appwrite + GitHub 免费额度。
-- 🔒 **学号即账号**：无需手机号，仅限校内身份访问。
-- ⚡ **假期休眠**：只有周末才有人用，平时自动休眠不耗资源。
-- 📦 **永久归档**：每周数据自动打包存入 Git 仓库，永不丢失。
-
-## 🏗️ 技术架构
-
-| 层级 | 技术栈 | 作用 |
-| :--- | :--- | :--- |
-| **前端容器** | Netlify | 托管静态页面，自带全球 CDN |
-| **后端服务** | Appwrite Cloud | 学号认证、帖子存储、权限管理 |
-| **数据归档** | GitHub Repository | 每周将数据库导出为 JSON 存入 `archive/` |
-| **胶水层** | Netlify Functions | 签发 JWT 登录凭证、处理归档任务 |
-
-## 🚀 本地开发指南
-
-### 环境要求
-- Node.js >= 18.x
-- Netlify CLI (`npm install -g netlify-cli`)
-
-
-## 📂 目录结构说明
+迁移后的职责划分：
 
 ```text
-/
-├── public/                 # 编译后的静态资源 (Netlify 部署目录)
-├── netlify/functions/      # 云函数目录
-│   ├── auth-jwt.js         # [核心] 生成 Appwrite 登录凭证
-│   └── archive-weekly.js   # [核心] 每周自动归档脚本 (由 GitHub Actions 触发)
-├── src/                    # 前端源代码
-│   ├── app.js              # 主逻辑 (注册、发帖、列表渲染)
-│   └── lib/
-│       └── appwrite.js     # Appwrite SDK 初始化配置
-├── archive/                # [只读] 每周归档的 JSON 数据 (自动 Commit)
-├── .github/workflows/      # GitHub Actions 定时任务
-│   └── archive.yml         # 周日凌晨触发归档的配置文件
-└── README.md               # 本文件
+浏览器
+  │
+  ├─ 静态页面：Cloudflare Pages
+  │
+  └─ /api/*：Cloudflare Pages Functions
+          │
+          ├─ 用户注册、登录、密码：Appwrite Auth
+          └─ 用户公开资料、帖子、评论、表白墙：Cloudflare D1
 ```
 
-## 🛡️ 安全策略与防御
+Appwrite 只继续承担账号与会话，不再读取 Appwrite Database。因此，即使 Appwrite 当前提示 Database reads 超限，也不妨碍使用本地 JSON 备份生成 D1 导入文件。
 
-本项目针对校园网环境制定了简单的防御策略：
-1.  **XSS 防护**：前端渲染强制使用 `textContent`，禁止 HTML 标签注入。
-2.  **防刷机制**：Appwrite 数据库规则限制单用户每分钟最多发 3 帖。
-3.  **UA 过滤**：Netlify 边缘规则屏蔽常见脚本 User-Agent (如 `python-requests`)。
-4.  **物理回滚**：万一网页被篡改，执行 `git push -f` 即可在 30 秒内恢复。
+## 已完成的改动
 
-## 📊 归档与数据管理
+- 将用户资料、帖子、评论和表白墙迁移到 D1。
+- 保留现有 Appwrite Auth 账号，用户不需要重新注册。
+- 登录会话由 Pages Function 创建，并保存为同源 `HttpOnly` Cookie；会话密钥不再写入浏览器 `localStorage`。
+- 前端原有 `Databases` / `Query` 调用方式通过 `js/d1-appwrite-compat.js` 兼容，实际请求进入 `/api/data`。
+- 所有 Appwrite Endpoint、Project ID、API Key、令牌签名密钥和验证题答案都改为环境变量。
+- 保留原项目的 `public/data-backups`，文件内容未改动。
+- 增加 `public/data-fallback`，只包含适合公开展示的降级快照。
+- 增加可重复运行的备份合并与 D1 SQL 生成脚本。
+- 增加 D1 数据库迁移、验证 SQL 和独立备份仓库。
 
-为了保持数据库轻量和免费额度充足，本项目采用 **“平时存库，周末归档”** 的策略。
+## 当前恢复结果
 
-- **频率**：每周日 23:59 (UTC+8)。
-- **逻辑**：脚本将本周 Appwrite 数据库增量导出 -> 格式化为 JSON -> 存入 `archive/2026/Week-XX.json` -> 提交至 GitHub。
-- **查看**：想要回溯历史帖子，直接点开 Git 仓库对应文件即可，无需登录后台。
+根据项目内现有的 `public/data-backups` 和独立备份仓库，迁移脚本恢复出：
 
-## 📄 免责声明
+| 数据 | 数量 |
+|---|---:|
+| D1 用户资料 | 11 |
+| 帖子 | 21 |
+| 有效评论 | 12 |
+| 表白墙记录 | 9 |
+| 无法匹配原帖的历史评论 | 1 |
 
-1.  本项目为**学生技术交流与兴趣实践**项目，**并非 龙高 官方发布平台**。
-2.  站内所有言论均由匿名用户发布，不代表校方及项目维护者立场。
-3.  **严禁上传或发布任何违法、色情、政治敏感内容**。一经发现，维护者保留清理数据并永久封禁学号的权利。
-4.  请勿在页面内明文存储身份证号、教务密码等敏感隐私。
+其中 8 个用户资料是根据历史内容作者 ID 自动补建的占位资料。那条无法匹配原帖的评论不会被静默丢弃，而是写入 `migration_orphans` 表。
 
-## 📧 联系与反馈
+Appwrite Auth 中原有的其他账号仍然存在。某个老用户第一次登录新版本时，如果 D1 中还没有对应资料，后端会按其 Appwrite 账号自动创建 D1 用户行。没有出现在任何备份中的旧昵称、头像等资料无法凭空恢复，首次补建时会使用默认值，用户之后可以在个人中心修改。
 
-- **维护者**：Xculate 团队
-- **反馈方式**：直接在本仓库提 **Issue**。
-- **友情提醒**：如果网站突然打不开了，大概率是 Netlify 域名在校园网被 DNS 污染了，请换个网或者挂一下校园 VPN 试试。
+## 备份目录规则
 
----
-© 2026 - Present. Made with ☕️ in Dormitory.
+### `public/data-backups`
+
+这是你特别要求保留的原始备份目录：
+
+- 四个 JSON 文件与原项目逐字节一致。
+- 迁移生成器将这里的数据设为最高优先级。
+- 构建时会继续复制到部署产物中。
+- 因为目录在 `public` 下，部署后任何访客都可能下载这些文件。不要把 `BACKUP_ENCRYPT_KEY` 放进前端，也不要在这里新增未加密的隐私数据。
+
+### `public/data-fallback`
+
+这是新增加的公开降级快照：
+
+- 只保留公开帖子、对应评论、必要的公开用户资料和已公开的匿名表白。
+- 不包含邮箱、权限、禁言状态、私密帖子作者等敏感字段。
+- 页面在 D1 接口暂时不可用时可以读取它。
+
+完整历史归档与公开降级快照由独立的备份项目管理。
+
+## 环境要求
+
+- Node.js 20 或更高版本
+- npm
+- Cloudflare 账号
+- 已有的 Appwrite 项目
+
+安装依赖：
+
+```bash
+npm install
+```
+
+## 本地环境变量
+
+复制示例文件：
+
+```bash
+cp .dev.vars.example .dev.vars
+```
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .dev.vars.example .dev.vars
+```
+
+`.dev.vars` 只用于本地开发，已经被 `.gitignore` 排除。
+
+| 变量 | 是否敏感 | 用途 |
+|---|---|---|
+| `APPWRITE_ENDPOINT` | 否 | Appwrite API Endpoint，结尾包含 `/v1` |
+| `APPWRITE_PROJECT_ID` | 否 | Appwrite 项目 ID |
+| `APPWRITE_API_KEY` | 是 | 服务端创建账号和登录会话 |
+| `AUTH_TOKEN_SECRET` | 是 | LG-Site 应用令牌的 HMAC 签名密钥，至少 32 字符 |
+| `CAMPUS_VERIFY_QUESTIONS` | 是 | 注册验证题及答案的 JSON |
+| `D1_DATABASE_NAME` | 否 | Wrangler 命令使用的 D1 数据库名称 |
+| `D1_DATABASE_ID` | 否 | 本地 `wrangler pages dev` 的 D1 绑定 ID |
+| `BACKUP_ENCRYPT_KEY` | 是 | 本地解密历史备份；Pages 运行时不需要 |
+| `AUTH_SESSION_TTL_SECONDS` | 否 | 浏览器中短期 LG 应用令牌时长，默认 3600 秒 |
+| `AUTH_REFRESH_TTL_SECONDS` | 否 | HttpOnly Appwrite 会话 Cookie 的最长保留时长 |
+
+生成随机签名密钥和备份密钥：
+
+```bash
+node -e "const c=require('node:crypto'); console.log('AUTH_TOKEN_SECRET='+c.randomBytes(32).toString('hex')); console.log('BACKUP_ENCRYPT_KEY='+c.randomBytes(32).toString('hex'))"
+```
+
+### Appwrite API Key 权限
+
+本项目运行时只需要：
+
+- `sessions.write`：服务端创建登录会话并取得 `session.secret`。
+- `users.write`：创建新账号；注册失败时回滚新建账号。
+
+不需要给这个 Key 增加 Appwrite Database、Tables、Rows 或 Storage 权限。API Key 只能配置在 Cloudflare Pages 的 Secret 中，不能写入前端代码。
+
+## Cloudflare Pages 配置
+
+### 构建配置
+
+```text
+Build command: npm run build
+Build output directory: dist
+Root directory: 仓库根目录
+```
+
+### D1 绑定
+
+在 Pages 项目的生产环境中添加 D1 Binding：
+
+```text
+Variable name: DB
+D1 database: 你创建的 lg-site-db
+```
+
+代码固定通过 `context.env.DB` 读取数据库，因此绑定名必须是大写 `DB`。添加或修改 Binding 后需要重新部署。若 Preview 部署也要联网测试，请在 Preview 环境中添加同名绑定。
+
+### Pages 环境变量与 Secret
+
+建议作为普通变量：
+
+```text
+APPWRITE_ENDPOINT
+APPWRITE_PROJECT_ID
+AUTH_SESSION_TTL_SECONDS
+AUTH_REFRESH_TTL_SECONDS
+APP_TIMEZONE_OFFSET_MINUTES
+POST_DAILY_LIMIT
+COMMENT_DAILY_LIMIT
+CONFESSION_DAILY_LIMIT
+```
+
+建议加密保存：
+
+```text
+APPWRITE_API_KEY
+AUTH_TOKEN_SECRET
+CAMPUS_VERIFY_QUESTIONS
+```
+
+`BACKUP_ENCRYPT_KEY` 不需要配置到 Pages 运行时。它只应存在于你的本地迁移环境和私有备份仓库的 GitHub Secrets 中。
+
+## 数据迁移
+
+完整步骤见 [`MIGRATION.md`](MIGRATION.md)。核心流程是：
+
+```bash
+npm run d1:prepare -- --backup-root ../LG-Site-Backup-D1-ready/backups
+npm run d1:migrate:remote
+npm run d1:import:remote
+npm run d1:verify:remote
+```
+
+`d1:prepare` 完全读取本地文件，不会调用 Appwrite Database。它会：
+
+1. 读取 `public/data-backups`。
+2. 读取独立备份仓库的 `backups/last` 与历史周目录。
+3. 兼容 UTF-8 BOM 和旧文件名拼写错误 `conmmets.json`。
+4. 按文档 ID 去重，优先采用更新时间较新的记录；时间相同时优先采用 `public/data-backups`。
+5. 使用 `BACKUP_ENCRYPT_KEY` 解密历史字段。
+6. 生成 `generated/d1-import.sql`、迁移报告与 `public/data-fallback`。
+
+`generated/d1-import.sql` 含有解密后的真实内容，已经被 `.gitignore` 排除。导入完成后应删除，不要上传到 GitHub、网盘或聊天群。
+
+## 常用命令
+
+```bash
+# 检查代码、备份格式并构建静态产物
+npm run check
+
+# 生成 D1 导入 SQL
+npm run d1:prepare -- --backup-root ../LG-Site-Backup-D1-ready/backups
+
+# 本地数据库
+npm run d1:migrate:local
+npm run d1:import:local
+npm run d1:verify:local
+
+# 远程数据库
+npm run d1:migrate:remote
+npm run d1:import:remote
+npm run d1:verify:remote
+
+# 本地启动 Pages + Functions
+npm run dev
+```
+
+D1 命令会从 `.dev.vars` 或当前 Shell 环境读取 `D1_DATABASE_NAME` 和 `D1_DATABASE_ID`，临时生成 Wrangler 配置并在执行后删除，因此不需要把数据库 ID 写死进仓库。
+
+## 目录结构
+
+```text
+functions/
+  _lib/                   后端公共模块
+  api/                    Pages Functions API
+js/
+  d1-appwrite-compat.js   前端 D1 兼容层
+migrations/
+  0001_initial.sql        D1 表与索引
+scripts/
+  build-d1-import.mjs     合并本地备份并生成导入 SQL
+  d1-cli.mjs              D1 migrate/import/verify 命令包装
+  build-static.mjs        生成 dist
+verification/
+  verify.sql              数量、评论计数与外键检查
+public/
+  data-backups/           原始备份，按要求原样保留
+  data-fallback/          脱敏公开降级快照
+generated/                私密临时产物，不提交
+MIGRATION.md              上线迁移手册
+```
+
+## 安全说明
+
+- Appwrite session secret 只保存在同源 `HttpOnly` Cookie 中，前端 JavaScript 无法读取。
+- 旧版本曾保存在 `localStorage` 的会话值会在一次 `/api/auth-me` 校验后迁入 Cookie，并从本地资料中删除。
+- 浏览器只保存短期的 `appToken` 和公开资料。即使 `appToken` 过期，只要 Appwrite 会话仍有效，后端可以重新签发。
+- 所有写操作都在 Pages Function 中重新验证当前用户，不能依赖前端传来的用户 ID。
+- SQL 使用 Prepared Statements 与 `.bind()`，用户输入不会直接拼接进 SQL。
+- 私密帖、班级帖、定向帖和表白作者的可见性均由后端检查。
+- `public/data-backups` 会被公开托管，这是保留该目录的直接结果；请把解密密钥严格放在服务端或本地。
+
+## 部署前检查清单
+
+- [ ] D1 数据库已经创建。
+- [ ] `migrations/0001_initial.sql` 已应用到远程数据库。
+- [ ] 私密导入 SQL 已导入并通过 `verification/verify.sql`。
+- [ ] Pages 的 D1 Binding 名称为 `DB`。
+- [ ] Appwrite API Key 包含 `sessions.write` 和 `users.write`。
+- [ ] Pages Secrets 已配置，源码中没有真实密钥。
+- [ ] `npm run check` 通过。
+- [ ] 登录、发帖、评论、表白、资料修改和退出登录已在 Preview 环境测试。
+- [ ] 导入后的 `generated/d1-import.sql` 已从电脑和临时传输位置安全删除或加密保存。
+
+## 免责声明
+
+这是学生独立维护的非官方校园项目。请勿在帖子、备份或环境变量中存放身份证号、教务系统密码等高敏感信息。站点管理者仍需根据实际情况配置内容审核、防刷策略、Cloudflare 安全规则和定期备份。

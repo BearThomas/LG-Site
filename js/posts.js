@@ -2,7 +2,7 @@
 // Made by BearThomas 2026/5/31
 import { markdownToPreview, renderMarkdown } from './markdown.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -188,7 +188,7 @@ async function listAllPostDocuments(baseQueries, onFirstBatch) {
 
 async function loadColdPostDocuments() {
     try {
-        const backupRes = await fetch('./public/data-backups/posts.json');
+        const backupRes = await fetch('./public/data-fallback/posts.json');
         if (!backupRes.ok) return [];
 
         const backupData = await backupRes.json();
@@ -252,8 +252,10 @@ async function loadPosts({ forceRefresh = false } = {}) {
             Query.orderDesc('$createdAt')
         ];
 
-        const [hotPosts, coldPosts] = await Promise.all([
-            listAllPostDocuments(queries, firstBatch => {
+        let hotPosts = [];
+        let coldPosts = [];
+        try {
+            hotPosts = await listAllPostDocuments(queries, firstBatch => {
                 if (hasRenderedCache || currentPage !== 1) return;
                 const preview = firstBatch.filter(post => {
                     if (post.title == null || post.content == null) return false;
@@ -267,12 +269,11 @@ async function loadPosts({ forceRefresh = false } = {}) {
                     showCacheNotice('已加载最新一批，正在后台整理完整列表...', 'waiting');
                     hasRenderedCache = true;
                 }
-            }).catch(error => {
-                console.warn('热数据加载失败，仅显示冷备份:', error.message);
-                return [];
-            }),
-            loadColdPostDocuments()
-        ]);
+            });
+        } catch (error) {
+            console.warn('D1 数据读取失败，启用 public 冷备份:', error.message);
+            coldPosts = await loadColdPostDocuments();
+        }
 
         const normalizePost = (post, isCold) => {
             return {

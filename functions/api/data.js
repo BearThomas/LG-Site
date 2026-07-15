@@ -1,0 +1,254 @@
+import { optionalAuth, requireAuth } from '../_lib/auth.js';
+import {
+  canViewPost,
+  getPostRow,
+  getUserRow,
+  isAdmin,
+  normalizeUserId,
+  parseJsonArray,
+  requireDb,
+  toConfessionDocument,
+  toPostDocument,
+  toUserDocument
+} from '../_lib/db.js';
+import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+
+const COLLECTIONS = new Set(['users', 'posts', 'confessions']);
+
+function parseQueries(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    throw new HttpError(400, '查询参数格式不正确');
+  }
+}
+
+function queryState(queries) {
+  const state = { equals: new Map(), limit: 25, offset: 0, order: null };
+  for (const query of queries) {
+    if (!query || typeof query !== 'object') continue;
+    if (query.method === 'equal' && query.attribute) {
+      state.equals.set(String(query.attribute), Array.isArray(query.values) ? query.values : []);
+    } else if (query.method === 'limit') {
+      state.limit = Math.min(100, Math.max(1, Number(query.values?.[0] || 25)));
+    } else if (query.method === 'offset') {
+      state.offset = Math.max(0, Number(query.values?.[0] || 0));
+    } else if (query.method === 'orderDesc' || query.method === 'orderAsc') {
+      state.order = { attribute: String(query.attribute || ''), direction: query.method === 'orderAsc' ? 'ASC' : 'DESC' };
+    }
+  }
+  return state;
+}
+
+async function listUsers(env, state, viewer) {
+  const db = requireDb(env);
+  const conditions = [];
+  const values = [];
+  const equalId = state.equals.get('userId') || state.equals.get('$id');
+  if (equalId?.length) {
+    const ids = equalId.map(normalizeUserId).filter(Boolean);
+    if (!ids.length) return { total: 0, documents: [] };
+    conditions.push(`id IN (${ids.map(() => '?').join(', ')})`);
+    values.push(...ids);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM users ${where}`).bind(...values);
+  const rowsStatement = db.prepare(`
+    SELECT * FROM users
+    ${where}
+    ORDER BY created_at ASC
+    LIMIT ? OFFSET ?
+  `).bind(...values, state.limit, state.offset);
+  const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
+  const total = Number(countResult.results?.[0]?.total || 0);
+  const documents = (rowsResult.results || []).map(row => toUserDocument(row, {
+    includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id)))
+  }));
+  return { total, documents };
+}
+
+function appendPostVisibility(conditions, values, viewer) {
+  if (viewer && isAdmin(viewer)) return;
+  if (!viewer) {
+    conditions.push('view_permission = 1');
+    return;
+  }
+
+  const visibility = ['view_permission = 1', 'author_id = ?'];
+  values.push(normalizeUserId(viewer.id));
+  const boards = parseJsonArray(viewer.joined_boards).map(String).filter(Boolean);
+  if (boards.length) {
+    visibility.push(`(view_permission = 2 AND board_id IN (${boards.map(() => '?').join(', ')}))`);
+    values.push(...boards);
+  }
+  const targets = [normalizeUserId(viewer.id), ...boards];
+  if (targets.length) {
+    visibility.push(`(
+      view_permission = 4 AND EXISTS (
+        SELECT 1 FROM json_each(posts.target_groups)
+        WHERE CAST(json_each.value AS TEXT) IN (${targets.map(() => '?').join(', ')})
+      )
+    )`);
+    values.push(...targets);
+  }
+  conditions.push(`(${visibility.join(' OR ')})`);
+}
+
+async function listPosts(env, state, viewer) {
+  const db = requireDb(env);
+  const conditions = [];
+  const values = [];
+  const boardValues = state.equals.get('boardId');
+  if (boardValues?.length) {
+    conditions.push(`board_id IN (${boardValues.map(() => '?').join(', ')})`);
+    values.push(...boardValues.map(String));
+  }
+  appendPostVisibility(conditions, values, viewer);
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
+  const orderDirection = state.order?.direction || 'DESC';
+
+  const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM posts ${where}`).bind(...values);
+  const rowsStatement = db.prepare(`
+    SELECT * FROM posts
+    ${where}
+    ORDER BY ${orderColumn} ${orderDirection}
+    LIMIT ? OFFSET ?
+  `).bind(...values, state.limit, state.offset);
+  const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
+  return {
+    total: Number(countResult.results?.[0]?.total || 0),
+    documents: (rowsResult.results || []).map(toPostDocument)
+  };
+}
+
+async function listConfessions(env, state, viewer) {
+  const db = requireDb(env);
+  const conditions = [];
+  const values = [];
+  const statuses = state.equals.get('status');
+  if (!viewer || !isAdmin(viewer)) {
+    // Hidden/rejected confessions are never exposed to ordinary visitors,
+    // even if a client omits or tampers with the status query.
+    conditions.push('status = 0');
+  } else if (statuses?.length) {
+    conditions.push(`status IN (${statuses.map(() => '?').join(', ')})`);
+    values.push(...statuses.map(value => Number(value)));
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderColumn = state.order?.attribute === 'likes' ? 'likes' : 'created_at';
+  const orderDirection = state.order?.direction || 'DESC';
+  const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM confessions ${where}`).bind(...values);
+  const rowsStatement = db.prepare(`
+    SELECT * FROM confessions
+    ${where}
+    ORDER BY ${orderColumn} ${orderDirection}
+    LIMIT ? OFFSET ?
+  `).bind(...values, state.limit, state.offset);
+  const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
+  return {
+    total: Number(countResult.results?.[0]?.total || 0),
+    documents: (rowsResult.results || []).map(row => toConfessionDocument(row, viewer))
+  };
+}
+
+async function getDocument(env, collection, documentId, viewer) {
+  if (collection === 'users') {
+    const row = await getUserRow(env, documentId);
+    if (!row) throw new HttpError(404, '用户不存在');
+    return toUserDocument(row, {
+      includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id)))
+    });
+  }
+  if (collection === 'posts') {
+    const row = await getPostRow(env, documentId);
+    if (!row) throw new HttpError(404, '帖子不存在');
+    if (!canViewPost(row, viewer)) throw new HttpError(403, '无权查看该帖子');
+    return toPostDocument(row);
+  }
+  if (collection === 'confessions') {
+    const row = await requireDb(env)
+      .prepare('SELECT * FROM confessions WHERE id = ? LIMIT 1')
+      .bind(documentId)
+      .first();
+    if (!row) throw new HttpError(404, '内容不存在');
+    if (Number(row.status || 0) !== 0 && !(viewer && isAdmin(viewer))) {
+      throw new HttpError(404, '内容不存在');
+    }
+    return toConfessionDocument(row, viewer);
+  }
+  throw new HttpError(400, '不支持的数据集合');
+}
+
+export async function onRequestGet({ request, env }) {
+  try {
+    const url = new URL(request.url);
+    const collection = String(url.searchParams.get('collection') || '');
+    if (!COLLECTIONS.has(collection)) throw new HttpError(400, '不支持的数据集合');
+    const auth = await optionalAuth(request, env);
+    const viewer = auth?.profile || null;
+    const documentId = url.searchParams.get('documentId');
+    if (documentId) return json(await getDocument(env, collection, documentId, viewer));
+
+    const state = queryState(parseQueries(url.searchParams.get('queries')));
+    if (collection === 'users') return json(await listUsers(env, state, viewer));
+    if (collection === 'posts') return json(await listPosts(env, state, viewer));
+    return json(await listConfessions(env, state, viewer));
+  } catch (error) {
+    console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'GET', message: error.message, status: error.status }));
+    return errorResponse(error, '读取数据失败');
+  }
+}
+
+export async function onRequestPatch({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    if (body.collection !== 'posts') throw new HttpError(400, '该集合不支持编辑');
+    const { profile } = await requireAuth(request, env, body);
+    const post = await getPostRow(env, body.documentId);
+    if (!post) throw new HttpError(404, '帖子不存在');
+    if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
+      throw new HttpError(403, '只能编辑自己的帖子');
+    }
+
+    const title = String(body.data?.title ?? post.title).trim();
+    const content = String(body.data?.content ?? post.content).trim();
+    if (!title || !content) throw new HttpError(400, '标题和正文不能为空');
+    if (title.length > 100) throw new HttpError(400, '标题不能超过 100 个字符');
+    if (content.length > 20_000) throw new HttpError(400, '正文不能超过 20000 个字符');
+    const now = new Date().toISOString();
+    await requireDb(env).prepare(`
+      UPDATE posts
+      SET title = ?, content = ?, edited_at = ?, updated_at = ?
+      WHERE id = ?
+    `).bind(title, content, now, now, post.id).run();
+    return json(toPostDocument(await getPostRow(env, post.id)));
+  } catch (error) {
+    console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'PATCH', message: error.message, status: error.status }));
+    return errorResponse(error, '编辑帖子失败');
+  }
+}
+
+export async function onRequestDelete({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    if (body.collection !== 'posts') throw new HttpError(400, '该集合不支持删除');
+    const { profile } = await requireAuth(request, env, body);
+    const post = await getPostRow(env, body.documentId);
+    if (!post) throw new HttpError(404, '帖子不存在');
+    if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
+      throw new HttpError(403, '只能删除自己的帖子');
+    }
+    await requireDb(env).prepare('DELETE FROM posts WHERE id = ?').bind(post.id).run();
+    return json({ success: true });
+  } catch (error) {
+    console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'DELETE', message: error.message, status: error.status }));
+    return errorResponse(error, '删除帖子失败');
+  }
+}
+
+export function onRequestPost() {
+  return methodNotAllowed(['GET', 'PATCH', 'DELETE']);
+}

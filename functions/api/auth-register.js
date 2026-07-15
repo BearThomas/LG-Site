@@ -1,299 +1,97 @@
-function clean(value) {
-    return String(value || '').replace(/^['"]|['"]$/g, '').trim();
+import { createAuthUser, createPasswordSession, deleteAuthUser, deleteCurrentSession, getAccountWithSession } from '../_lib/appwrite.js';
+import { getAppwriteConfig, getAuthTokenSecret } from '../_lib/config.js';
+import { ensureUserRow, extractClass, getUserRow } from '../_lib/db.js';
+import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+import { verifyToken } from '../_lib/tokens.js';
+
+function validStudentId(studentId) {
+  if (!/^\d{6,8}$/.test(studentId)) return false;
+  const year = Number(studentId.slice(0, 4));
+  const classNumber = Number(studentId.slice(4, 6));
+  const studentNumber = Number(studentId.slice(6));
+  const currentYear = new Date().getUTCFullYear();
+  return year >= 2020 && year <= currentYear && classNumber >= 1 && classNumber <= 99 && studentNumber >= 1 && studentNumber <= 99;
 }
 
-function getConfig(env) {
-    return {
-        endpoint: clean(env.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1'),
-        projectId: clean(env.APPWRITE_PROJECT_ID || env.APPWRITE_PROJECT || 'lg'),
-        apiKey: clean(env.APPWRITE_API_KEY),
-        databaseId: clean(env.APPWRITE_DATABASE_ID || env.DATABASE_ID || 'lg'),
-        collectionBoards: clean(env.APPWRITE_COLLECTION_BOARDS || 'boards'),
-        collectionUsers: clean(env.APPWRITE_COLLECTION_USERS || 'users'),
-        tokenSecret: clean(env.AUTH_TOKEN_SECRET || env.APP_AUTH_SECRET || env.APPWRITE_API_KEY)
-    };
-}
-
-function base64UrlDecode(value) {
-    const normalized = String(value).replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-    const binary = atob(padded);
-    return Uint8Array.from(binary, char => char.charCodeAt(0));
-}
-
-async function verifyRegistrationToken(config, studentId, token) {
-    if (!config.tokenSecret || !token) return false;
-    const [payloadPart, signaturePart] = String(token).split('.');
-    if (!payloadPart || !signaturePart) return false;
-
-    try {
-        const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadPart)));
-        if (
-            String(payload.sub) !== String(studentId) ||
-            payload.purpose !== 'campus-registration' ||
-            Number(payload.exp || 0) < Math.floor(Date.now() / 1000)
-        ) {
-            return false;
-        }
-
-        const key = await crypto.subtle.importKey(
-            'raw',
-            new TextEncoder().encode(config.tokenSecret),
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['verify']
-        );
-        return crypto.subtle.verify(
-            'HMAC',
-            key,
-            base64UrlDecode(signaturePart),
-            new TextEncoder().encode(payloadPart)
-        );
-    } catch {
-        return false;
-    }
-}
-
-function appwriteHeaders(config) {
-    return {
-        'Content-Type': 'application/json',
-        'X-Appwrite-Project': config.projectId,
-        'X-Appwrite-Key': config.apiKey
-    };
-}
-
-async function appwriteFetch(config, path, options = {}) {
-    const response = await fetch(`${config.endpoint}${path}`, {
-        ...options,
-        headers: {
-            ...appwriteHeaders(config),
-            ...(options.headers || {})
-        }
-    });
-
-    const text = await response.text();
-    let data = {};
-
-    if (text) {
-        try {
-            data = JSON.parse(text);
-        } catch {
-            data = { raw: text };
-        }
-    }
-
-    if (!response.ok) {
-        const error = new Error(data.message || data.error || `Appwrite 请求失败：${response.status}`);
-        error.status = response.status;
-        error.code = data.code || response.status;
-        error.data = data;
-        throw error;
-    }
-
-    return data;
-}
-
-function isValidStudentId(studentId) {
-    if (!/^\d{6,8}$/.test(studentId)) return false;
-
-    const year = parseInt(studentId.slice(0, 4), 10);
-    const classNum = parseInt(studentId.slice(4, 6), 10);
-    const studentNum = parseInt(studentId.slice(6), 10);
-    const currentYear = new Date().getFullYear();
-
-    if (year < 2020 || year > currentYear) return false;
-    if (classNum < 1 || classNum > 8) return false;
-    if (studentNum < 1 || studentNum > 60) return false;
-
-    return true;
-}
-
-function extractClass(studentId) {
-    const year = studentId.slice(0, 4);
-    const classNum = studentId.slice(4, 6);
-    return `${year}届${classNum}班`;
-}
-
-async function getDocument(config, collectionId, documentId) {
-    return appwriteFetch(
-        config,
-        `/databases/${config.databaseId}/collections/${collectionId}/documents/${documentId}`,
-        { method: 'GET' }
-    );
-}
-
-async function createDocument(config, collectionId, documentId, data, permissions = []) {
-    return appwriteFetch(
-        config,
-        `/databases/${config.databaseId}/collections/${collectionId}/documents`,
-        {
-            method: 'POST',
-            body: JSON.stringify({
-                documentId,
-                data,
-                permissions
-            })
-        }
-    );
-}
-
-async function updateDocument(config, collectionId, documentId, data) {
-    return appwriteFetch(
-        config,
-        `/databases/${config.databaseId}/collections/${collectionId}/documents/${documentId}`,
-        {
-            method: 'PATCH',
-            body: JSON.stringify({ data })
-        }
-    );
-}
-
-async function createAuthUser(config, studentId, password, displayName) {
-    return appwriteFetch(config, '/users', {
-        method: 'POST',
-        body: JSON.stringify({
-            userId: studentId,
-            email: `${studentId}@campus.local`,
-            password,
-            name: displayName
-        })
-    });
-}
-
-async function recoverExistingAuthUser(config, studentId, password) {
-    const response = await fetch(`${config.endpoint}/account/sessions/email`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-Appwrite-Project': config.projectId
-        },
-        body: JSON.stringify({ email: `${studentId}@campus.local`, password })
-    });
-    if (!response.ok) {
-        const result = await response.json().catch(() => ({}));
-        const error = new Error(result.message || '该学号已有未完成账号，请使用原密码继续注册');
-        error.status = 409;
-        throw error;
-    }
-    return appwriteFetch(config, `/users/${studentId}`, { method: 'GET' });
+async function verifyRegistration(env, studentId, token) {
+  const payload = await verifyToken(getAuthTokenSecret(env), token, { purpose: 'campus-registration' });
+  if (String(payload.sub) !== studentId) throw new HttpError(403, '校园身份验证与当前学号不匹配');
 }
 
 export async function onRequestPost({ request, env }) {
+  let newlyCreatedAuthUser = false;
+  let studentId = '';
+  let transientSessionSecret = '';
+  let appwriteConfig = null;
+  try {
+    const body = await readJsonBody(request);
+    studentId = String(body.studentId || '').trim();
+    const password = String(body.password || '');
+    const displayName = String(body.name || `同学${studentId.slice(-4)}`).trim().slice(0, 12);
+    const verificationToken = String(body.verificationToken || '');
+
+    if (!validStudentId(studentId)) throw new HttpError(400, '学号格式不正确');
+    if (password.length < 8 || password.length > 256) throw new HttpError(400, '密码长度需要在 8 到 256 位之间');
+    if (!displayName) throw new HttpError(400, '昵称不能为空');
+    await verifyRegistration(env, studentId, verificationToken);
+
+    if (await getUserRow(env, studentId)) throw new HttpError(409, '该学号已注册');
+    const config = getAppwriteConfig(env, { requireApiKey: true });
+    appwriteConfig = config;
+    let account;
+
     try {
-        const config = getConfig(env);
-        const { studentId, password, name, verificationToken } = await request.json();
-
-        if (!studentId || !password) {
-            return Response.json({ error: '学号和密码不能为空' }, { status: 400 });
-        }
-
-        if (password.length < 8) {
-            return Response.json({ error: '密码至少8位' }, { status: 400 });
-        }
-
-        if (!isValidStudentId(studentId)) {
-            return Response.json({ error: '学号格式不正确' }, { status: 400 });
-        }
-
-        if (!await verifyRegistrationToken(config, studentId, verificationToken)) {
-            return Response.json({ error: '校园身份验证无效或已过期，请重新验证' }, { status: 403 });
-        }
-
-        if (!config.apiKey) {
-            return Response.json({ error: 'APPWRITE_API_KEY 未配置' }, { status: 500 });
-        }
-
-        try {
-            await getDocument(config, config.collectionUsers, studentId);
-
-            return Response.json(
-                { error: '该学号已注册' },
-                { status: 409 }
-            );
-        } catch (error) {
-            if (error.status !== 404 && error.code !== 404) {
-                console.error('检查用户存在时出错:', error);
-            }
-        }
-
-        const displayName = name || `同学${studentId.slice(-4)}`;
-        let authUser;
-
-        try {
-            authUser = await createAuthUser(config, studentId, password, displayName);
-            console.log('Appwrite Auth 账号创建成功:', authUser.$id);
-        } catch (error) {
-            if (error.status === 409 || error.code === 409) {
-                authUser = await recoverExistingAuthUser(config, studentId, password);
-                console.log('继续完成旧版未完成账号的注册:', authUser.$id);
-            } else {
-                throw error;
-            }
-        }
-
-        const userClass = extractClass(studentId);
-        const defaultPermissions = 31;
-
-        await createDocument(
-            config,
-            config.collectionUsers,
-            studentId,
-            {
-                userId: studentId,
-                name: displayName,
-                avatar: null,
-                email: `${studentId}@campus.local`,
-                role: 'normal',
-                permissions: defaultPermissions,
-                joinedBoards: ['main'],
-                ownedBoards: [],
-                class: userClass,
-                mutedUntil: null,
-                banned: false
-            },
-            [
-                `read("user:${studentId}")`,
-                `update("user:${studentId}")`,
-                `delete("user:${studentId}")`,
-                'read("team:admin")',
-                'write("team:admin")'
-            ]
-        );
-
-        const classBoardId = `class_${studentId.slice(0, 4)}_${studentId.slice(4, 6)}`;
-
-        try {
-            const classBoard = await getDocument(config, config.collectionBoards, classBoardId);
-
-            await updateDocument(config, config.collectionBoards, classBoardId, {
-                memberCount: Number(classBoard.memberCount || 0) + 1
-            });
-
-            await updateDocument(config, config.collectionUsers, studentId, {
-                joinedBoards: ['main', classBoardId]
-            });
-
-            console.log(`账号已自动编入班级板块: ${classBoardId}`);
-        } catch (error) {
-            console.log('班级板块未预设，跳过自动编入逻辑:', classBoardId);
-        }
-
-        return Response.json({
-            success: true,
-            message: '注册成功',
-            userId: authUser.$id || studentId,
-            class: userClass
-        });
+      account = await createAuthUser(config, studentId, password, displayName);
+      newlyCreatedAuthUser = true;
     } catch (error) {
-        console.error('Register 云函数错误:', error);
-
-        return Response.json(
-            { error: '注册失败，请稍后重试: ' + (error.message || '未知错误') },
-            { status: error.status || 500 }
-        );
+      if (error.status !== 409) throw error;
+      const session = await createPasswordSession(config, studentId, password);
+      transientSessionSecret = String(session.secret || '').trim();
+      if (!transientSessionSecret) throw new HttpError(409, '该学号已有账号，请使用原密码登录');
+      account = await getAccountWithSession(config, transientSessionSecret);
     }
+
+    const classBoard = `class_${studentId.slice(0, 4)}_${studentId.slice(4, 6)}`;
+    const profile = await ensureUserRow(env, account, {
+      userId: studentId,
+      name: displayName,
+      email: `${studentId}@campus.local`,
+      className: extractClass(studentId),
+      joinedBoards: ['main', classBoard],
+      permissions: 31
+    });
+
+    if (transientSessionSecret) {
+      try {
+        await deleteCurrentSession(config, transientSessionSecret);
+      } catch (cleanupError) {
+        console.warn(JSON.stringify({ level: 'warn', route: '/api/auth-register', event: 'transient_session_cleanup_failed', status: cleanupError.status }));
+      }
+      transientSessionSecret = '';
+    }
+
+    return json({
+      success: true,
+      message: '注册成功',
+      userId: profile.id,
+      class: profile.class_name
+    }, 201);
+  } catch (error) {
+    if (transientSessionSecret && appwriteConfig) {
+      try {
+        await deleteCurrentSession(appwriteConfig, transientSessionSecret);
+      } catch {}
+    }
+    if (newlyCreatedAuthUser && studentId) {
+      try {
+        await deleteAuthUser(getAppwriteConfig(env, { requireApiKey: true }), studentId);
+      } catch {}
+    }
+    console.error(JSON.stringify({ level: 'error', route: '/api/auth-register', message: error.message, status: error.status }));
+    return errorResponse(error, '注册失败，请稍后重试');
+  }
 }
 
-export async function onRequestGet() {
-    return Response.json({ error: 'Method not allowed' }, { status: 405 });
+export function onRequestGet() {
+  return methodNotAllowed(['POST']);
 }

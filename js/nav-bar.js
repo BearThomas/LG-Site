@@ -1,209 +1,140 @@
-// ========== 🏔️ 终极闭环：自动下井捞数据库版顶栏组件 ==========
-// Made by BearThomas 2026/5/31
 (function() {
     'use strict';
-    
+
     const userNotLogin = document.getElementById('userNotLogin');
     const userLoggedIn = document.getElementById('userLoggedIn');
     const userNameSpan = document.getElementById('userName');
     const userAvatar = document.getElementById('userAvatar');
     const dropdownMenu = document.getElementById('dropdownMenu');
     const logoutBtn = document.getElementById('logoutBtn');
-    
-    // 配置与数据库常数
-    const DATABASE_ID = 'lg';
-    const COLLECTION_USERS = 'users';
 
-    // ========== 🌟 顶栏全能响应式头像渲染器 ==========
+    function readSavedUser() {
+        try {
+            const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
+            if (!user || user.authVersion !== 2 || !user.studentId) return null;
+            return user;
+        } catch {
+            return null;
+        }
+    }
+
+    function authHeaders(user) {
+        const headers = {};
+        if (user?.appToken) headers['X-LG-Token'] = user.appToken;
+        if (user?.token) headers['X-Appwrite-Session'] = user.token;
+        return headers;
+    }
+
     function renderNavbarAvatar(name, avatarUrl) {
         if (!userAvatar) return;
-        
-        const cleanName = (name || '').toString().trim();
-        const cleanUrl = (avatarUrl || '').toString().trim();
-        
-        // 判定是否为合法的第三方网络图片链接
-        const isImgUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/'));
-        
-        // 🧼【开局大清洗】：不管走哪条路，首要任务是直接对这个原生 button 剥夺所有皮肤
+        const cleanName = String(name || '').trim();
+        const cleanUrl = String(avatarUrl || '').trim();
+        const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//'));
+
         userAvatar.style.overflow = 'hidden';
-        userAvatar.style.border = 'none';                  // 斩断自带的蓝色边框
-        userAvatar.style.padding = '0';                    // 消除内边距挤压
-        userAvatar.style.boxShadow = 'none';               // 掐断残留蓝色阴影
-        userAvatar.style.outline = 'none';                 // 防止聚焦时的蓝色外轮廓
-        userAvatar.style.webkitTapHighlightColor = 'transparent'; // 📱 绝杀手机/平板端自带的隐形蓝色点击高亮！
-        
-        if (isImgUrl) {
-            // 💡【核心修复】：将外层这个 button 容器的背景色彻底完全变透明
-            userAvatar.style.backgroundColor = 'transparent'; 
-            
-            // 注入图片，用 width/height 100% 刚性铺满、强制覆盖一切残余重绘
-            userAvatar.innerHTML = `<img src="${cleanUrl}" style="width: 100% !important; height: 100% !important; border-radius: 50%; object-fit: cover; display: block; background: transparent;" alt="用户头像">`;
+        userAvatar.style.border = 'none';
+        userAvatar.style.padding = '0';
+        userAvatar.style.boxShadow = 'none';
+        userAvatar.style.outline = 'none';
+        userAvatar.style.webkitTapHighlightColor = 'transparent';
+
+        if (isImage) {
+            userAvatar.style.backgroundColor = 'transparent';
+            userAvatar.replaceChildren();
+            const image = document.createElement('img');
+            image.src = cleanUrl;
+            image.alt = '用户头像';
+            image.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:transparent;';
+            userAvatar.appendChild(image);
         } else {
-            // 🔤 降级兜底：只有在“确认没有自定义图片、必须显示首字”的时候，才允许染上蓝底！
-            userAvatar.textContent = cleanName ? cleanName.charAt(0) : '?';
-            userAvatar.style.backgroundColor = '#228be6'; // 仅在此处允许亮蓝染上文字底色
-            userAvatar.style.lineHeight = '40px'; 
-            
-            // 为了防止定时器反复刷导致首字状态崩坏，如果是首字状态，顺手打个标
+            userAvatar.textContent = cleanName.charAt(0) || '?';
+            userAvatar.style.backgroundColor = '#228be6';
+            userAvatar.style.lineHeight = '40px';
             userAvatar.style.color = '#ffffff';
             userAvatar.style.fontWeight = 'bold';
         }
     }
 
-    // ========== 🌟 核心流控：先本地粗渲染，再异步深入数据库翻新 ==========
-    async function checkLoginStatus() {
-        const userData = localStorage.getItem('campus_user');
-        
-        if (!userData) {
-            showNotLoggedIn();
-            return;
-        }
-        
-        try {
-            const user = JSON.parse(userData);
-            if (user.authVersion !== 2) {
-                localStorage.removeItem('campus_user');
-                showNotLoggedIn();
-                return;
-            }
-            const myUid = (user.studentId || user.userId || '').toString().trim();
-
-            // 🚀 【阶梯一：先从缓存读，秒展示（绝不等待网络，防止视觉卡顿）】
-            let currentName = user.name || user.studentId;
-            let currentAvatar = user.avatar || '';
-            showLoggedIn(currentName, currentAvatar);
-
-            // 🚀 【阶梯二：深度穿透，对齐页面可能已经拉好的 window.userCache 大字典】
-            if (window.userCache && window.userCache[myUid]) {
-                const globalCache = window.userCache[myUid];
-                currentName = globalCache.name || currentName;
-                currentAvatar = globalCache.avatar || currentAvatar;
-                showLoggedIn(currentName, currentAvatar);
-                
-                // 自愈同步，修正本地单机缓存
-                if (user.name !== globalCache.name || user.avatar !== globalCache.avatar) {
-                    user.name = globalCache.name;
-                    user.avatar = globalCache.avatar;
-                    localStorage.setItem('campus_user', JSON.stringify(user));
-                }
-                return; // 既然页面大字典已经命中，直接收兵，不耗费云端额外额度
-            }
-
-            // 🚀 【阶梯三：终极防御！如果页面没加载大字典（如独立页面），顶栏主动下井查 user 数据库表】
-            // 判定是否能蹭到当前页面可能已经 import 好的 Appwrite SDK 实例
-            if (myUid) {
-                try {
-                    // 动态按需导入高权 SDK，或者直接使用页面上现成的 databases 实例
-                    let dbInstance = window.databases;
-                    
-                    if (!dbInstance) {
-                        const { Client, Databases } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
-                        const navClient = new Client().setEndpoint('https://sgp.cloud.appwrite.io/v1').setProject('lg');
-                        dbInstance = new Databases(navClient);
-                    }
-
-                    // 🛠️ 核心穿透：直奔 user 数据库表，精准抓取这名学生的专属名片行
-                    const userDoc = await dbInstance.getDocument(DATABASE_ID, COLLECTION_USERS, myUid);
-                    
-                    if (userDoc) {
-                        const dbName = userDoc.name || currentName;
-                        const dbAvatar = userDoc.avatar || '';
-
-                        // 翻新顶栏 DOM
-                        showLoggedIn(dbName, dbAvatar);
-
-                        // 💡 顺手强行缝合洗白 LocalStorage，保证下一次跳页时开局就是最新的！
-                        if (user.name !== dbName || user.avatar !== dbAvatar) {
-                            user.name = dbName;
-                            user.avatar = dbAvatar;
-                            localStorage.setItem('campus_user', JSON.stringify(user));
-                        }
-                    }
-                } catch (dbError) {
-                    // 静默降级，不阻断主线
-                    console.log("ℹ️ 顶栏主动穿透数据库受阻（可能由于未登录或跨域），保持本地粗渲染快照.");
-                }
-            }
-            
-        } catch (e) {
-            localStorage.removeItem('campus_user');
-            showNotLoggedIn();
-        }
-    }
-    
     function showNotLoggedIn() {
         if (userNotLogin) userNotLogin.style.display = 'flex';
         if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
-    
-    function showLoggedIn(displayName, avatarUrl) {
+
+    function showLoggedIn(name, avatar) {
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
-        
-        if (userNameSpan) {
-            userNameSpan.textContent = escapeHtml(displayName);
-        }
-        renderNavbarAvatar(displayName, avatarUrl);
+        if (userNameSpan) userNameSpan.textContent = name || '同学';
+        renderNavbarAvatar(name, avatar);
     }
-    
-    // 下拉菜单切换
-    if (userAvatar) {
-        userAvatar.addEventListener('click', (e) => {
-            if (!dropdownMenu) return;
-            e.stopPropagation();
-            dropdownMenu.classList.toggle('show');
-        });
-    }
-    
-    document.addEventListener('click', () => {
-        if (dropdownMenu) dropdownMenu.classList.remove('show');
-    });
-    
-    // 退出登录
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            try {
-                const { Client, Account } = await import('https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm');
-                const client = new Client().setEndpoint('https://sgp.cloud.appwrite.io/v1').setProject('lg');
-                const account = new Account(client);
-                await account.deleteSession('current');
-            } catch (err) {
-                console.warn('删除云端会话阻碍:', err.message);
-            }
-            
-            if (typeof localforage !== 'undefined') {
-                try { await localforage.removeItem('secure_gate_key'); } catch (clearDbErr) {}
-            }
-            
+
+    async function checkLoginStatus() {
+        const user = readSavedUser();
+        if (!user) {
             localStorage.removeItem('campus_user');
-            localStorage.removeItem('persistent_jwt');
             showNotLoggedIn();
-            window.location.reload();
-        });
-    }
-    
-    // 🚀 初始化：开局一瞬间，本地有什么立刻先展示出来
-    checkLoginStatus();
-    
-    // 🌟【高频动态自愈哨兵】：在关键加载时间点反向检查
-    setTimeout(checkLoginStatus, 80);
-    setTimeout(checkLoginStatus, 500);
-    setTimeout(checkLoginStatus, 1500); 
-    
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'campus_user') {
-            checkLoginStatus();
+            return;
         }
+
+        showLoggedIn(user.name || user.studentId, user.avatar || '');
+        try {
+            const response = await fetch('/api/auth-me', { headers: authHeaders(user) });
+            if (response.status === 401) {
+                localStorage.removeItem('campus_user');
+                showNotLoggedIn();
+                return;
+            }
+            if (!response.ok) return;
+            const result = await response.json();
+            const profile = result.profile || {};
+            user.name = profile.name || user.name;
+            user.avatar = profile.avatar || '';
+            user.appToken = result.appToken || user.appToken || '';
+            // A legacy release stored the Appwrite session in localStorage.
+            // /api/auth-me has now migrated it into an HttpOnly cookie.
+            delete user.token;
+            localStorage.setItem('campus_user', JSON.stringify(user));
+            showLoggedIn(user.name, user.avatar);
+        } catch (error) {
+            console.warn('顶栏资料同步失败，继续使用本地缓存:', error.message);
+        }
+    }
+
+    userAvatar?.addEventListener('click', event => {
+        event.stopPropagation();
+        dropdownMenu?.classList.toggle('show');
+    });
+    document.addEventListener('click', () => dropdownMenu?.classList.remove('show'));
+
+    logoutBtn?.addEventListener('click', async event => {
+        event.preventDefault();
+        const user = readSavedUser();
+        if (user) {
+            try {
+                await fetch('/api/auth-logout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...authHeaders(user) },
+                    body: JSON.stringify({
+                        studentId: user.studentId,
+                        appToken: user.appToken || '',
+                        sessionSecret: user.token || ''
+                    })
+                });
+            } catch (error) {
+                console.warn('云端退出失败，已清理本地会话:', error.message);
+            }
+        }
+        if (typeof localforage !== 'undefined') {
+            try { await localforage.removeItem('secure_gate_key'); } catch {}
+        }
+        localStorage.removeItem('campus_user');
+        localStorage.removeItem('persistent_jwt');
+        showNotLoggedIn();
+        location.reload();
     });
 
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text || '';
-        return div.innerHTML;
-    }
-    
-    // 暴露出全局接口
+    checkLoginStatus();
+    window.addEventListener('storage', event => {
+        if (event.key === 'campus_user') checkLoginStatus();
+    });
     window.refreshNavbar = checkLoginStatus;
-    
 })();

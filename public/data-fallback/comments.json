@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-07-15T12:15:46.920Z",
+  "source": "sanitized-migration-fallback",
+  "total": 12,
+  "documents": [
+    {
+      "$id": "6a0e9f74b322d8c7a3c2",
+      "$createdAt": "2026-05-21T06:00:20.734Z",
+      "$updatedAt": "2026-05-21T06:00:20.734Z",
+      "postId": "6a0e9ef0bdae7b1aea1d",
+      "content": "123",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a12a0047062e6786894",
+      "$createdAt": "2026-05-24T06:51:48.461Z",
+      "$updatedAt": "2026-05-24T06:51:48.461Z",
+      "postId": "6a129ff68e487eed80ce",
+      "content": "111",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a36961cf0640dbd8933",
+      "$createdAt": "2026-06-20T13:31:08.985Z",
+      "$updatedAt": "2026-06-20T13:31:08.985Z",
+      "postId": "6a368f3d055a45157ddd",
+      "content": "123",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a369b0e77beca182166",
+      "$createdAt": "2026-06-20T13:52:14.491Z",
+      "$updatedAt": "2026-06-20T13:52:14.491Z",
+      "postId": "6a368f3d055a45157ddd",
+      "content": "NB",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a3e55b8b0e715b66e8b",
+      "$createdAt": "2026-06-26T10:34:32.725Z",
+      "$updatedAt": "2026-06-26T10:34:32.725Z",
+      "postId": "6a368f3d055a45157ddd",
+      "content": "发生什么了",
+      "authorId": "20240730",
+      "authorName": "同学0730"
+    },
+    {
+      "$id": "6a3e57c90957d6eb2278",
+      "$createdAt": "2026-06-26T10:43:21.039Z",
+      "$updatedAt": "2026-06-26T10:43:21.039Z",
+      "postId": "6a3e56e2682e5c52b9fe",
+      "content": "嗯，现在是4个",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a3e6d55e75653d5b87b",
+      "$createdAt": "2026-06-26T12:15:17.948Z",
+      "$updatedAt": "2026-06-26T12:15:17.948Z",
+      "postId": "6a3e5cf11b04d9b04951",
+      "content": "感谢支持",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a3e72bd002cbf4cbf06",
+      "$createdAt": "2026-06-26T12:38:21.001Z",
+      "$updatedAt": "2026-06-26T12:38:21.001Z",
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "评论头像是不是有问题",
+      "authorId": "20240360",
+      "authorName": "匿名"
+    },
+    {
+      "$id": "6a3e72c6ef8048394f36",
+      "$createdAt": "2026-06-26T12:38:30.981Z",
+      "$updatedAt": "2026-06-26T12:38:30.981Z",
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "又好像没问题哈",
+      "authorId": "20240360",
+      "authorName": "匿名"
+    },
+    {
+      "$id": "6a3e72f3333b9187552a",
+      "$createdAt": "2026-06-26T12:39:15.210Z",
+      "$updatedAt": "2026-06-26T12:39:15.210Z",
+      "postId": "6a3e72a8552aa2f819f7",
+      "content": "然后补充一下，大事记内容都是之间测试用的，还没换，有什么想法可以跟我说，我可以加进去",
+      "authorId": "20240360",
+      "authorName": "匿名"
+    },
+    {
+      "$id": "6a4798c00de2f1fd2a15",
+      "$createdAt": "2026-07-03T11:10:56.058Z",
+      "$updatedAt": "2026-07-03T11:10:56.058Z",
+      "postId": "6a47896a61c3e079a558",
+      "content": "我靠，真发啊",
+      "authorId": "20240338",
+      "authorName": "同学0338"
+    },
+    {
+      "$id": "6a47a2a4203327416d46",
+      "$createdAt": "2026-07-03T11:53:08.132Z",
+      "$updatedAt": "2026-07-03T11:53:08.132Z",
+      "postId": "6a47896a61c3e079a558",
+      "content": "？不发全",
+      "authorId": "20240347",
+      "authorName": "同学0347"
+    }
+  ]
+}

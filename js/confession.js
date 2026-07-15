@@ -1,4 +1,4 @@
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
@@ -166,7 +166,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
             confessionList.innerHTML = createListSkeleton('confession', 5);
         }
 
-        // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
+        // 【步骤 B】：后台静默并发拉取 D1 API（实时）+ 脱敏快照（降级）
         const queries = [
             Query.equal('status', 0)
         ];
@@ -177,45 +177,42 @@ async function loadConfessions({ forceRefresh = false } = {}) {
             queries.push(Query.orderDesc('likes'));
         }
         
-        const [appwriteRes, localRes] = await Promise.all([
-            listAllConfessionDocuments(queries, firstBatch => {
-                if (hasRenderedCache || currentPage !== 1) return;
-                const quickItems = firstBatch.filter(item =>
-                    item.content != null && Number(item.status || 0) === 0
-                ).slice(0, PAGE_SIZE);
-                if (quickItems.length) {
-                    renderConfessions(quickItems);
-                    showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
-                    hasRenderedCache = true;
-                }
-            }).then(documents => ({ documents })).catch(err => {
-                console.warn('⚠️ 实时表白墙读取失败，降级等待冷备份:', err.message);
-                return { documents: [] };
-            }),
-            (async () => {
-                try {
-                    const url = `./public/data-backups/confessions.json`;
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        let docs = data.documents || data || [];
-                        
-                        if (data.encrypted) {
-                            await secureKeyReady;
-                            docs = await Promise.all(docs.map(async doc => ({
-                                ...doc,
-                                content: await decryptText(doc.content),
-                                authorName: await decryptText(doc.authorName)
-                            })));
-                        }
-                        return docs;
+        let appwriteRes = { documents: [] };
+        let localRes = [];
+        try {
+            appwriteRes = {
+                documents: await listAllConfessionDocuments(queries, firstBatch => {
+                    if (hasRenderedCache || currentPage !== 1) return;
+                    const quickItems = firstBatch.filter(item =>
+                        item.content != null && Number(item.status || 0) === 0
+                    ).slice(0, PAGE_SIZE);
+                    if (quickItems.length) {
+                        renderConfessions(quickItems);
+                        showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
+                        hasRenderedCache = true;
                     }
-                } catch (e) {
-                    console.log('无表白墙冷备份数据');
+                })
+            };
+        } catch (error) {
+            console.warn('D1 表白墙读取失败，启用 public 冷备份:', error.message);
+            try {
+                const res = await fetch('./public/data-fallback/confessions.json');
+                if (res.ok) {
+                    const data = await res.json();
+                    localRes = data.documents || data || [];
+                    if (data.encrypted) {
+                        await secureKeyReady;
+                        localRes = await Promise.all(localRes.map(async doc => ({
+                            ...doc,
+                            content: await decryptText(doc.content),
+                            authorName: await decryptText(doc.authorName)
+                        })));
+                    }
                 }
-                return [];
-            })()
-        ]);
+            } catch (backupError) {
+                console.warn('public 表白墙备份也无法读取:', backupError.message);
+            }
+        }
 
         // 统一格式化归一处理
         const normalizeConfession = (doc) => {

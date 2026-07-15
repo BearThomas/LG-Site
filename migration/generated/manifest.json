@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-07-15T12:13:59.048Z",
+  "source": "/mnt/data/lg_d1_build/backup_extract",
+  "defaultDatabase": "lg",
+  "totalDocuments": 36,
+  "sqlChunks": 1,
+  "collections": {
+    "lg/comments": {
+      "count": 8,
+      "earliestCreatedAt": "2026-05-21T06:00:20.734Z",
+      "latestUpdatedAt": "2026-06-26T12:15:17.948Z"
+    },
+    "lg/confessions": {
+      "count": 8,
+      "earliestCreatedAt": "2026-04-19T07:49:46.169Z",
+      "latestUpdatedAt": "2026-06-26T11:30:45.528Z"
+    },
+    "lg/posts": {
+      "count": 17,
+      "earliestCreatedAt": "2026-04-19T07:35:44.069Z",
+      "latestUpdatedAt": "2026-06-26T11:05:21.111Z"
+    },
+    "lg/users": {
+      "count": 3,
+      "earliestCreatedAt": "2026-04-19T06:58:15.998Z",
+      "latestUpdatedAt": "2026-05-24T06:52:26.695Z"
+    }
+  },
+  "sourceFilesParsed": 23,
+  "parseErrors": [],
+  "contentFingerprint": "ff9f6172a76cbdfc260037bd5fc49412479dff8f172af11b96da7abea29296c3"
+}
