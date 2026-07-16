@@ -145,7 +145,7 @@ export function toPostDocument(row) {
     $id: row.id,
     $createdAt: row.created_at,
     $updatedAt: row.updated_at,
-    boardId: row.board_id,
+    boardId: row.board_id || 'main',
     title: row.title,
     content: row.content,
     authorId: `student_${normalizeUserId(row.author_id)}`,
@@ -209,10 +209,10 @@ export function canViewPost(post, viewer) {
   if (permission === 8) return false;
 
   const joinedBoards = parseJsonArray(viewer.joined_boards);
-  if (permission === 2) return joinedBoards.includes(post.board_id);
+  if (permission === 2) return joinedBoards.includes(post.board_id || 'main');
   if (permission === 4) {
     const targets = parseJsonArray(post.target_groups).map(String);
-    return targets.includes(viewerId) || targets.some(target => joinedBoards.includes(target));
+    return targets.includes(viewerId) || targets.some(target => joinedBoards.includes(target || 'main'));
   }
   return false;
 }

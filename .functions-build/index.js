@@ -405,7 +405,7 @@ function toPostDocument(row) {
     $id: row.id,
     $createdAt: row.created_at,
     $updatedAt: row.updated_at,
-    boardId: row.board_id,
+    boardId: row.board_id || "main",
     title: row.title,
     content: row.content,
     authorId: `student_${normalizeUserId(row.author_id)}`,
@@ -464,10 +464,10 @@ function canViewPost(post, viewer) {
   if (normalizeUserId(post.author_id) === viewerId) return true;
   if (permission === 8) return false;
   const joinedBoards = parseJsonArray(viewer.joined_boards);
-  if (permission === 2) return joinedBoards.includes(post.board_id);
+  if (permission === 2) return joinedBoards.includes(post.board_id || "main");
   if (permission === 4) {
     const targets = parseJsonArray(post.target_groups).map(String);
-    return targets.includes(viewerId) || targets.some((target) => joinedBoards.includes(target));
+    return targets.includes(viewerId) || targets.some((target) => joinedBoards.includes(target || "main"));
   }
   return false;
 }
@@ -2298,7 +2298,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-3Xhwa3/functionsRoutes-0.9058824699213657.mjs
+// ../.wrangler/tmp/pages-ftDhn1/functionsRoutes-0.3882978615986332.mjs
 var routes = [
   {
     routePath: "/api/board/members",
