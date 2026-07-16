@@ -12,8 +12,5 @@
       "database_name": "lg",
       "database_id": "31e5fcd9-e15b-492c-90d3-c4119fa7f39a"
     }
-  ],
-  "triggers": {
-    "crons": ["0 0 1 * *"]
-  }
+  ]
 }
