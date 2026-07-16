@@ -249,6 +249,28 @@ async function loadColdPostDocuments() {
 async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
+
+        // Check if user is a member of the current board
+        const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
+        joinedSet.add('main');
+
+        const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
+            ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
+            : null;
+        if (classBoardId) joinedSet.add(classBoardId);
+
+        const isMember = joinedSet.has(currentBoard.$id) || 
+                         (currentUser && (currentUser.role === 'admin' || currentUser.profile?.role === 'admin' || currentUser.permissions === 255));
+
+        if (!isMember) {
+            postsList.innerHTML = `<div class="empty-state"><p>🔒 你尚未加入该板块，无法查看内容。</p></div>`;
+            const pag = document.querySelector('.pagination-container');
+            if (pag) pag.style.display = 'none';
+            return;
+        } else {
+            const pag = document.querySelector('.pagination-container');
+            if (pag) pag.style.display = 'flex';
+        }
         
         const currentUserId = currentUser?.studentId || 'guest';
         const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
@@ -347,7 +369,10 @@ async function loadPosts({ forceRefresh = false } = {}) {
         const allPosts = [...normalizedHot, ...normalizedCold].filter(post => {
             if (seen.has(post.$id)) return false;
             seen.add(post.$id);
-            return true;
+            
+            // Filter by current boardId (treat empty/null as 'main')
+            const postBoard = post.boardId || 'main';
+            return postBoard === currentBoard.$id;
         });
 
         allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
@@ -1016,7 +1041,12 @@ async function handleJoinLeaveClick() {
             return;
         }
 
+        const data = await res.json();
         if (action === 'join') {
+            if (data.pending) {
+                alert(data.message || '申请已提交，等待主理人审核');
+                return;
+            }
             joinedBoards.push(currentBoard.$id);
             currentBoard._custom.memberCount++;
         } else {
@@ -1071,13 +1101,15 @@ async function submitCreateBoard() {
     }
 
     try {
+        const joinType = Number(document.getElementById('boardJoinType')?.value || 0);
+
         const res = await fetch('/api/board', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-LG-Token': currentUser?.appToken || ''
             },
-            body: JSON.stringify({ id, name, description })
+            body: JSON.stringify({ id, name, description, joinType })
         });
 
         const data = await res.json();

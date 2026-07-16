@@ -17,6 +17,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // Sync latest user profile info to ensure role/ownedBoards are up to date
+    try {
+        const headers = {};
+        if (currentUser.appToken) headers['X-LG-Token'] = currentUser.appToken;
+        const res = await fetch('/api/auth-me', { headers });
+        if (res.ok) {
+            const data = await res.json();
+            const profile = data.profile || {};
+            currentUser.name = profile.name || currentUser.name;
+            currentUser.avatar = profile.avatar || '';
+            currentUser.appToken = data.appToken || currentUser.appToken || '';
+            currentUser.ownedBoards = profile.ownedBoards || [];
+            currentUser.joinedBoards = profile.joinedBoards || [];
+            currentUser.role = profile.role || 'normal';
+            currentUser.permissions = profile.permissions ?? 31;
+            localStorage.setItem('campus_user', JSON.stringify(currentUser));
+        }
+    } catch (e) {
+        console.warn('同步用户数据失败:', e);
+    }
+
     // 2. Fetch all boards and filter
     await loadOwnedBoards();
 
@@ -59,11 +80,14 @@ async function loadOwnedBoards() {
         const data = await res.json();
         const boardsList = data.boards || [];
         
+        const cleanId = id => String(id || '').trim().replace(/^student_/, '');
+        const userCleanId = cleanId(currentUser.studentId || currentUser.userId);
+
         const isAdmin = currentUser.role === 'admin' || currentUser.permissions === 255;
         if (isAdmin) {
             ownedBoards = boardsList; // Admins can manage all boards
         } else {
-            ownedBoards = boardsList.filter(b => b.ownerId === currentUser.studentId);
+            ownedBoards = boardsList.filter(b => cleanId(b.ownerId) === userCleanId);
         }
 
         const select = document.getElementById('ownedBoardsSelect');

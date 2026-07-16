@@ -1293,6 +1293,7 @@ async function onRequestGet9({ request, env }) {
       ownerId: b.owner_id,
       postCount: Number(b.post_count || 0),
       memberCount: Number(b.member_count || 0),
+      joinType: Number(b.join_type || 0),
       createdAt: b.created_at
     }));
     return json({ success: true, boards });
@@ -1311,6 +1312,10 @@ async function onRequestPost9({ request, env }) {
     const id = String(body.id || "").trim().toLowerCase();
     const name = String(body.name || "").trim();
     const description = String(body.description || "").trim();
+    const joinType = body.joinType !== void 0 ? Number(body.joinType) : 0;
+    if (joinType !== 0 && joinType !== 1) {
+      throw new HttpError(400, "\u65E0\u6548\u7684\u52A0\u5165\u9650\u5236\u8BBE\u7F6E");
+    }
     if (!/^[a-z0-9-]{3,20}$/.test(id)) {
       throw new HttpError(400, "\u677F\u5757\u6807\u8BC6\u683C\u5F0F\u4E0D\u6B63\u786E\uFF08\u5FC5\u987B\u4E3A 3-20 \u4F4D\u5C0F\u5199\u82F1\u6587\u3001\u6570\u5B57\u6216\u4E2D\u5212\u7EBF\uFF09");
     }
@@ -1340,9 +1345,9 @@ async function onRequestPost9({ request, env }) {
     if (!ownedBoards.includes(id)) ownedBoards.push(id);
     if (!joinedBoards.includes(id)) joinedBoards.push(id);
     const createBoardStmt = db.prepare(`
-      INSERT INTO boards (id, name, description, owner_id, member_count, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 1, ?, ?)
-    `).bind(id, name, description, userId, now, now);
+      INSERT INTO boards (id, name, description, owner_id, member_count, join_type, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+    `).bind(id, name, description, userId, joinType, now, now);
     const updateUserStmt = db.prepare(`
       UPDATE users 
       SET owned_boards = ?, joined_boards = ? 
@@ -1358,6 +1363,7 @@ async function onRequestPost9({ request, env }) {
         ownerId: userId,
         postCount: 0,
         memberCount: 1,
+        joinType,
         createdAt: now
       }
     }, 201);
@@ -1783,7 +1789,27 @@ async function listPosts(env, state, viewer) {
   const values = [];
   const boardValues = state.equals.get("boardId");
   if (boardValues?.length) {
-    conditions.push(`board_id IN (${boardValues.map(() => "?").join(", ")})`);
+    for (const bId of boardValues) {
+      const bIdStr = String(bId);
+      if (bIdStr !== "main") {
+        if (!viewer) throw new HttpError(403, "\u8BF7\u5148\u767B\u5F55\u4EE5\u8BBF\u95EE\u8BE5\u677F\u5757");
+        if (!isAdmin(viewer)) {
+          if (bIdStr.startsWith("class_")) {
+            const userClassBoard = viewer.id && /^\d{6,12}$/.test(viewer.id) ? `class_${viewer.id.slice(0, 4)}_${viewer.id.slice(4, 6)}` : null;
+            if (bIdStr !== userClassBoard) throw new HttpError(403, "\u4F60\u4E0D\u662F\u8BE5\u73ED\u7EA7\u6210\u5458\uFF0C\u65E0\u6743\u67E5\u770B");
+          } else {
+            const joined = parseJsonArray(viewer.joined_boards);
+            if (!joined.includes(bIdStr)) throw new HttpError(403, "\u4F60\u5C1A\u672A\u52A0\u5165\u8BE5\u677F\u5757\uFF0C\u65E0\u6743\u67E5\u770B\u5185\u5BB9");
+          }
+        }
+      }
+    }
+    const hasMain = boardValues.map(String).includes("main");
+    if (hasMain) {
+      conditions.push(`(board_id IN (${boardValues.map(() => "?").join(", ")}) OR board_id IS NULL OR board_id = '')`);
+    } else {
+      conditions.push(`board_id IN (${boardValues.map(() => "?").join(", ")})`);
+    }
     values.push(...boardValues.map(String));
   }
   appendPostVisibility(conditions, values, viewer);
@@ -2272,7 +2298,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-1NnWX6/functionsRoutes-0.041465125549784876.mjs
+// ../.wrangler/tmp/pages-iPP6nw/functionsRoutes-0.14290455580141204.mjs
 var routes = [
   {
     routePath: "/api/board/members",

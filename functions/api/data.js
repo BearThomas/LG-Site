@@ -102,7 +102,31 @@ async function listPosts(env, state, viewer) {
   const values = [];
   const boardValues = state.equals.get('boardId');
   if (boardValues?.length) {
-    conditions.push(`board_id IN (${boardValues.map(() => '?').join(', ')})`);
+    // Validate board membership access
+    for (const bId of boardValues) {
+      const bIdStr = String(bId);
+      if (bIdStr !== 'main') {
+        if (!viewer) throw new HttpError(403, '请先登录以访问该板块');
+        if (!isAdmin(viewer)) {
+          if (bIdStr.startsWith('class_')) {
+            const userClassBoard = viewer.id && /^\d{6,12}$/.test(viewer.id)
+              ? `class_${viewer.id.slice(0, 4)}_${viewer.id.slice(4, 6)}`
+              : null;
+            if (bIdStr !== userClassBoard) throw new HttpError(403, '你不是该班级成员，无权查看');
+          } else {
+            const joined = parseJsonArray(viewer.joined_boards);
+            if (!joined.includes(bIdStr)) throw new HttpError(403, '你尚未加入该板块，无权查看内容');
+          }
+        }
+      }
+    }
+
+    const hasMain = boardValues.map(String).includes('main');
+    if (hasMain) {
+      conditions.push(`(board_id IN (${boardValues.map(() => '?').join(', ')}) OR board_id IS NULL OR board_id = '')`);
+    } else {
+      conditions.push(`board_id IN (${boardValues.map(() => '?').join(', ')})`);
+    }
     values.push(...boardValues.map(String));
   }
   appendPostVisibility(conditions, values, viewer);

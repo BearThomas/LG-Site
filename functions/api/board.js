@@ -32,6 +32,7 @@ export async function onRequestGet({ request, env }) {
       ownerId: b.owner_id,
       postCount: Number(b.post_count || 0),
       memberCount: Number(b.member_count || 0),
+      joinType: Number(b.join_type || 0),
       createdAt: b.created_at
     }));
 
@@ -52,6 +53,11 @@ export async function onRequestPost({ request, env }) {
     const id = String(body.id || '').trim().toLowerCase();
     const name = String(body.name || '').trim();
     const description = String(body.description || '').trim();
+    const joinType = body.joinType !== undefined ? Number(body.joinType) : 0;
+
+    if (joinType !== 0 && joinType !== 1) {
+      throw new HttpError(400, '无效的加入限制设置');
+    }
 
     // 1. Validate ID format
     if (!/^[a-z0-9-]{3,20}$/.test(id)) {
@@ -95,9 +101,9 @@ export async function onRequestPost({ request, env }) {
 
     // Prepare batch statements
     const createBoardStmt = db.prepare(`
-      INSERT INTO boards (id, name, description, owner_id, member_count, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 1, ?, ?)
-    `).bind(id, name, description, userId, now, now);
+      INSERT INTO boards (id, name, description, owner_id, member_count, join_type, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 1, ?, ?, ?)
+    `).bind(id, name, description, userId, joinType, now, now);
 
     const updateUserStmt = db.prepare(`
       UPDATE users 
@@ -116,6 +122,7 @@ export async function onRequestPost({ request, env }) {
         ownerId: userId,
         postCount: 0,
         memberCount: 1,
+        joinType,
         createdAt: now
       }
     }, 201);
