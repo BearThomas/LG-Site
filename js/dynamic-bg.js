@@ -1,6 +1,6 @@
 // js/dynamic-bg.js
 // Optimized Canvas-based dynamic background showing Meteor Shower (Dark) and Sunshine Rays (Light).
-// Renders real-time liquid glass refraction magnifier following the mouse cursor.
+// Transitions smoothly when the theme changes.
 
 (function() {
     'use strict';
@@ -9,24 +9,6 @@
     let ctx = null;
     let width = 0;
     let height = 0;
-
-    // Glass refraction canvas and container
-    let glassContainer = null;
-    let glassCanvas = null;
-    let glassCtx = null;
-    let cursor = null;
-
-    // Configuration
-    const BALL_SIZE = 200;
-    const REFRACTION_STRENGTH = 0.85;
-    const EDGE_WIDTH = 0.35; // edge refractive zone percentage
-    const SATURATE = 1.8;
-
-    // Mouse tracking
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let targetMouseX = mouseX;
-    let targetMouseY = mouseY;
 
     // Theme state
     let targetTheme = 'light'; // 'light' or 'dark'
@@ -45,7 +27,7 @@
 
     // Initialize Canvas
     function init() {
-        // 1. Create main background canvas
+        // Create main background canvas
         canvas = document.getElementById('bgCanvas');
         if (!canvas) {
             canvas = document.createElement('canvas');
@@ -53,73 +35,10 @@
             canvas.style.cssText = 'position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:-2; pointer-events:none;';
             document.body.appendChild(canvas);
         }
-        ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx = canvas.getContext('2d');
         
-        // 2. Create Glass Refraction Container
-        glassContainer = document.getElementById('glassContainer');
-        if (!glassContainer) {
-            glassContainer = document.createElement('div');
-            glassContainer.id = 'glassContainer';
-            glassContainer.style.cssText = `
-              position: fixed; 
-              width: ${BALL_SIZE}px; 
-              height: ${BALL_SIZE}px; 
-              border-radius: 50%; 
-              pointer-events: none; 
-              transform: translate(-50%, -50%); 
-              z-index: 9999;
-              box-shadow: 
-                inset 0 0 0 1px rgba(255,255,255,0.4),
-                inset 0 2px 6px rgba(255,255,255,0.6),
-                inset 0 -2px 6px rgba(255,255,255,0.2),
-                0 8px 32px rgba(0,0,0,0.3);
-            `;
-            
-            glassCanvas = document.createElement('canvas');
-            glassCanvas.id = 'glass';
-            glassCanvas.width = BALL_SIZE;
-            glassCanvas.height = BALL_SIZE;
-            glassCanvas.style.cssText = 'width:100%; height:100%; border-radius:50%; display:block;';
-            glassCtx = glassCanvas.getContext('2d');
-            
-            const highlight = document.createElement('div');
-            highlight.style.cssText = `
-              position: absolute;
-              top: 8%;
-              left: 18%;
-              width: 40%;
-              height: 25%;
-              border-radius: 50%;
-              background: radial-gradient(ellipse, rgba(255,255,255,0.5), transparent 70%);
-              filter: blur(4px);
-              pointer-events: none;
-            `;
-            
-            glassContainer.appendChild(glassCanvas);
-            glassContainer.appendChild(highlight);
-            document.body.appendChild(glassContainer);
-        }
-
-        // 3. Create Custom Cursor Dot
-        cursor = document.getElementById('cursor');
-        if (!cursor) {
-            cursor = document.createElement('div');
-            cursor.id = 'cursor';
-            cursor.style.cssText = `
-              position: fixed;
-              width: 8px;
-              height: 8px;
-              background: rgba(255,255,255,0.8);
-              border-radius: 50%;
-              pointer-events: none;
-              transform: translate(-50%, -50%);
-              z-index: 10000;
-            `;
-            document.body.appendChild(cursor);
-        }
-
-        // Apply cursor hiding when mouse moves
-        document.body.style.cursor = 'none';
+        // Restore default cursor
+        document.body.style.cursor = 'default';
 
         resize();
         window.addEventListener('resize', resize);
@@ -137,12 +56,6 @@
 
         // Start animation loop
         requestAnimationFrame(tick);
-
-        // Listen for mousemove
-        document.addEventListener('mousemove', (e) => {
-            targetMouseX = e.clientX;
-            targetMouseY = e.clientY;
-        });
 
         // Listen for theme change events
         window.addEventListener('themeChanged', (e) => {
@@ -364,104 +277,8 @@
         ctx.restore();
     }
 
-    // ================= Liquid Glass Refraction Rendering (Optimized Bounding Box) =================
-
-    function updateGlass() {
-        if (!glassCtx) return;
-
-        const center = BALL_SIZE / 2;
-        const radius = center;
-
-        // Bounding box on background canvas (clamped)
-        const ballLeft = Math.max(0, Math.min(width - BALL_SIZE, mouseX - center));
-        const ballTop = Math.max(0, Math.min(height - BALL_SIZE, mouseY - center));
-
-        let bgImageData;
-        try {
-            bgImageData = ctx.getImageData(ballLeft, ballTop, BALL_SIZE, BALL_SIZE);
-        } catch (e) {
-            return; // fail-safe for rendering context
-        }
-
-        const imgData = glassCtx.createImageData(BALL_SIZE, BALL_SIZE);
-        const data = imgData.data;
-        const bgData = bgImageData.data;
-
-        for (let y = 0; y < BALL_SIZE; y++) {
-            for (let x = 0; x < BALL_SIZE; x++) {
-                const dx = x - center;
-                const dy = y - center;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const idx = (y * BALL_SIZE + x) * 4;
-
-                // Out of circle boundary
-                if (dist > radius) {
-                    data[idx + 3] = 0;
-                    continue;
-                }
-
-                const normDist = dist / radius;
-                const edgeStart = 1 - EDGE_WIDTH;
-
-                let refraction = 0;
-                if (normDist > edgeStart) {
-                    const t = (normDist - edgeStart) / EDGE_WIDTH;
-                    refraction = t * t * REFRACTION_STRENGTH;
-                }
-
-                const angle = Math.atan2(dy, dx);
-                const displacement = refraction * radius * 0.7;
-
-                // Relative sampling coordinates inside 200x200 box
-                const sampleX = Math.max(0, Math.min(BALL_SIZE - 1, x + Math.cos(angle) * displacement));
-                const sampleY = Math.max(0, Math.min(BALL_SIZE - 1, y + Math.sin(angle) * displacement));
-
-                const bgIdx = (Math.floor(sampleY) * BALL_SIZE + Math.floor(sampleX)) * 4;
-
-                let r = bgData[bgIdx];
-                let g = bgData[bgIdx + 1];
-                let b = bgData[bgIdx + 2];
-
-                // Boost saturation
-                const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-                r = gray + (r - gray) * SATURATE;
-                g = gray + (g - gray) * SATURATE;
-                b = gray + (b - gray) * SATURATE;
-
-                // Highlight edge pixels
-                if (refraction > 0) {
-                    const bright = 1 + refraction * 0.3;
-                    r *= bright;
-                    g *= bright;
-                    b *= bright;
-                }
-
-                data[idx] = Math.min(255, r);
-                data[idx + 1] = Math.min(255, g);
-                data[idx + 2] = Math.min(255, b);
-                data[idx + 3] = 255;
-            }
-        }
-
-        glassCtx.putImageData(imgData, 0, 0);
-
-        // Move Glass Container & Cursor elements to mouse coordinates
-        if (glassContainer) {
-            glassContainer.style.left = mouseX + 'px';
-            glassContainer.style.top = mouseY + 'px';
-        }
-        if (cursor) {
-            cursor.style.left = mouseX + 'px';
-            cursor.style.top = mouseY + 'px';
-        }
-    }
-
     // ================= Animation Loop =================
     function tick() {
-        // Interpolate mouse coordinates for smooth lag-follow effect
-        mouseX += (targetMouseX - mouseX) * 0.15;
-        mouseY += (targetMouseY - mouseY) * 0.15;
-
         // Transition themeProgress (0: light, 1: dark)
         if (targetTheme === 'dark' && themeProgress < 1) {
             themeProgress = Math.min(1, themeProgress + transitionSpeed);
@@ -473,9 +290,6 @@
         drawBackground();
         drawLightMode();
         drawDarkMode();
-
-        // Render Glass Refraction Overlay
-        updateGlass();
 
         requestAnimationFrame(tick);
     }
