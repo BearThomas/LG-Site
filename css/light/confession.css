@@ -634,3 +634,21 @@
 .modal-overlay {
     background: rgba(15, 17, 21, 0.52);
 }
+
+.confession-delete-btn {
+    background: none;
+    border: none;
+    color: #ff6b6b;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    border: 1px dashed rgba(255, 107, 107, 0.3);
+}
+
+.confession-delete-btn:hover {
+    background-color: rgba(255, 107, 107, 0.1);
+    border-color: #ff6b6b;
+    transform: translateY(-1px);
+}

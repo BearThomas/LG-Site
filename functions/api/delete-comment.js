@@ -11,7 +11,15 @@ export async function onRequestPost({ request, env }) {
 
     const db = requireDb(env);
     const comment = await db.prepare('SELECT * FROM comments WHERE id = ? LIMIT 1').bind(commentId).first();
-    if (!comment) throw new HttpError(404, '评论不存在');
+    if (!comment) {
+      if (isAdmin(profile)) {
+        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+          .bind('comments', commentId)
+          .run();
+        return json({ success: true, tombstoned: true });
+      }
+      throw new HttpError(404, '评论不存在');
+    }
     if (!isAdmin(profile) && normalizeUserId(comment.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, '只能删除自己的评论');
     }
@@ -24,6 +32,9 @@ export async function onRequestPost({ request, env }) {
         WHERE id = ?
       `).bind(comment.post_id)
     ]);
+    await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+      .bind('comments', commentId)
+      .run();
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/delete-comment', message: error.message, status: error.status }));

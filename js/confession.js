@@ -27,6 +27,20 @@ let totalPages = 1;
 const PAGE_SIZE = 15;
 let confessionsSnapshot = [];
 
+let tombstonedIds = { confessions: new Set() };
+
+async function loadTombstones() {
+    try {
+        const res = await fetch('/api/cache-version');
+        if (res.ok) {
+            const data = await res.json();
+            tombstonedIds.confessions = new Set(data.tombstoneIds?.confessions || []);
+        }
+    } catch (e) {
+        console.warn('获取版本缓存及软删除标识失败', e);
+    }
+}
+
 // DOM 元素
 const confessionContent = document.getElementById('confessionContent');
 const charCount = document.getElementById('charCount');
@@ -149,7 +163,9 @@ async function loadConfessions({ forceRefresh = false } = {}) {
             try {
                 const parsedCache = JSON.parse(localCache);
                 if (parsedCache && Array.isArray(parsedCache.data)) {
-                    renderConfessions(parsedCache.data);
+                    await loadTombstones();
+                    const filtered = parsedCache.data.filter(c => !tombstonedIds.confessions.has(c.$id || c.id));
+                    renderConfessions(filtered);
                     totalPages = parsedCache.totalPages || 1;
                     renderPagination();
                     
@@ -179,12 +195,13 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         
         let appwriteRes = { documents: [] };
         let localRes = [];
+        await loadTombstones();
         try {
             appwriteRes = {
                 documents: await listAllConfessionDocuments(queries, firstBatch => {
                     if (hasRenderedCache || currentPage !== 1) return;
                     const quickItems = firstBatch.filter(item =>
-                        item.content != null && Number(item.status || 0) === 0
+                        item.content != null && Number(item.status || 0) === 0 && !tombstonedIds.confessions.has(item.$id || item.id)
                     ).slice(0, PAGE_SIZE);
                     if (quickItems.length) {
                         renderConfessions(quickItems);
@@ -243,6 +260,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         const seen = new Set();
         const allConfessions = [...normalizedHot, ...normalizedCold].filter(c => {
             if (seen.has(c.$id) || c.status !== 0) return false;
+            if (tombstonedIds.confessions.has(c.$id)) return false;
             seen.add(c.$id);
             return true;
         });
@@ -305,6 +323,7 @@ function renderConfessions(confessions) {
         return;
     }
     
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
     confessionList.innerHTML = confessions.map(c => {
         const confessionId = c.$id || c.id;
         const confessionCreatedAt = c.$createdAt || c.createdAt;
@@ -312,7 +331,8 @@ function renderConfessions(confessions) {
         const createdAt = new Date(confessionCreatedAt);
         const timeStr = formatTime(createdAt);
         
-        // 🌟 核心清理：移除了 confession-actions 动作栏，不再渲染点赞和举报按钮
+        const deleteHtml = isAdmin ? `<button class="confession-delete-btn" data-id="${confessionId}">🗑️ 删除</button>` : '';
+        
         return `
             <div class="confession-card" data-id="${confessionId}">
                 <div class="confession-content">${escapeHtml(c.content)}</div>
@@ -320,10 +340,39 @@ function renderConfessions(confessions) {
                     <div class="confession-meta">
                         <span class="confession-time">${timeStr}</span>
                     </div>
+                    ${deleteHtml}
                 </div>
             </div>
         `;
     }).join('');
+
+    if (isAdmin) {
+        confessionList.querySelectorAll('.confession-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = btn.dataset.id;
+                if (!confirm('确定删除这条表白吗？')) return;
+                try {
+                    const response = await fetch('/api/data', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            collection: 'confessions',
+                            documentId: id,
+                            userId: currentUser?.studentId,
+                            sessionSecret: currentUser?.token,
+                            appToken: currentUser?.appToken
+                        })
+                    });
+                    const res = await response.json().catch(() => ({}));
+                    if (!response.ok || !res.success) throw new Error(res.error || '删除失败');
+                    alert('表白已成功撤销/软删除');
+                    loadConfessions({ forceRefresh: true });
+                } catch (err) {
+                    alert(err.message || '删除失败');
+                }
+            });
+        });
+    }
 }
 
 // ========== 发表表白 ==========

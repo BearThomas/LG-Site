@@ -9,9 +9,6 @@ export async function onRequestPost({ request, env }) {
     const postId = String(body.postId || '').trim();
     if (!postId) throw new HttpError(400, '缺少帖子 ID');
 
-    const post = await getPostRow(env, postId);
-    if (!post) throw new HttpError(404, '帖子不存在');
-
     const db = requireDb(env);
     const userId = normalizeUserId(profile.id);
 
