@@ -1,92 +1,241 @@
 {
-  "total": 3,
+  "generatedAt": "2026-07-16T09:58:34.762Z",
+  "source": "sanitized-d1-fallback",
+  "total": 26,
   "documents": [
     {
-      "userId": "20240338",
-      "name": "同学0338",
-      "avatar": null,
-      "email": "20240338@campus.local",
-      "role": "normal",
-      "permissions": 31,
-      "joinedBoards": [
-        "main"
-      ],
-      "ownedBoards": [],
-      "class": "2024届03班",
-      "mutedUntil": null,
-      "banned": false,
       "$id": "20240338",
-      "$sequence": "1",
-      "$createdAt": "2026-04-19T06:58:15.998+00:00",
-      "$updatedAt": "2026-04-19T06:58:15.998+00:00",
-      "$permissions": [
-        "read(\"user:20240338\")",
-        "update(\"user:20240338\")",
-        "delete(\"user:20240338\")",
-        "read(\"team:admin\")",
-        "update(\"team:admin\")",
-        "delete(\"team:admin\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "users"
+      "$createdAt": "2026/01/01 00:00",
+      "$updatedAt": "2026-06-20T13:31:47.338Z",
+      "userId": "20240338",
+      "name": "bearThomas",
+      "avatar": "",
+      "role": "normal"
     },
     {
-      "userId": "20240860",
-      "name": "同学0860",
-      "avatar": null,
-      "email": "20240860@campus.local",
-      "role": "normal",
-      "permissions": 31,
-      "joinedBoards": [
-        "main"
-      ],
-      "ownedBoards": [],
-      "class": "2024届08班",
-      "mutedUntil": null,
-      "banned": false,
-      "$id": "20240860",
-      "$sequence": "2",
-      "$createdAt": "2026-05-24T06:50:57.868+00:00",
-      "$updatedAt": "2026-05-24T06:50:57.868+00:00",
-      "$permissions": [
-        "read(\"user:20240860\")",
-        "update(\"user:20240860\")",
-        "delete(\"user:20240860\")",
-        "read(\"team:admin\")",
-        "update(\"team:admin\")",
-        "delete(\"team:admin\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "users"
+      "$id": "20240350",
+      "$createdAt": "2026-07-16T04:02:30.298Z",
+      "$updatedAt": "2026-07-16T04:02:30.298Z",
+      "userId": "20240350",
+      "name": "同学0350",
+      "avatar": "",
+      "role": "normal"
     },
     {
-      "userId": "20240160",
-      "name": "同学0160",
-      "avatar": null,
-      "email": "20240160@campus.local",
-      "role": "normal",
-      "permissions": 31,
-      "joinedBoards": [
-        "main"
-      ],
-      "ownedBoards": [],
-      "class": "2024届01班",
-      "mutedUntil": null,
-      "banned": false,
-      "$id": "20240160",
-      "$sequence": "3",
-      "$createdAt": "2026-05-24T06:52:26.695+00:00",
-      "$updatedAt": "2026-05-24T06:52:26.695+00:00",
-      "$permissions": [
-        "read(\"user:20240160\")",
-        "update(\"user:20240160\")",
-        "delete(\"user:20240160\")",
-        "read(\"team:admin\")",
-        "update(\"team:admin\")",
-        "delete(\"team:admin\")"
-      ],
-      "$databaseId": "lg",
-      "$collectionId": "users"
+      "$id": "20240801",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240801",
+      "name": "同学0801",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240340",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240340",
+      "name": "同学0340",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20250510",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20250510",
+      "name": "同学0510",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240106",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240106",
+      "name": "同学0106",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20220748",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20220748",
+      "name": "同学0748",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20250627",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20250627",
+      "name": "同学0627",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20260441",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20260441",
+      "name": "同学0441",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20230405",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20230405",
+      "name": "同学0405",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240529",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240529",
+      "name": "同学0529",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240425",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240425",
+      "name": "同学0425",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20220301",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20220301",
+      "name": "同学0301",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240125",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240125",
+      "name": "同学0125",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20250741",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20250741",
+      "name": "同学0741",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20230426",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20230426",
+      "name": "同学0426",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20220707",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20220707",
+      "name": "同学0707",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20220719",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20220719",
+      "name": "同学0719",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240805",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240805",
+      "name": "同学0805",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240202",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240202",
+      "name": "同学0202",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240347",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T09:57:48.887Z",
+      "userId": "20240347",
+      "name": "z s t",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240327",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240327",
+      "name": "同学0327",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240313",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240313",
+      "name": "同学0313",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240360",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240360",
+      "name": "同学0360",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240307",
+      "$createdAt": "2026-07-16T07:23:13.283Z",
+      "$updatedAt": "2026-07-16T07:23:13.283Z",
+      "userId": "20240307",
+      "name": "同学0307",
+      "avatar": "",
+      "role": "normal"
+    },
+    {
+      "$id": "20240373",
+      "$createdAt": "2026-07-16T09:07:37.546Z",
+      "$updatedAt": "2026-07-16T09:07:37.546Z",
+      "userId": "20240373",
+      "name": "浅红",
+      "avatar": "",
+      "role": "normal"
     }
   ]
 }
