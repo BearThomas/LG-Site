@@ -181,10 +181,20 @@ function showHomeCacheNotice(containerEl, noticeId, message, type = 'waiting') {
     }
 }
 
-// ========== 【高级缓存重构】加载首页帖子（最新5条） ==========
+// ========== [高级缓存重构]加载首页帖子（最新或5条） ==========
 async function loadHomePosts({ forceRefresh = false } = {}) {
     const postList = document.getElementById('postList');
     if (!postList) return;
+
+    // Fetch tombstones + version (fire and forget, best-effort)
+    let tombstones = { posts: new Set() };
+    try {
+        const vRes = await fetch('/api/cache-version');
+        if (vRes.ok) {
+            const vData = await vRes.json();
+            tombstones.posts = new Set(vData.tombstoneIds?.posts || []);
+        }
+    } catch { /* non-critical */ }
 
     const currentUserId = currentUser?.studentId || 'guest';
     const cacheKey = `cache_home_posts_${currentUserId}`;
@@ -209,64 +219,67 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
         postList.innerHTML = createListSkeleton('post', 3);
     }
 
-    // 【步骤 2】后台并行洗流热、冷数据
+    // [步骤 2]后台并行洗流热、冷数据
     let hotPosts = [];
-    let hotPostsLoaded = false;
-    try {
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
+    let coldPosts = [];
+
+    const [hotResult, coldResult] = await Promise.allSettled([
+        databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
             Query.orderDesc('$createdAt'),
-            Query.limit(25) // 取25条确保过滤后足够填满前5条
-        ]);
-        hotPosts = response.documents;
-        hotPostsLoaded = true;
-        if (!hasRenderedCache) {
-            const quickPosts = hotPosts.filter(post =>
-                post.title != null && post.content != null && (Number(post.viewPermission) || 1) === 1
-            ).slice(0, 5);
+            Query.limit(25)
+        ]).then(r => r.documents),
+        (async () => {
+            for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const backupData = await res.json();
+                    let docs = backupData.documents || backupData || [];
+                    if (backupData.encrypted) {
+                        await secureKeyReady;
+                        docs = await Promise.all(docs.map(async post => {
+                            let targetGroups = [];
+                            if (post.targetGroups !== '已隐藏') {
+                                const decrypted = await decryptText(post.targetGroups);
+                                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                            }
+                            return {
+                                ...post,
+                                content: await decryptText(post.content),
+                                title: await decryptText(post.title),
+                                authorName: await decryptText(post.authorName),
+                                targetGroups
+                            };
+                        }));
+                    }
+                    return docs;
+                } catch { continue; }
+            }
+            return [];
+        })()
+    ]);
+
+    if (hotResult.status === 'fulfilled') {
+        hotPosts = hotResult.value || [];
+        if (!hasRenderedCache && hotPosts.length) {
+            const quickPosts = hotPosts
+                .filter(p => p.title != null && p.content != null && (Number(p.viewPermission) || 1) === 1)
+                .filter(p => !tombstones.posts.has(p.$id || p.id))
+                .slice(0, 5);
             if (quickPosts.length) {
                 renderHomePosts(quickPosts);
                 showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
                 hasRenderedCache = true;
             }
         }
-    } catch (e) {
-        console.warn('云端热帖子加载失败，仅检索备份:', e.message);
+    } else {
+        console.warn('云端热帖子加载失败，仅检索备份:', hotResult.reason?.message);
+    }
+    if (coldResult.status === 'fulfilled') {
+        coldPosts = coldResult.value || [];
     }
 
-    let coldPosts = [];
-    if (!hotPostsLoaded) {
-        try {
-        const url = './public/data-fallback/posts.json';
-        const res = await fetch(url);
-        if (res.ok) {
-            const backupData = await res.json();
-            let docs = backupData.documents || backupData || [];
-            
-            if (backupData.encrypted) {
-                await secureKeyReady;
-                docs = await Promise.all(docs.map(async post => {
-                    let targetGroups = [];
-                    if (post.targetGroups !== '已隐藏') {
-                        const decrypted = await decryptText(post.targetGroups);
-                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                    }
-                    return {
-                        ...post,
-                        content: await decryptText(post.content),
-                        title: await decryptText(post.title),
-                        authorName: await decryptText(post.authorName),
-                        targetGroups: targetGroups
-                    };
-                }));
-            }
-            coldPosts = docs;
-        }
-        } catch (e) {
-            console.log('无冷备份帖子数据', e);
-        }
-    }
-
-    // 【步骤 3】数据格式归一化映射
+    // [步骤 3]数据格式归一化映射
     const normalizePost = (post, isCold) => ({
         $id: post.$id || post.id,
         $createdAt: post.$createdAt || post.createdAt,
@@ -278,13 +291,14 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
         viewPermission: post.viewPermission,
         targetGroups: post.targetGroups || [],
         status: post.status || 0,
-        likes: post.likes || 0,
-        commentCount: post.commentCount || 0,
+        likes: Number(post.likes || 0),
+        liked: isCold ? false : Boolean(post.liked),
+        commentCount: Number(post.commentCount || post.comment_count || 0),
         _isCold: isCold
     });
 
-    const normalizedHot = hotPosts.map(p => normalizePost(p, false));
-    const normalizedCold = coldPosts.map(p => normalizePost(p, true));
+    const normalizedHot = hotPosts.map(p => normalizePost(p, false)).filter(p => !tombstones.posts.has(p.$id));
+    const normalizedCold = coldPosts.map(p => normalizePost(p, true)).filter(p => !tombstones.posts.has(p.$id));
 
     // 【步骤 4】全局去重合并、依照绝对时序重排列
     const seen = new Set();

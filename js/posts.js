@@ -41,6 +41,10 @@ let allUsers = null;
 let selectedUserIds = new Set(); 
 let postsSnapshot = [];
 
+// Tombstoned IDs fetched from /api/cache-version — cold items hidden by admin
+let tombstonedIds = { posts: new Set(), comments: new Set(), confessions: new Set() };
+let coldDataVersion = null; // track version to avoid redundant JSON fetches
+
 // DOM 元素
 const postsList = document.getElementById('postsList');
 const pagination = document.getElementById('pagination');
@@ -61,6 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
+    fetchAndApplyCacheVersion().catch(() => {});
     await loadBoards();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await Promise.all([loadAllUsers(), loadPosts()]);
@@ -186,35 +191,68 @@ async function listAllPostDocuments(baseQueries, onFirstBatch) {
     return documents;
 }
 
-async function loadColdPostDocuments() {
+// Fetch cold backup version + tombstones from D1, cache in memory
+async function fetchAndApplyCacheVersion() {
     try {
-        const backupRes = await fetch('./public/data-fallback/posts.json');
-        if (!backupRes.ok) return [];
-
-        const backupData = await backupRes.json();
-        let docs = backupData.documents || backupData || [];
-        if (!backupData.encrypted) return docs;
-
-        await secureKeyReady;
-        docs = await Promise.all(docs.map(async post => {
-            let targetGroups = [];
-            if (post.targetGroups !== '已隐藏') {
-                const decrypted = await decryptText(post.targetGroups);
-                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-            }
-            return {
-                ...post,
-                content: await decryptText(post.content),
-                title: await decryptText(post.title),
-                authorName: await decryptText(post.authorName),
-                targetGroups
-            };
-        }));
-        return docs;
-    } catch (error) {
-        console.log('无冷备份数据', error);
-        return [];
+        const res = await fetch('/api/cache-version');
+        if (!res.ok) return;
+        const data = await res.json();
+        coldDataVersion = data.version || '0';
+        tombstonedIds = {
+            posts:       new Set(data.tombstoneIds?.posts || []),
+            comments:    new Set(data.tombstoneIds?.comments || []),
+            confessions: new Set(data.tombstoneIds?.confessions || [])
+        };
+    } catch (e) {
+        console.warn('获取缓存版本失败（不影响主流程）:', e.message);
     }
+}
+
+async function loadColdPostDocuments() {
+    // Cache key: version token ensures we re-fetch only when backup changes
+    const cacheKey = `cold_backup_posts_v${coldDataVersion || '0'}`;
+    const cached = coldDataVersion ? sessionStorage.getItem(cacheKey) : null;
+    if (cached) {
+        try { return JSON.parse(cached); } catch { /* fall through */ }
+    }
+
+    // Try primary archive first, then legacy fallback
+    let docs = [];
+    for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const backupData = await res.json();
+            let raw = backupData.documents || backupData || [];
+
+            if (backupData.encrypted) {
+                await secureKeyReady;
+                raw = await Promise.all(raw.map(async post => {
+                    let targetGroups = [];
+                    if (post.targetGroups !== '已隐藏') {
+                        const decrypted = await decryptText(post.targetGroups);
+                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                    }
+                    return {
+                        ...post,
+                        content: await decryptText(post.content),
+                        title: await decryptText(post.title),
+                        authorName: await decryptText(post.authorName),
+                        targetGroups
+                    };
+                }));
+            }
+            docs = raw;
+            break;
+        } catch (e) {
+            continue;
+        }
+    }
+
+    if (coldDataVersion && docs.length) {
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(docs)); } catch { /* quota exceeded, skip */ }
+    }
+    return docs;
 }
 
 // ========== 加载帖子（安全增强版） ==========
@@ -254,46 +292,66 @@ async function loadPosts({ forceRefresh = false } = {}) {
 
         let hotPosts = [];
         let coldPosts = [];
-        try {
-            hotPosts = await listAllPostDocuments(queries, firstBatch => {
+
+        // Parallel: load D1 hot data + cold archive simultaneously
+        const [hotResult, coldResult] = await Promise.allSettled([
+            listAllPostDocuments(queries, firstBatch => {
                 if (hasRenderedCache || currentPage !== 1) return;
-                const preview = firstBatch.filter(post => {
-                    if (post.title == null || post.content == null) return false;
-                    const permission = Number(post.viewPermission) || 1;
-                    if (permission === 1) return true;
-                    return permission === 8 && currentUserId !== 'guest' &&
-                        normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
-                }).slice(0, PAGE_SIZE);
+                const preview = firstBatch
+                    .filter(post => {
+                        if (post.title == null || post.content == null) return false;
+                        if (tombstonedIds.posts.has(post.$id || post.id)) return false;
+                        const permission = Number(post.viewPermission) || 1;
+                        if (permission === 1) return true;
+                        return permission === 8 && currentUserId !== 'guest' &&
+                            normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
+                    }).slice(0, PAGE_SIZE);
                 if (preview.length) {
                     renderPosts(preview);
                     showCacheNotice('已加载最新一批，正在后台整理完整列表...', 'waiting');
                     hasRenderedCache = true;
                 }
-            });
-        } catch (error) {
-            console.warn('D1 数据读取失败，启用 public 冷备份:', error.message);
-            coldPosts = await loadColdPostDocuments();
+            }),
+            loadColdPostDocuments()
+        ]);
+
+        if (hotResult.status === 'fulfilled') {
+            hotPosts = hotResult.value;
+        } else {
+            console.warn('D1 热数据读取失败:', hotResult.reason?.message);
+        }
+        if (coldResult.status === 'fulfilled') {
+            coldPosts = coldResult.value;
+        } else {
+            console.warn('冷备份读取失败:', coldResult.reason?.message);
         }
 
-        const normalizePost = (post, isCold) => {
-            return {
-                $id: post.$id || post.id,
-                $createdAt: post.$createdAt || post.createdAt,
-                $updatedAt: post.$updatedAt || post.updatedAt,
-                title: post.title,
-                content: post.content,
-                authorId: post.authorId,
-                authorName: post.authorName,
-                boardId: post.boardId,
-                viewPermission: post.viewPermission,
-                targetGroups: post.targetGroups || [],
-                status: post.status || 0,
-                _isCold: isCold
-            };
-        };
+        const normalizePost = (post, isCold) => ({
+            $id: post.$id || post.id,
+            $createdAt: post.$createdAt || post.createdAt,
+            $updatedAt: post.$updatedAt || post.updatedAt,
+            title: post.title,
+            content: post.content,
+            authorId: post.authorId,
+            authorName: post.authorName,
+            boardId: post.boardId,
+            viewPermission: post.viewPermission,
+            targetGroups: post.targetGroups || [],
+            status: post.status || 0,
+            likes: Number(post.likes || 0),
+            liked: isCold ? false : Boolean(post.liked), // cold posts can't be liked in real-time
+            commentCount: Number(post.commentCount || post.comment_count || 0),
+            editedAt: post.editedAt || post.edited_at || null,
+            _isCold: isCold
+        });
 
-        const normalizedHot = hotPosts.map(p => normalizePost(p, false));
-        const normalizedCold = coldPosts.map(p => normalizePost(p, true));
+        // Filter tombstones before merging
+        const normalizedHot = hotPosts
+            .map(p => normalizePost(p, false))
+            .filter(p => !tombstonedIds.posts.has(p.$id));
+        const normalizedCold = coldPosts
+            .map(p => normalizePost(p, true))
+            .filter(p => !tombstonedIds.posts.has(p.$id));
 
         const seen = new Set();
         const allPosts = [...normalizedHot, ...normalizedCold].filter(post => {

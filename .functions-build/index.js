@@ -899,8 +899,59 @@ function onRequestGet4() {
 }
 __name(onRequestGet4, "onRequestGet");
 
+// api/cache-version.js
+function requireDb2(env) {
+  const db = env.DB;
+  if (!db) throw new Error("D1 binding DB not found");
+  return db;
+}
+__name(requireDb2, "requireDb");
+async function onRequestGet5({ env }) {
+  try {
+    const db = requireDb2(env);
+    const [versionRow, tombstoneRows] = await Promise.all([
+      db.prepare(`SELECT value FROM data_meta WHERE key = 'cold_data_version'`).first(),
+      db.prepare(`SELECT collection, item_id FROM tombstones ORDER BY deleted_at DESC`).all()
+    ]);
+    const version = versionRow?.value ?? "0";
+    const tombstones = (tombstoneRows?.results || []).map((r) => ({
+      collection: r.collection,
+      id: r.item_id
+    }));
+    return json({
+      version,
+      tombstones,
+      // Convenience maps for fast frontend lookup
+      tombstoneIds: {
+        posts: tombstones.filter((t) => t.collection === "posts").map((t) => t.id),
+        comments: tombstones.filter((t) => t.collection === "comments").map((t) => t.id),
+        confessions: tombstones.filter((t) => t.collection === "confessions").map((t) => t.id)
+      }
+    }, 200, {
+      // Cache for 60 seconds in browser; CDN should not cache (tombstones must be fresh)
+      "Cache-Control": "private, max-age=60"
+    });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/cache-version", message: error.message }));
+    return errorResponse(error, "\u83B7\u53D6\u7F13\u5B58\u7248\u672C\u5931\u8D25");
+  }
+}
+__name(onRequestGet5, "onRequestGet");
+function onRequestPost5() {
+  return methodNotAllowed(["GET"]);
+}
+__name(onRequestPost5, "onRequestPost");
+function onRequestPatch() {
+  return methodNotAllowed(["GET"]);
+}
+__name(onRequestPatch, "onRequestPatch");
+function onRequestDelete() {
+  return methodNotAllowed(["GET"]);
+}
+__name(onRequestDelete, "onRequestDelete");
+
 // api/create-comment.js
-async function onRequestPost5({ request, env }) {
+async function onRequestPost6({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -941,14 +992,14 @@ async function onRequestPost5({ request, env }) {
     return errorResponse(error, "\u53D1\u8868\u8BC4\u8BBA\u5931\u8D25");
   }
 }
-__name(onRequestPost5, "onRequestPost");
-function onRequestGet5() {
+__name(onRequestPost6, "onRequestPost");
+function onRequestGet6() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet5, "onRequestGet");
+__name(onRequestGet6, "onRequestGet");
 
 // api/create-confession.js
-async function onRequestPost6({ request, env }) {
+async function onRequestPost7({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -981,14 +1032,14 @@ async function onRequestPost6({ request, env }) {
     return errorResponse(error, "\u53D1\u5E03\u5931\u8D25");
   }
 }
-__name(onRequestPost6, "onRequestPost");
-function onRequestGet6() {
+__name(onRequestPost7, "onRequestPost");
+function onRequestGet7() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet6, "onRequestGet");
+__name(onRequestGet7, "onRequestGet");
 
 // api/create-post.js
-async function onRequestPost7({ request, env }) {
+async function onRequestPost8({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1043,11 +1094,11 @@ async function onRequestPost7({ request, env }) {
     return errorResponse(error, "\u53D1\u5E16\u5931\u8D25");
   }
 }
-__name(onRequestPost7, "onRequestPost");
-function onRequestGet7() {
+__name(onRequestPost8, "onRequestPost");
+function onRequestGet8() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet7, "onRequestGet");
+__name(onRequestGet8, "onRequestGet");
 
 // api/data.js
 var COLLECTIONS = /* @__PURE__ */ new Set(["users", "posts", "confessions"]);
@@ -1223,7 +1274,7 @@ async function getDocument(env, collection, documentId, viewer) {
   throw new HttpError(400, "\u4E0D\u652F\u6301\u7684\u6570\u636E\u96C6\u5408");
 }
 __name(getDocument, "getDocument");
-async function onRequestGet8({ request, env }) {
+async function onRequestGet9({ request, env }) {
   try {
     const url = new URL(request.url);
     const collection = String(url.searchParams.get("collection") || "");
@@ -1241,8 +1292,8 @@ async function onRequestGet8({ request, env }) {
     return errorResponse(error, "\u8BFB\u53D6\u6570\u636E\u5931\u8D25");
   }
 }
-__name(onRequestGet8, "onRequestGet");
-async function onRequestPatch({ request, env }) {
+__name(onRequestGet9, "onRequestGet");
+async function onRequestPatch2({ request, env }) {
   try {
     const body = await readJsonBody(request);
     if (body.collection !== "posts") throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u7F16\u8F91");
@@ -1269,8 +1320,8 @@ async function onRequestPatch({ request, env }) {
     return errorResponse(error, "\u7F16\u8F91\u5E16\u5B50\u5931\u8D25");
   }
 }
-__name(onRequestPatch, "onRequestPatch");
-async function onRequestDelete({ request, env }) {
+__name(onRequestPatch2, "onRequestPatch");
+async function onRequestDelete2({ request, env }) {
   try {
     const body = await readJsonBody(request);
     if (body.collection !== "posts") throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u5220\u9664");
@@ -1287,14 +1338,14 @@ async function onRequestDelete({ request, env }) {
     return errorResponse(error, "\u5220\u9664\u5E16\u5B50\u5931\u8D25");
   }
 }
-__name(onRequestDelete, "onRequestDelete");
-function onRequestPost8() {
+__name(onRequestDelete2, "onRequestDelete");
+function onRequestPost9() {
   return methodNotAllowed(["GET", "PATCH", "DELETE"]);
 }
-__name(onRequestPost8, "onRequestPost");
+__name(onRequestPost9, "onRequestPost");
 
 // api/delete-comment.js
-async function onRequestPost9({ request, env }) {
+async function onRequestPost10({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1320,14 +1371,14 @@ async function onRequestPost9({ request, env }) {
     return errorResponse(error, "\u5220\u9664\u8BC4\u8BBA\u5931\u8D25");
   }
 }
-__name(onRequestPost9, "onRequestPost");
-function onRequestGet9() {
+__name(onRequestPost10, "onRequestPost");
+function onRequestGet10() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet9, "onRequestGet");
+__name(onRequestGet10, "onRequestGet");
 
 // api/like.js
-async function onRequestPost10({ request, env }) {
+async function onRequestPost11({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1355,14 +1406,14 @@ async function onRequestPost10({ request, env }) {
     return errorResponse(error, "\u70B9\u8D5E\u64CD\u4F5C\u5931\u8D25");
   }
 }
-__name(onRequestPost10, "onRequestPost");
-function onRequestGet10() {
+__name(onRequestPost11, "onRequestPost");
+function onRequestGet11() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet10, "onRequestGet");
+__name(onRequestGet11, "onRequestGet");
 
 // api/list-comments.js
-async function onRequestGet11({ request, env }) {
+async function onRequestGet12({ request, env }) {
   try {
     const url = new URL(request.url);
     const postId = String(url.searchParams.get("postId") || "").trim();
@@ -1386,11 +1437,11 @@ async function onRequestGet11({ request, env }) {
     return errorResponse(error, "\u8BC4\u8BBA\u5217\u8868\u52A0\u8F7D\u5931\u8D25");
   }
 }
-__name(onRequestGet11, "onRequestGet");
-function onRequestPost11() {
+__name(onRequestGet12, "onRequestGet");
+function onRequestPost12() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPost11, "onRequestPost");
+__name(onRequestPost12, "onRequestPost");
 
 // api/runtime-config.js
 function parseMap(value) {
@@ -1402,7 +1453,7 @@ function parseMap(value) {
   }
 }
 __name(parseMap, "parseMap");
-async function onRequestGet12(context) {
+async function onRequestGet13(context) {
   const config = {
     appwriteEndpoint: String(context.env.APPWRITE_ENDPOINT || ""),
     appwriteProjectId: String(context.env.APPWRITE_PROJECT_ID || ""),
@@ -1419,10 +1470,69 @@ async function onRequestGet12(context) {
     }
   });
 }
-__name(onRequestGet12, "onRequestGet");
+__name(onRequestGet13, "onRequestGet");
+
+// api/tombstone.js
+var VALID_COLLECTIONS = /* @__PURE__ */ new Set(["posts", "comments", "confessions"]);
+function requireDb3(env) {
+  const db = env.DB;
+  if (!db) throw new Error("D1 binding DB not found");
+  return db;
+}
+__name(requireDb3, "requireDb");
+async function onRequestPost13({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    if (!isAdmin(profile)) throw new HttpError(403, "\u4EC5\u7BA1\u7406\u5458\u53EF\u4EE5\u64CD\u4F5C\u5F52\u6863\u8F6F\u5220\u9664");
+    const collection = String(body.collection || "");
+    const itemId = String(body.itemId || "").trim();
+    if (!VALID_COLLECTIONS.has(collection)) throw new HttpError(400, "\u4E0D\u652F\u6301\u7684\u96C6\u5408");
+    if (!itemId) throw new HttpError(400, "itemId \u4E0D\u80FD\u4E3A\u7A7A");
+    await requireDb3(env).prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind(collection, itemId).run();
+    return json({ success: true, collection, itemId });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/tombstone", method: "POST", message: error.message }));
+    return errorResponse(error, "\u6DFB\u52A0\u8F6F\u5220\u9664\u6807\u8BB0\u5931\u8D25");
+  }
+}
+__name(onRequestPost13, "onRequestPost");
+async function onRequestDelete3({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    if (!isAdmin(profile)) throw new HttpError(403, "\u4EC5\u7BA1\u7406\u5458\u53EF\u4EE5\u64CD\u4F5C\u5F52\u6863\u8F6F\u5220\u9664");
+    const collection = String(body.collection || "");
+    const itemId = String(body.itemId || "").trim();
+    if (!VALID_COLLECTIONS.has(collection)) throw new HttpError(400, "\u4E0D\u652F\u6301\u7684\u96C6\u5408");
+    if (!itemId) throw new HttpError(400, "itemId \u4E0D\u80FD\u4E3A\u7A7A");
+    await requireDb3(env).prepare(`DELETE FROM tombstones WHERE collection = ? AND item_id = ?`).bind(collection, itemId).run();
+    return json({ success: true, collection, itemId, restored: true });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/tombstone", method: "DELETE", message: error.message }));
+    return errorResponse(error, "\u79FB\u9664\u8F6F\u5220\u9664\u6807\u8BB0\u5931\u8D25");
+  }
+}
+__name(onRequestDelete3, "onRequestDelete");
+async function onRequestGet14({ request, env }) {
+  try {
+    const { profile } = await requireAuth(request, env, {});
+    if (!isAdmin(profile)) throw new HttpError(403, "\u4EC5\u7BA1\u7406\u5458\u53EF\u4EE5\u67E5\u770B\u8F6F\u5220\u9664\u5217\u8868");
+    const rows = await requireDb3(env).prepare(`SELECT collection, item_id, deleted_at FROM tombstones ORDER BY deleted_at DESC`).all();
+    return json({ tombstones: rows.results || [] });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/tombstone", method: "GET", message: error.message }));
+    return errorResponse(error, "\u83B7\u53D6\u8F6F\u5220\u9664\u5217\u8868\u5931\u8D25");
+  }
+}
+__name(onRequestGet14, "onRequestGet");
+function onRequestPatch3() {
+  return methodNotAllowed(["GET", "POST", "DELETE"]);
+}
+__name(onRequestPatch3, "onRequestPatch");
 
 // api/update-password.js
-async function onRequestPost12({ request, env }) {
+async function onRequestPost14({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1453,11 +1563,11 @@ async function onRequestPost12({ request, env }) {
     return errorResponse(error, "\u4FEE\u6539\u5BC6\u7801\u5931\u8D25");
   }
 }
-__name(onRequestPost12, "onRequestPost");
-function onRequestGet13() {
+__name(onRequestPost14, "onRequestPost");
+function onRequestGet15() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet13, "onRequestGet");
+__name(onRequestGet15, "onRequestGet");
 
 // api/update-profile.js
 function allowedAvatar(value) {
@@ -1471,7 +1581,7 @@ function allowedAvatar(value) {
   }
 }
 __name(allowedAvatar, "allowedAvatar");
-async function onRequestPost13({ request, env }) {
+async function onRequestPost15({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1497,18 +1607,18 @@ async function onRequestPost13({ request, env }) {
     return errorResponse(error, "\u4FDD\u5B58\u4E2A\u4EBA\u8D44\u6599\u5931\u8D25");
   }
 }
-__name(onRequestPost13, "onRequestPost");
-function onRequestGet14() {
+__name(onRequestPost15, "onRequestPost");
+function onRequestGet16() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet14, "onRequestGet");
+__name(onRequestGet16, "onRequestGet");
 
 // api/verify-question.js
 function normalizeAnswer(value) {
   return String(value || "").trim().toLocaleLowerCase("zh-CN").replace(/\s+/g, "");
 }
 __name(normalizeAnswer, "normalizeAnswer");
-async function onRequestPost14({ request, env }) {
+async function onRequestPost16({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const questions = getRegistrationQuestions(env);
@@ -1557,17 +1667,17 @@ async function onRequestPost14({ request, env }) {
     return errorResponse(error, "\u9A8C\u8BC1\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
   }
 }
-__name(onRequestPost14, "onRequestPost");
-function onRequestGet15() {
+__name(onRequestPost16, "onRequestPost");
+function onRequestGet17() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet15, "onRequestGet");
+__name(onRequestGet17, "onRequestGet");
 function onRequestOptions() {
   return new Response(null, { status: 204, headers: { Allow: "POST, OPTIONS" } });
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-q8qT0N/functionsRoutes-0.14082208424588671.mjs
+// ../.wrangler/tmp/pages-QN3AuW/functionsRoutes-0.5785128028254041.mjs
 var routes = [
   {
     routePath: "/api/auth-jwt",
@@ -1626,158 +1736,214 @@ var routes = [
     modules: [onRequestPost4]
   },
   {
-    routePath: "/api/create-comment",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet5]
-  },
-  {
-    routePath: "/api/create-comment",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost5]
-  },
-  {
-    routePath: "/api/create-confession",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet6]
-  },
-  {
-    routePath: "/api/create-confession",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost6]
-  },
-  {
-    routePath: "/api/create-post",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet7]
-  },
-  {
-    routePath: "/api/create-post",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost7]
-  },
-  {
-    routePath: "/api/data",
+    routePath: "/api/cache-version",
     mountPath: "/api",
     method: "DELETE",
     middlewares: [],
     modules: [onRequestDelete]
   },
   {
-    routePath: "/api/data",
+    routePath: "/api/cache-version",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
-    modules: [onRequestGet8]
+    modules: [onRequestGet5]
   },
   {
-    routePath: "/api/data",
+    routePath: "/api/cache-version",
     mountPath: "/api",
     method: "PATCH",
     middlewares: [],
     modules: [onRequestPatch]
   },
   {
-    routePath: "/api/data",
+    routePath: "/api/cache-version",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost5]
+  },
+  {
+    routePath: "/api/create-comment",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet6]
+  },
+  {
+    routePath: "/api/create-comment",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost6]
+  },
+  {
+    routePath: "/api/create-confession",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet7]
+  },
+  {
+    routePath: "/api/create-confession",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost7]
+  },
+  {
+    routePath: "/api/create-post",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet8]
+  },
+  {
+    routePath: "/api/create-post",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost8]
   },
   {
-    routePath: "/api/delete-comment",
+    routePath: "/api/data",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete2]
+  },
+  {
+    routePath: "/api/data",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet9]
   },
   {
-    routePath: "/api/delete-comment",
+    routePath: "/api/data",
+    mountPath: "/api",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch2]
+  },
+  {
+    routePath: "/api/data",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost9]
   },
   {
-    routePath: "/api/like",
+    routePath: "/api/delete-comment",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet10]
   },
   {
-    routePath: "/api/like",
+    routePath: "/api/delete-comment",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost10]
   },
   {
-    routePath: "/api/list-comments",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet11]
   },
   {
-    routePath: "/api/list-comments",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost11]
   },
   {
-    routePath: "/api/runtime-config",
+    routePath: "/api/list-comments",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet12]
   },
   {
-    routePath: "/api/update-password",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet13]
-  },
-  {
-    routePath: "/api/update-password",
+    routePath: "/api/list-comments",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost12]
   },
   {
-    routePath: "/api/update-profile",
+    routePath: "/api/runtime-config",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet13]
+  },
+  {
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete3]
+  },
+  {
+    routePath: "/api/tombstone",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet14]
   },
   {
-    routePath: "/api/update-profile",
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch3]
+  },
+  {
+    routePath: "/api/tombstone",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost13]
   },
   {
-    routePath: "/api/verify-question",
+    routePath: "/api/update-password",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet15]
+  },
+  {
+    routePath: "/api/update-password",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost14]
+  },
+  {
+    routePath: "/api/update-profile",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet16]
+  },
+  {
+    routePath: "/api/update-profile",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost15]
+  },
+  {
+    routePath: "/api/verify-question",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet17]
   },
   {
     routePath: "/api/verify-question",
@@ -1791,7 +1957,7 @@ var routes = [
     mountPath: "/api",
     method: "POST",
     middlewares: [],
-    modules: [onRequestPost14]
+    modules: [onRequestPost16]
   }
 ];
 
