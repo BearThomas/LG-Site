@@ -38,7 +38,7 @@ export async function appwriteRequest(config, path, options = {}) {
 
 export function createPasswordSession(config, studentId, password) {
   return appwriteRequest(
-    config,
+    { ...config, apiKey: '' },
     '/account/sessions/email',
     {
       method: 'POST',

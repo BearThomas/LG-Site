@@ -125,7 +125,7 @@ async function appwriteRequest(config, path, options = {}) {
 __name(appwriteRequest, "appwriteRequest");
 function createPasswordSession(config, studentId, password) {
   return appwriteRequest(
-    config,
+    { ...config, apiKey: "" },
     "/account/sessions/email",
     {
       method: "POST",
@@ -1563,7 +1563,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-QNfPR8/functionsRoutes-0.9680522887821129.mjs
+// ../.wrangler/tmp/pages-O8fa0f/functionsRoutes-0.5877325968274936.mjs
 var routes = [
   {
     routePath: "/api/auth-jwt",
