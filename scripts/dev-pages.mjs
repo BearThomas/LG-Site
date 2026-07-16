@@ -30,11 +30,11 @@ if (!databaseId) {
   process.exit(1);
 }
 
-const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const child = spawn(npx, ['wrangler', 'pages', 'dev', 'dist', '--d1', `DB=${databaseId}`], {
   cwd: root,
   stdio: 'inherit',
-  env: process.env
+  env: process.env,
+  shell: true
 });
 child.on('exit', code => process.exit(code ?? 1));
 child.on('error', error => {
