@@ -77,7 +77,8 @@ const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const result = spawnSync(npx, args, {
   cwd: root,
   env: process.env,
-  stdio: 'inherit'
+  stdio: 'inherit',
+  shell: process.platform === 'win32'
 });
 fs.rmSync(configPath, { force: true });
 if (result.error) {

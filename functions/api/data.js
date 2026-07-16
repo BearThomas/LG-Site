@@ -111,12 +111,16 @@ async function listPosts(env, state, viewer) {
   const orderDirection = state.order?.direction || 'DESC';
 
   const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM posts ${where}`).bind(...values);
+  const viewerId = viewer ? normalizeUserId(viewer.id) : '';
   const rowsStatement = db.prepare(`
-    SELECT * FROM posts
+    SELECT posts.*,
+      (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes,
+      (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS liked
+    FROM posts
     ${where}
     ORDER BY ${orderColumn} ${orderDirection}
     LIMIT ? OFFSET ?
-  `).bind(...values, state.limit, state.offset);
+  `).bind(viewerId, ...values, state.limit, state.offset);
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   return {
     total: Number(countResult.results?.[0]?.total || 0),
@@ -163,7 +167,15 @@ async function getDocument(env, collection, documentId, viewer) {
     });
   }
   if (collection === 'posts') {
-    const row = await getPostRow(env, documentId);
+    const db = requireDb(env);
+    const viewerId = viewer ? normalizeUserId(viewer.id) : '';
+    const row = await db.prepare(`
+      SELECT posts.*,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS liked
+      FROM posts
+      WHERE id = ? LIMIT 1
+    `).bind(viewerId, documentId).first();
     if (!row) throw new HttpError(404, '帖子不存在');
     if (!canViewPost(row, viewer)) throw new HttpError(403, '无权查看该帖子');
     return toPostDocument(row);

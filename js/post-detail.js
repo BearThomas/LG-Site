@@ -325,6 +325,20 @@ function renderPostDetail() {
         document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
     }
     
+    const likeBtn = document.getElementById('likeBtn');
+    if (likeBtn) {
+        likeBtn.innerHTML = `❤️ <span>${currentPost.likes || 0}</span>`;
+        if (currentPost.liked) {
+            likeBtn.classList.add('liked');
+        }
+        if (currentUser && !currentPost._isCold) {
+            likeBtn.removeAttribute('disabled');
+            likeBtn.addEventListener('click', toggleLike);
+        } else {
+            likeBtn.setAttribute('disabled', 'true');
+        }
+    }
+    
     if (isLocked) {
         if (commentInputBox) commentInputBox.style.display = 'none';
         if (loginTip) loginTip.style.display = 'none';
@@ -720,5 +734,40 @@ function toggleEditPreview() {
     } else {
         pane.classList.toggle('preview-hidden');
         layout.classList.toggle('preview-closed');
+    }
+}
+
+async function toggleLike() {
+    const likeBtn = document.getElementById('likeBtn');
+    if (!likeBtn || !currentUser || !currentPost) return;
+    likeBtn.disabled = true;
+    try {
+        const token = currentUser.appToken || '';
+        const session = currentUser.token || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['X-LG-Token'] = token;
+        if (session) headers['X-Appwrite-Session'] = session;
+        const response = await fetch('/api/like', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ postId: currentPost.$id || currentPost.id })
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || '点赞失败');
+        }
+        const data = await response.json();
+        currentPost.liked = data.liked;
+        currentPost.likes = data.likes;
+        likeBtn.innerHTML = `❤️ <span>${currentPost.likes || 0}</span>`;
+        if (currentPost.liked) {
+            likeBtn.classList.add('liked');
+        } else {
+            likeBtn.classList.remove('liked');
+        }
+    } catch (e) {
+        alert(e.message || '操作失败');
+    } finally {
+        likeBtn.disabled = false;
     }
 }

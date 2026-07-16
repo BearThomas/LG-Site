@@ -9,7 +9,7 @@ const root = path.resolve(scriptDir, '..');
 const failures = [];
 
 const requiredFiles = [
-  'wrangler.jsonc',
+  'wrangler.json',
   'migrations/0001_initial.sql',
   'functions/api/data.js',
   'functions/api/auth-jwt.js',

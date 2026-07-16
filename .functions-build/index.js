@@ -311,6 +311,15 @@ async function ensureUserRow(env, identity, defaults = {}) {
   const id = normalizeUserId(defaults.userId || emailStudentId || appwriteId);
   if (!id) throw new HttpError(400, "\u7528\u6237 ID \u65E0\u6548");
   const now = (/* @__PURE__ */ new Date()).toISOString();
+  const parseDate = /* @__PURE__ */ __name((val, fallback) => {
+    if (!val || String(val).trim() === "") return fallback;
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? fallback : d.toISOString();
+  }, "parseDate");
+  const rawCreatedAt = defaults.createdAt || identity?.$createdAt || identity?.registration || identity?.created_at;
+  const rawUpdatedAt = defaults.updatedAt || identity?.$updatedAt || identity?.updated_at;
+  const createdAt = parseDate(rawCreatedAt, now);
+  const updatedAt = parseDate(rawUpdatedAt, now);
   const name = String(defaults.name || identity?.name || `\u540C\u5B66${id.slice(-4)}`).trim().slice(0, 128) || `\u540C\u5B66${id.slice(-4)}`;
   const email = String(defaults.email || identity?.email || `${id}@campus.local`).trim();
   const className = String(defaults.className || extractClass(id));
@@ -351,8 +360,8 @@ async function ensureUserRow(env, identity, defaults = {}) {
     className,
     defaults.mutedUntil || null,
     defaults.banned ? 1 : 0,
-    defaults.createdAt || now,
-    defaults.updatedAt || now
+    createdAt,
+    updatedAt
   ).run();
   return getUserRow(env, id);
 }
@@ -401,7 +410,9 @@ function toPostDocument(row) {
     targetGroups: parseJsonArray(row.target_groups),
     status: Number(row.status || 0),
     editedAt: row.edited_at || null,
-    commentCount: Number(row.comment_count || 0)
+    commentCount: Number(row.comment_count || 0),
+    likes: Number(row.likes || 0),
+    liked: Boolean(row.liked)
   };
 }
 __name(toPostDocument, "toPostDocument");
@@ -1130,12 +1141,16 @@ async function listPosts(env, state, viewer) {
   const orderColumn = state.order?.attribute === "title" ? "title" : "created_at";
   const orderDirection = state.order?.direction || "DESC";
   const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM posts ${where}`).bind(...values);
+  const viewerId = viewer ? normalizeUserId(viewer.id) : "";
   const rowsStatement = db.prepare(`
-    SELECT * FROM posts
+    SELECT posts.*,
+      (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes,
+      (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS liked
+    FROM posts
     ${where}
     ORDER BY ${orderColumn} ${orderDirection}
     LIMIT ? OFFSET ?
-  `).bind(...values, state.limit, state.offset);
+  `).bind(viewerId, ...values, state.limit, state.offset);
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   return {
     total: Number(countResult.results?.[0]?.total || 0),
@@ -1180,7 +1195,15 @@ async function getDocument(env, collection, documentId, viewer) {
     });
   }
   if (collection === "posts") {
-    const row = await getPostRow(env, documentId);
+    const db = requireDb(env);
+    const viewerId = viewer ? normalizeUserId(viewer.id) : "";
+    const row = await db.prepare(`
+      SELECT posts.*,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) AS likes,
+        (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS liked
+      FROM posts
+      WHERE id = ? LIMIT 1
+    `).bind(viewerId, documentId).first();
     if (!row) throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
     if (!canViewPost(row, viewer)) throw new HttpError(403, "\u65E0\u6743\u67E5\u770B\u8BE5\u5E16\u5B50");
     return toPostDocument(row);
@@ -1299,8 +1322,43 @@ function onRequestGet9() {
 }
 __name(onRequestGet9, "onRequestGet");
 
+// api/like.js
+async function onRequestPost10({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const postId = String(body.postId || "").trim();
+    if (!postId) throw new HttpError(400, "\u7F3A\u5C11\u5E16\u5B50 ID");
+    const post = await getPostRow(env, postId);
+    if (!post) throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
+    const db = requireDb(env);
+    const userId = normalizeUserId(profile.id);
+    const existing = await db.prepare("SELECT 1 FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1").bind(postId, userId).first();
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    let liked = false;
+    if (existing) {
+      await db.prepare("DELETE FROM likes WHERE post_id = ? AND user_id = ?").bind(postId, userId).run();
+    } else {
+      const likeId = crypto.randomUUID();
+      await db.prepare("INSERT INTO likes (id, post_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").bind(likeId, postId, userId, now, now).run();
+      liked = true;
+    }
+    const countRow = await db.prepare("SELECT COUNT(*) AS total FROM likes WHERE post_id = ?").bind(postId).first();
+    const likesCount = Number(countRow?.total || 0);
+    return json({ success: true, liked, likes: likesCount }, 200);
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/like", message: error.message, status: error.status }));
+    return errorResponse(error, "\u70B9\u8D5E\u64CD\u4F5C\u5931\u8D25");
+  }
+}
+__name(onRequestPost10, "onRequestPost");
+function onRequestGet10() {
+  return methodNotAllowed(["POST"]);
+}
+__name(onRequestGet10, "onRequestGet");
+
 // api/list-comments.js
-async function onRequestGet10({ request, env }) {
+async function onRequestGet11({ request, env }) {
   try {
     const url = new URL(request.url);
     const postId = String(url.searchParams.get("postId") || "").trim();
@@ -1324,11 +1382,11 @@ async function onRequestGet10({ request, env }) {
     return errorResponse(error, "\u8BC4\u8BBA\u5217\u8868\u52A0\u8F7D\u5931\u8D25");
   }
 }
-__name(onRequestGet10, "onRequestGet");
-function onRequestPost10() {
+__name(onRequestGet11, "onRequestGet");
+function onRequestPost11() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPost10, "onRequestPost");
+__name(onRequestPost11, "onRequestPost");
 
 // api/runtime-config.js
 function parseMap(value) {
@@ -1340,7 +1398,7 @@ function parseMap(value) {
   }
 }
 __name(parseMap, "parseMap");
-async function onRequestGet11(context) {
+async function onRequestGet12(context) {
   const config = {
     appwriteEndpoint: String(context.env.APPWRITE_ENDPOINT || ""),
     appwriteProjectId: String(context.env.APPWRITE_PROJECT_ID || ""),
@@ -1357,10 +1415,10 @@ async function onRequestGet11(context) {
     }
   });
 }
-__name(onRequestGet11, "onRequestGet");
+__name(onRequestGet12, "onRequestGet");
 
 // api/update-password.js
-async function onRequestPost11({ request, env }) {
+async function onRequestPost12({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1391,11 +1449,11 @@ async function onRequestPost11({ request, env }) {
     return errorResponse(error, "\u4FEE\u6539\u5BC6\u7801\u5931\u8D25");
   }
 }
-__name(onRequestPost11, "onRequestPost");
-function onRequestGet12() {
+__name(onRequestPost12, "onRequestPost");
+function onRequestGet13() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet12, "onRequestGet");
+__name(onRequestGet13, "onRequestGet");
 
 // api/update-profile.js
 function allowedAvatar(value) {
@@ -1409,7 +1467,7 @@ function allowedAvatar(value) {
   }
 }
 __name(allowedAvatar, "allowedAvatar");
-async function onRequestPost12({ request, env }) {
+async function onRequestPost13({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1435,18 +1493,18 @@ async function onRequestPost12({ request, env }) {
     return errorResponse(error, "\u4FDD\u5B58\u4E2A\u4EBA\u8D44\u6599\u5931\u8D25");
   }
 }
-__name(onRequestPost12, "onRequestPost");
-function onRequestGet13() {
+__name(onRequestPost13, "onRequestPost");
+function onRequestGet14() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet13, "onRequestGet");
+__name(onRequestGet14, "onRequestGet");
 
 // api/verify-question.js
 function normalizeAnswer(value) {
   return String(value || "").trim().toLocaleLowerCase("zh-CN").replace(/\s+/g, "");
 }
 __name(normalizeAnswer, "normalizeAnswer");
-async function onRequestPost13({ request, env }) {
+async function onRequestPost14({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const questions = getRegistrationQuestions(env);
@@ -1495,17 +1553,17 @@ async function onRequestPost13({ request, env }) {
     return errorResponse(error, "\u9A8C\u8BC1\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
   }
 }
-__name(onRequestPost13, "onRequestPost");
-function onRequestGet14() {
+__name(onRequestPost14, "onRequestPost");
+function onRequestGet15() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet14, "onRequestGet");
+__name(onRequestGet15, "onRequestGet");
 function onRequestOptions() {
   return new Response(null, { status: 204, headers: { Allow: "POST, OPTIONS" } });
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-QgaL2m/functionsRoutes-0.12037917794549491.mjs
+// ../.wrangler/tmp/pages-QNfPR8/functionsRoutes-0.9680522887821129.mjs
 var routes = [
   {
     routePath: "/api/auth-jwt",
@@ -1648,28 +1706,35 @@ var routes = [
     modules: [onRequestPost9]
   },
   {
-    routePath: "/api/list-comments",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet10]
   },
   {
-    routePath: "/api/list-comments",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost10]
   },
   {
-    routePath: "/api/runtime-config",
+    routePath: "/api/list-comments",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet11]
   },
   {
-    routePath: "/api/update-password",
+    routePath: "/api/list-comments",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost11]
+  },
+  {
+    routePath: "/api/runtime-config",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
@@ -1678,30 +1743,37 @@ var routes = [
   {
     routePath: "/api/update-password",
     mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost11]
-  },
-  {
-    routePath: "/api/update-profile",
-    mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet13]
   },
   {
-    routePath: "/api/update-profile",
+    routePath: "/api/update-password",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost12]
   },
   {
-    routePath: "/api/verify-question",
+    routePath: "/api/update-profile",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet14]
+  },
+  {
+    routePath: "/api/update-profile",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost13]
+  },
+  {
+    routePath: "/api/verify-question",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet15]
   },
   {
     routePath: "/api/verify-question",
@@ -1715,7 +1787,7 @@ var routes = [
     mountPath: "/api",
     method: "POST",
     middlewares: [],
-    modules: [onRequestPost13]
+    modules: [onRequestPost14]
   }
 ];
 

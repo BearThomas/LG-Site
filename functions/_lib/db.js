@@ -50,6 +50,16 @@ export async function ensureUserRow(env, identity, defaults = {}) {
   if (!id) throw new HttpError(400, '用户 ID 无效');
 
   const now = new Date().toISOString();
+  const parseDate = (val, fallback) => {
+    if (!val || String(val).trim() === '') return fallback;
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? fallback : d.toISOString();
+  };
+  const rawCreatedAt = defaults.createdAt || identity?.$createdAt || identity?.registration || identity?.created_at;
+  const rawUpdatedAt = defaults.updatedAt || identity?.$updatedAt || identity?.updated_at;
+  const createdAt = parseDate(rawCreatedAt, now);
+  const updatedAt = parseDate(rawUpdatedAt, now);
+
   const name = String(defaults.name || identity?.name || `同学${id.slice(-4)}`).trim().slice(0, 128) || `同学${id.slice(-4)}`;
   const email = String(defaults.email || identity?.email || `${id}@campus.local`).trim();
   const className = String(defaults.className || extractClass(id));
@@ -93,8 +103,8 @@ export async function ensureUserRow(env, identity, defaults = {}) {
     className,
     defaults.mutedUntil || null,
     defaults.banned ? 1 : 0,
-    defaults.createdAt || now,
-    defaults.updatedAt || now
+    createdAt,
+    updatedAt
   ).run();
 
   return getUserRow(env, id);
@@ -144,7 +154,9 @@ export function toPostDocument(row) {
     targetGroups: parseJsonArray(row.target_groups),
     status: Number(row.status || 0),
     editedAt: row.edited_at || null,
-    commentCount: Number(row.comment_count || 0)
+    commentCount: Number(row.comment_count || 0),
+    likes: Number(row.likes || 0),
+    liked: Boolean(row.liked)
   };
 }
 
