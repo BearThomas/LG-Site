@@ -16,8 +16,12 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
+                <label>板块标识 (英文缩写/拼音)</label>
+                <input type="text" id="boardId" placeholder="如：photo (仅限小写英文、数字和中划线)" maxlength="20">
+            </div>
+            <div class="form-group">
                 <label>板块名称</label>
-                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="30">
+                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="15">
             </div>
             <div class="form-group">
                 <label>板块简介</label>
@@ -77,6 +81,20 @@
 
     <!-- 主内容区 -->
     <div class="posts-container">
+        
+        <!-- 左侧板块侧边栏 -->
+        <aside class="boards-sidebar">
+            <div class="sidebar-header">
+                <h3>板块列表</h3>
+                <button class="create-board-btn" id="createBoardBtn" title="创建新板块">+</button>
+            </div>
+            <div class="boards-list" id="boardsListContainer">
+                <div class="board-item active" data-board-id="main">
+                    <span class="board-icon">🏠</span>
+                    <span class="board-name">主板块</span>
+                </div>
+            </div>
+        </aside>
         
         <!-- 右侧：帖子流 -->
         <main class="posts-main">
@@ -198,6 +216,12 @@
 
                     </div>
 
+                </div>
+
+                <!-- 发布板块 -->
+                <div class="form-group">
+                    <label>发布到板块</label>
+                    <select id="postBoardSelect"></select>
                 </div>
 
                 <!-- 可见范围 -->

@@ -39,7 +39,8 @@ export async function onRequestPost({ request, env }) {
 
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    await requireDb(env).prepare(`
+    const db = requireDb(env);
+    const insertStmt = db.prepare(`
       INSERT INTO posts (
         id, board_id, title, content, author_id, author_name,
         view_permission, target_groups, status, edited_at,
@@ -56,7 +57,17 @@ export async function onRequestPost({ request, env }) {
       JSON.stringify(targetGroups),
       now,
       now
-    ).run();
+    );
+
+    const isCustomBoard = boardId !== 'main' && !boardId.startsWith('class_');
+    if (isCustomBoard) {
+      const updateBoardStmt = db.prepare(`
+        UPDATE boards SET post_count = post_count + 1 WHERE id = ?
+      `).bind(boardId);
+      await db.batch([insertStmt, updateBoardStmt]);
+    } else {
+      await insertStmt.run();
+    }
 
     return json({ success: true, postId: id }, 201);
   } catch (error) {

@@ -45,6 +45,10 @@ let postsSnapshot = [];
 let tombstonedIds = { posts: new Set(), comments: new Set(), confessions: new Set() };
 let coldDataVersion = null; // track version to avoid redundant JSON fetches
 
+// Custom Boards cache
+let customBoards = [];
+window.customBoardsCache = {};
+
 // DOM 元素
 const postsList = document.getElementById('postsList');
 const pagination = document.getElementById('pagination');
@@ -66,7 +70,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     fetchAndApplyCacheVersion().catch(() => {});
+    await fetchCustomBoards();
     await loadBoards();
+    renderBoardsSidebar();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await Promise.all([loadAllUsers(), loadPosts()]);
     if (postsSnapshot.length) renderPostsSnapshotPage();
@@ -115,23 +121,7 @@ function checkLoginStatus() {
 // ========== 加载板块基础数据 ==========
 async function loadBoards() {
     try {
-        if (currentBoard.$id === 'main') {
-            if (currentBoardName) currentBoardName.textContent = '';
-            if (boardMemberCount) boardMemberCount.textContent = '';
-        }
-
-        if (currentUser && currentBoard.$id !== 'main') {
-            try {
-                const userDoc = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, currentUser.studentId);
-                const isJoined = userDoc.joinedBoards?.includes(currentBoard.$id);
-                if (joinBoardBtn) joinBoardBtn.style.display = isJoined ? 'none' : 'inline-block';
-            } catch (e) {
-                if (joinBoardBtn) joinBoardBtn.style.display = 'none';
-            }
-        } else {
-            if (joinBoardBtn) joinBoardBtn.style.display = 'none';
-        }
-        
+        updateJoinButtonState();
     } catch (error) {
         console.error('加载板块基础数据失败:', error);
     }
@@ -585,7 +575,7 @@ async function submitPost() {
                 userId: `student_${user.studentId}`,
                 sessionSecret: user.token || '',
                 appToken: user.appToken || '',
-                boardId: currentBoard.$id,
+                boardId: document.getElementById('postBoardSelect')?.value || currentBoard.$id || 'main',
                 title,
                 content,
                 viewPermission,
@@ -628,7 +618,7 @@ function openModal() {
     }
     
     if (postBoardSelect) {
-        postBoardSelect.innerHTML = `<option value="main" selected>主板块</option>`;
+        renderPostBoardSelect();
     }
     
     if (postModal) postModal.style.display = 'flex';
@@ -670,6 +660,13 @@ function bindEvents() {
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
     if (cancelPostBtn) cancelPostBtn.addEventListener('click', closeModal);
     if (submitPostBtn) submitPostBtn.addEventListener('click', submitPost);
+    
+    // Custom Board Events
+    document.getElementById('createBoardBtn')?.addEventListener('click', openCreateBoardModal);
+    document.getElementById('closeBoardModal')?.addEventListener('click', closeCreateBoardModal);
+    document.getElementById('cancelBoardBtn')?.addEventListener('click', closeCreateBoardModal);
+    document.getElementById('submitBoardBtn')?.addEventListener('click', submitCreateBoard);
+    if (joinBoardBtn) joinBoardBtn.addEventListener('click', handleJoinLeaveClick);
     
     if (postModal) {
         postModal.addEventListener('click', (e) => {
@@ -847,5 +844,284 @@ function togglePostPreview() {
     } else {
         pane.classList.toggle('preview-hidden');
         layout.classList.toggle('preview-closed');
+    }
+}
+
+// ========== Custom Boards Management Logic ==========
+async function fetchCustomBoards() {
+    try {
+        const res = await fetch('/api/board');
+        if (res.ok) {
+            const data = await res.json();
+            customBoards = data.boards || [];
+            window.customBoardsCache = {};
+            for (const b of customBoards) {
+                window.customBoardsCache[b.id] = b;
+            }
+        }
+    } catch (e) {
+        console.warn('获取自定义板块失败:', e);
+    }
+}
+
+function renderBoardsSidebar() {
+    const container = document.getElementById('boardsListContainer');
+    if (!container) return;
+
+    const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
+    joinedSet.add('main');
+
+    const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
+        ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
+        : null;
+    if (classBoardId) joinedSet.add(classBoardId);
+
+    let html = '';
+    
+    // 1. Main Board
+    const mainActive = currentBoard.$id === 'main' ? 'active' : '';
+    html += `
+        <div class="board-item ${mainActive}" data-board-id="main">
+            <span class="board-icon">🏠</span>
+            <span class="board-name">主板块</span>
+        </div>
+    `;
+
+    // 2. Class Board (if any)
+    if (classBoardId) {
+        const classActive = currentBoard.$id === classBoardId ? 'active' : '';
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        html += `
+            <div class="board-item ${classActive}" data-board-id="${classBoardId}">
+                <span class="board-icon">🎓</span>
+                <span class="board-name">${className}</span>
+            </div>
+        `;
+    }
+
+    // 3. Custom Boards
+    for (const b of customBoards) {
+        const isJoined = joinedSet.has(b.id);
+        const active = currentBoard.$id === b.id ? 'active' : '';
+        html += `
+            <div class="board-item ${active}" data-board-id="${b.id}">
+                <span class="board-icon">💬</span>
+                <span class="board-name">${escapeHtml(b.name)}</span>
+                ${isJoined ? '' : '<span style="font-size:10px; color:#94a3b8; margin-left:4px;">未加入</span>'}
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.board-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const boardId = el.getAttribute('data-board-id');
+            switchBoard(boardId);
+        });
+    });
+}
+
+async function switchBoard(boardId) {
+    if (currentBoard.$id === boardId) return;
+
+    if (boardId === 'main') {
+        currentBoard = { $id: 'main', name: '主板块' };
+    } else if (boardId.startsWith('class_')) {
+        const match = boardId.match(/^class_(\d{4})_(\d+)$/);
+        const name = match ? `${match[1]}届${match[2]}班` : boardId;
+        currentBoard = { $id: boardId, name };
+    } else {
+        const b = customBoards.find(x => x.id === boardId);
+        currentBoard = { $id: boardId, name: b ? b.name : boardId, _custom: b };
+    }
+
+    if (currentBoardName) {
+        currentBoardName.textContent = currentBoard.name;
+    }
+    if (boardMemberCount) {
+        if (currentBoard.$id === 'main') {
+            boardMemberCount.textContent = '';
+        } else if (currentBoard._custom) {
+            boardMemberCount.textContent = `${currentBoard._custom.memberCount} 成员`;
+        } else {
+            boardMemberCount.textContent = '';
+        }
+    }
+
+    updateJoinButtonState();
+    currentPage = 1;
+    renderBoardsSidebar();
+    await loadPosts({ forceRefresh: true });
+}
+
+function updateJoinButtonState() {
+    if (!joinBoardBtn) return;
+    
+    if (currentBoard.$id === 'main' || currentBoard.$id.startsWith('class_') || !currentUser) {
+        joinBoardBtn.style.display = 'none';
+        return;
+    }
+
+    const joinedBoards = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+    const isJoined = joinedBoards.includes(currentBoard.$id);
+
+    joinBoardBtn.style.display = 'inline-block';
+    if (isJoined) {
+        joinBoardBtn.textContent = '退出板块';
+    } else {
+        joinBoardBtn.textContent = '加入板块';
+    }
+}
+
+async function handleJoinLeaveClick() {
+    if (!currentUser || !currentBoard._custom) return;
+    const joinedBoards = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+    const isJoined = joinedBoards.includes(currentBoard.$id);
+    const action = isJoined ? 'leave' : 'join';
+
+    try {
+        const res = await fetch('/api/board-membership', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-LG-Token': currentUser.appToken || ''
+            },
+            body: JSON.stringify({ boardId: currentBoard.$id, action })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            alert(errData.error || '操作失败');
+            return;
+        }
+
+        if (action === 'join') {
+            joinedBoards.push(currentBoard.$id);
+            currentBoard._custom.memberCount++;
+        } else {
+            const idx = joinedBoards.indexOf(currentBoard.$id);
+            if (idx > -1) joinedBoards.splice(idx, 1);
+            currentBoard._custom.memberCount = Math.max(0, currentBoard._custom.memberCount - 1);
+        }
+
+        currentUser.joinedBoards = joinedBoards;
+        if (currentUser.profile) currentUser.profile.joinedBoards = joinedBoards;
+        localStorage.setItem('campus_user', JSON.stringify(currentUser));
+
+        updateJoinButtonState();
+        renderBoardsSidebar();
+        
+        if (boardMemberCount) {
+            boardMemberCount.textContent = `${currentBoard._custom.memberCount} 成员`;
+        }
+    } catch (e) {
+        alert('网络请求失败');
+    }
+}
+
+function openCreateBoardModal() {
+    if (!currentUser) {
+        alert('请登录后创建板块');
+        return;
+    }
+    const modal = document.getElementById('createBoardModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeCreateBoardModal() {
+    const modal = document.getElementById('createBoardModal');
+    if (modal) modal.style.display = 'none';
+    const bid = document.getElementById('boardId');
+    if (bid) bid.value = '';
+    const bname = document.getElementById('boardName');
+    if (bname) bname.value = '';
+    const bdesc = document.getElementById('boardDesc');
+    if (bdesc) bdesc.value = '';
+}
+
+async function submitCreateBoard() {
+    const id = document.getElementById('boardId')?.value.trim().toLowerCase();
+    const name = document.getElementById('boardName')?.value.trim();
+    const description = document.getElementById('boardDesc')?.value.trim();
+
+    if (!id || !name) {
+        alert('板块标识和板块名称不能为空');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/board', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-LG-Token': currentUser?.appToken || ''
+            },
+            body: JSON.stringify({ id, name, description })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.error || '创建板块失败');
+            return;
+        }
+
+        customBoards.push(data.board);
+        window.customBoardsCache[data.board.id] = data.board;
+
+        if (currentUser) {
+            const owned = currentUser.ownedBoards || currentUser.profile?.ownedBoards || [];
+            const joined = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+            if (!owned.includes(id)) owned.push(id);
+            if (!joined.includes(id)) joined.push(id);
+            currentUser.ownedBoards = owned;
+            currentUser.joinedBoards = joined;
+            if (currentUser.profile) {
+                currentUser.profile.ownedBoards = owned;
+                currentUser.profile.joinedBoards = joined;
+            }
+            localStorage.setItem('campus_user', JSON.stringify(currentUser));
+        }
+
+        closeCreateBoardModal();
+        renderBoardsSidebar();
+        await switchBoard(id);
+    } catch (e) {
+        alert('网络错误，请稍后重试');
+    }
+}
+
+function renderPostBoardSelect() {
+    const select = document.getElementById('postBoardSelect');
+    if (!select) return;
+
+    const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
+    joinedSet.add('main');
+
+    const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
+        ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
+        : null;
+    if (classBoardId) joinedSet.add(classBoardId);
+
+    let html = '';
+    html += `<option value="main">主板块</option>`;
+
+    if (classBoardId) {
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        html += `<option value="${classBoardId}">${className}</option>`;
+    }
+
+    for (const b of customBoards) {
+        if (joinedSet.has(b.id)) {
+            html += `<option value="${b.id}">${escapeHtml(b.name)}</option>`;
+        }
+    }
+
+    select.innerHTML = html;
+
+    if (joinedSet.has(currentBoard.$id)) {
+        select.value = currentBoard.$id;
+    } else {
+        select.value = 'main';
     }
 }

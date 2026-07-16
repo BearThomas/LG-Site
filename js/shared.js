@@ -51,6 +51,10 @@ export function formatBoardName(boardId) {
     const classMatch = boardId.match(/^class_(\d{4})_(\d+)$/);
     if (classMatch) return `${classMatch[1]}\u5c4a${classMatch[2]}\u73ed`;
 
+    if (window.customBoardsCache && window.customBoardsCache[boardId]) {
+        return window.customBoardsCache[boardId].name || boardId;
+    }
+
     return boardId;
 }
 
