@@ -73,9 +73,7 @@ export function methodNotAllowed(allowed = ['POST']) {
 export function errorResponse(error, fallback = '服务器暂时不可用') {
   const status = Number(error?.status || 500);
   const safeStatus = status >= 400 && status <= 599 ? status : 500;
-  const message = safeStatus >= 500 && !error?.expose
-    ? fallback
-    : (error?.message || fallback);
+  const message = error?.message || fallback;
 
   return json(
     {
