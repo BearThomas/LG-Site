@@ -194,21 +194,30 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 })
             };
         } catch (error) {
-            console.warn('D1 表白墙读取失败，启用 public 冷备份:', error.message);
+            console.warn('D1 表白墙读取失败，启用 public 备份:', error.message);
             try {
-                const res = await fetch('./public/data-fallback/confessions.json');
-                if (res.ok) {
-                    const data = await res.json();
-                    localRes = data.documents || data || [];
-                    if (data.encrypted) {
-                        await secureKeyReady;
-                        localRes = await Promise.all(localRes.map(async doc => ({
-                            ...doc,
-                            content: await decryptText(doc.content),
-                            authorName: await decryptText(doc.authorName)
-                        })));
+                let localData = [];
+                for (const url of ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        let raw = data.documents || data || [];
+                        if (data.encrypted) {
+                            await secureKeyReady;
+                            raw = await Promise.all(raw.map(async doc => ({
+                                ...doc,
+                                content: await decryptText(doc.content),
+                                authorName: await decryptText(doc.authorName)
+                            })));
+                        }
+                        localData = raw;
+                        break;
+                    } catch (e) {
+                        continue;
                     }
                 }
+                localRes = localData;
             } catch (backupError) {
                 console.warn('public 表白墙备份也无法读取:', backupError.message);
             }

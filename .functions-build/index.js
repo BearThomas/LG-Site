@@ -2298,7 +2298,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-ftDhn1/functionsRoutes-0.3882978615986332.mjs
+// ../.wrangler/tmp/pages-S1pelD/functionsRoutes-0.6204055168417112.mjs
 var routes = [
   {
     routePath: "/api/board/members",

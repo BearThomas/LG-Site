@@ -186,37 +186,44 @@ async function loadPostDetail() {
         console.log("🔥 成功获取热数据帖子");
     } catch (error) {
         const status = Number(error.code || 0);
-        if (status >= 400 && status < 500) {
+        if (status === 403) {
             if (postDetailCard) {
                 postDetailCard.innerHTML = `<div class="empty-state"><p>${escapeHtml(error.message || '当前帖子不存在或无权查看')}</p></div>`;
             }
             return;
         }
-        console.warn('D1 暂时不可用，正在排查 public 冷备份...');
+        console.warn('D1 暂时不可用，正在排查 public 备份...');
         try {
-            await secureKeyReady;
-            const url = `./public/data-fallback/posts.json`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error('冷备份读取失败');
-            
-            const backupData = await res.json();
-            let docs = backupData.documents || backupData || [];
-            
-            if (backupData.encrypted) {
-                docs = await Promise.all(docs.map(async p => {
-                    let targetGroups = [];
-                    if (p.targetGroups !== '已隐藏') {
-                        const decrypted = await decryptText(p.targetGroups);
-                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+            let docs = [];
+            for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const backupData = await res.json();
+                    let raw = backupData.documents || backupData || [];
+                    
+                    if (backupData.encrypted) {
+                        await secureKeyReady;
+                        raw = await Promise.all(raw.map(async p => {
+                            let targetGroups = [];
+                            if (p.targetGroups !== '已隐藏') {
+                                const decrypted = await decryptText(p.targetGroups);
+                                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                            }
+                            return {
+                                ...p,
+                                content: await decryptText(p.content),
+                                title: await decryptText(p.title),
+                                authorName: await decryptText(p.authorName),
+                                targetGroups: targetGroups
+                            };
+                        }));
                     }
-                    return {
-                        ...p,
-                        content: await decryptText(p.content),
-                        title: await decryptText(p.title),
-                        authorName: await decryptText(p.authorName),
-                        targetGroups: targetGroups
-                    };
-                }));
+                    docs = raw;
+                    break;
+                } catch (e) {
+                    continue;
+                }
             }
             
             currentPost = docs.find(p => (p.id === postId || p.$id === postId));
@@ -363,21 +370,29 @@ async function loadComments() {
         let localRes = [];
         if (cloudComments === null) {
             try {
-                const res = await fetch('./public/data-fallback/comments.json');
-                if (res.ok) {
-                    const data = await res.json();
-                    localRes = data.documents || data || [];
-                    if (data.encrypted) {
-                        await secureKeyReady;
-                        localRes = await Promise.all(localRes.map(async comment => ({
-                            ...comment,
-                            content: await decryptText(comment.content),
-                            authorName: await decryptText(comment.authorName),
-                            authorId: await decryptText(comment.authorId)
-                        })));
+                let localData = [];
+                for (const url of ['./public/data-backups/comments.json', './public/data-fallback/comments.json']) {
+                    try {
+                        const res = await fetch(url);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        let raw = data.documents || data || [];
+                        if (data.encrypted) {
+                            await secureKeyReady;
+                            raw = await Promise.all(raw.map(async comment => ({
+                                ...comment,
+                                content: await decryptText(comment.content),
+                                authorName: await decryptText(comment.authorName),
+                                authorId: await decryptText(comment.authorId)
+                            })));
+                        }
+                        localData = raw;
+                        break;
+                    } catch (e) {
+                        continue;
                     }
-                    localRes = localRes.filter(comment => comment.postId === postId);
                 }
+                localRes = localData.filter(comment => comment.postId === postId);
             } catch (error) {
                 console.warn('public 评论备份也无法读取:', error.message);
             }

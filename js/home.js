@@ -421,22 +421,28 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     let coldConfessions = [];
     if (!hotConfessionsLoaded) {
         try {
-        const url = './public/data-fallback/confessions.json';
-        const res = await fetch(url);
-        if (res.ok) {
-            const backupData = await res.json();
-            let docs = backupData.documents || backupData || [];
-
-            if (backupData.encrypted) {
-                await secureKeyReady;
-                docs = await Promise.all(docs.map(async c => ({
-                    ...c,
-                    content: await decryptText(c.content), 
-                    authorName: await decryptText(c.authorName)
-                })));
+            let localData = [];
+            for (const url of ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']) {
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const backupData = await res.json();
+                    let raw = backupData.documents || backupData || [];
+                    if (backupData.encrypted) {
+                        await secureKeyReady;
+                        raw = await Promise.all(raw.map(async c => ({
+                            ...c,
+                            content: await decryptText(c.content), 
+                            authorName: await decryptText(c.authorName)
+                        })));
+                    }
+                    localData = raw;
+                    break;
+                } catch (e) {
+                    continue;
+                }
             }
-            coldConfessions = docs;
-        }
+            coldConfessions = localData;
         } catch (e) {
             console.log('未发现表白冷备份数据', e);
         }
