@@ -270,14 +270,44 @@ export async function onRequestPatch({ request, env }) {
 export async function onRequestDelete({ request, env }) {
   try {
     const body = await readJsonBody(request);
-    if (body.collection !== 'posts') throw new HttpError(400, '该集合不支持删除');
+    const collection = body.collection || 'posts';
+    if (collection !== 'posts' && collection !== 'confessions') {
+      throw new HttpError(400, '该集合不支持删除');
+    }
     const { profile } = await requireAuth(request, env, body);
+    const db = requireDb(env);
+
+    if (collection === 'confessions') {
+      if (!isAdmin(profile)) throw new HttpError(403, '仅管理员可以删除表白');
+      const confessionId = String(body.documentId || '').trim();
+      if (!confessionId) throw new HttpError(400, '缺少表白 ID');
+      
+      await db.prepare('DELETE FROM confessions WHERE id = ?').bind(confessionId).run();
+      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+        .bind('confessions', confessionId)
+        .run();
+      return json({ success: true });
+    }
+
     const post = await getPostRow(env, body.documentId);
-    if (!post) throw new HttpError(404, '帖子不存在');
+    if (!post) {
+      if (isAdmin(profile)) {
+        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+          .bind('posts', String(body.documentId))
+          .run();
+        return json({ success: true, tombstoned: true });
+      }
+      throw new HttpError(404, '帖子不存在');
+    }
     if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, '只能删除自己的帖子');
     }
-    await requireDb(env).prepare('DELETE FROM posts WHERE id = ?').bind(post.id).run();
+    await db.prepare('DELETE FROM posts WHERE id = ?').bind(post.id).run();
+    if (isAdmin(profile)) {
+      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+        .bind('posts', post.id)
+        .run();
+    }
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'DELETE', message: error.message, status: error.status }));

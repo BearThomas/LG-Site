@@ -66,7 +66,24 @@ function applyAppwriteAuth(savedUser) {
     }
 }
 
-// ========== ⚡ 页面加载初始化生命周期调整 ==========
+let tombstonedIds = { posts: new Set(), comments: new Set() };
+
+async function loadTombstones() {
+    try {
+        const res = await fetch('/api/cache-version');
+        if (res.ok) {
+            const data = await res.json();
+            tombstonedIds = {
+                posts: new Set(data.tombstoneIds?.posts || []),
+                comments: new Set(data.tombstoneIds?.comments || [])
+            };
+        }
+    } catch (e) {
+        console.warn('获取版本缓存及软删除标识失败', e);
+    }
+}
+
+// ========== 页面加载初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
@@ -80,6 +97,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkLoginStatus();
     bindEvents();
     if (postDetailCard) postDetailCard.innerHTML = createListSkeleton('post', 1);
+
+    await loadTombstones();
+    if (tombstonedIds.posts.has(postId)) {
+        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存在</p></div>';
+        return;
+    }
 
     // 正文和用户资料并行；正文优先显示，用户名片到达后再静默补全作者信息。
     const userDirectoryTask = loadAllUsers();
@@ -273,9 +296,15 @@ function renderPostDetail() {
     const timeStr = formatTime(new Date(postCreatedAt));
     
     let actionsHtml = '';
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
     if (isAuthor && !currentPost._isCold) { 
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
+            <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
+        `;
+    } else if (isAdmin) {
+        actionsHtml = `
+            ${!currentPost._isCold ? '<button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>' : ''}
             <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
         `;
     }
@@ -338,7 +367,7 @@ function renderPostDetail() {
         if (currentPost.liked) {
             likeBtn.classList.add('liked');
         }
-        if (currentUser && !currentPost._isCold) {
+        if (currentUser) {
             likeBtn.removeAttribute('disabled');
             likeBtn.addEventListener('click', toggleLike);
         } else {
@@ -411,6 +440,7 @@ async function loadComments() {
         const allComments = [...(cloudComments || []).map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
             .filter(c => {
                 if (!c.content || !c.authorId) return false;
+                if (tombstonedIds.comments.has(c.$id)) return false;
                 if(seen.has(c.$id)) return false;
                 seen.add(c.$id);
                 return true;
@@ -651,7 +681,8 @@ async function submitEdit() {
 
 // ========== 主贴删除模块弹窗 ==========
 function openDeleteModal() {
-    if (currentPost._isCold) return;
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
+    if (currentPost._isCold && !isAdmin) return;
     if (deleteModal) deleteModal.style.display = 'flex';
 }
 
@@ -755,11 +786,6 @@ function toggleEditPreview() {
 async function toggleLike() {
     const likeBtn = document.getElementById('likeBtn');
     if (!likeBtn || !currentUser || !currentPost) return;
-    if (currentPost._isCold) {
-        likeBtn.disabled = true;
-        likeBtn.setAttribute('disabled', 'true');
-        return;
-    }
     likeBtn.disabled = true;
     try {
         const token = currentUser.appToken || '';

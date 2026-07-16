@@ -1945,14 +1945,35 @@ __name(onRequestPatch7, "onRequestPatch");
 async function onRequestDelete8({ request, env }) {
   try {
     const body = await readJsonBody(request);
-    if (body.collection !== "posts") throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u5220\u9664");
+    const collection = body.collection || "posts";
+    if (collection !== "posts" && collection !== "confessions") {
+      throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u5220\u9664");
+    }
     const { profile } = await requireAuth(request, env, body);
+    const db = requireDb(env);
+    if (collection === "confessions") {
+      if (!isAdmin(profile)) throw new HttpError(403, "\u4EC5\u7BA1\u7406\u5458\u53EF\u4EE5\u5220\u9664\u8868\u767D");
+      const confessionId = String(body.documentId || "").trim();
+      if (!confessionId) throw new HttpError(400, "\u7F3A\u5C11\u8868\u767D ID");
+      await db.prepare("DELETE FROM confessions WHERE id = ?").bind(confessionId).run();
+      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind("confessions", confessionId).run();
+      return json({ success: true });
+    }
     const post = await getPostRow(env, body.documentId);
-    if (!post) throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
+    if (!post) {
+      if (isAdmin(profile)) {
+        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind("posts", String(body.documentId)).run();
+        return json({ success: true, tombstoned: true });
+      }
+      throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
+    }
     if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, "\u53EA\u80FD\u5220\u9664\u81EA\u5DF1\u7684\u5E16\u5B50");
     }
-    await requireDb(env).prepare("DELETE FROM posts WHERE id = ?").bind(post.id).run();
+    await db.prepare("DELETE FROM posts WHERE id = ?").bind(post.id).run();
+    if (isAdmin(profile)) {
+      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind("posts", post.id).run();
+    }
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", route: "/api/data", method: "DELETE", message: error.message, status: error.status }));
@@ -1974,7 +1995,13 @@ async function onRequestPost16({ request, env }) {
     if (!commentId) throw new HttpError(400, "\u7F3A\u5C11\u8BC4\u8BBA ID");
     const db = requireDb(env);
     const comment = await db.prepare("SELECT * FROM comments WHERE id = ? LIMIT 1").bind(commentId).first();
-    if (!comment) throw new HttpError(404, "\u8BC4\u8BBA\u4E0D\u5B58\u5728");
+    if (!comment) {
+      if (isAdmin(profile)) {
+        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind("comments", commentId).run();
+        return json({ success: true, tombstoned: true });
+      }
+      throw new HttpError(404, "\u8BC4\u8BBA\u4E0D\u5B58\u5728");
+    }
     if (!isAdmin(profile) && normalizeUserId(comment.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, "\u53EA\u80FD\u5220\u9664\u81EA\u5DF1\u7684\u8BC4\u8BBA");
     }
@@ -1986,6 +2013,7 @@ async function onRequestPost16({ request, env }) {
         WHERE id = ?
       `).bind(comment.post_id)
     ]);
+    await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`).bind("comments", commentId).run();
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: "error", route: "/api/delete-comment", message: error.message, status: error.status }));
@@ -2005,8 +2033,6 @@ async function onRequestPost17({ request, env }) {
     const { profile } = await requireAuth(request, env, body);
     const postId = String(body.postId || "").trim();
     if (!postId) throw new HttpError(400, "\u7F3A\u5C11\u5E16\u5B50 ID");
-    const post = await getPostRow(env, postId);
-    if (!post) throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
     const db = requireDb(env);
     const userId = normalizeUserId(profile.id);
     const existing = await db.prepare("SELECT 1 FROM likes WHERE post_id = ? AND user_id = ? LIMIT 1").bind(postId, userId).first();
@@ -2298,7 +2324,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-G59EHi/functionsRoutes-0.7832725319515556.mjs
+// ../.wrangler/tmp/pages-SJuhgH/functionsRoutes-0.21348345535830227.mjs
 var routes = [
   {
     routePath: "/api/board/members",
