@@ -3,7 +3,8 @@
 /* 容器布局 */
 .posts-container {
     display: flex;
-    max-width: 1400px;
+    justify-content: center;
+    max-width: 900px;
     margin: 24px auto;
     padding: 0 24px;
     gap: 24px;
@@ -141,10 +142,10 @@
 /* ========== 右侧主内容区 ========== */
 .posts-main {
     flex: 1;
-    background: white;
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    background: transparent;
+    border-radius: 0;
+    padding: 0;
+    box-shadow: none;
     min-width: 0; /* 🚨 刚性：防止 Flex 容器下长文本横向爆仓撑变形 */
 }
 
@@ -1404,3 +1405,82 @@
         font-size: 1.24rem;
     }
 }
+
+/* ========== 帖子墙专属样式 ========== */
+.posts-wall-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+    margin-bottom: 24px;
+    gap: 16px;
+    box-sizing: border-box;
+}
+
+.wall-title-area {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.wall-title {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.wall-subtitle {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #64748b;
+}
+
+.new-post-btn-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.2);
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.new-post-btn-pill:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+.new-post-btn-pill:active {
+    transform: translateY(0);
+}
+
+/* 帖子卡片美化微调 */
+.post-card {
+    border: 1px solid rgba(0, 0, 0, 0.03) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05) !important;
+    border-color: rgba(59, 130, 246, 0.1) !important;
+}
+

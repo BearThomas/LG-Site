@@ -246,7 +246,6 @@ async function loadPostDetail() {
         return; 
     }
 
-    if (boardName) boardName.textContent = formatBoardName(currentPost.boardId);
     document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
     canRenderCurrentPost = true;
     renderPostDetail();

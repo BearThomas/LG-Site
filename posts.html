@@ -84,31 +84,19 @@
     <!-- 主内容区 -->
     <div class="posts-container">
         
-        <!-- 左侧板块侧边栏 -->
-        <aside class="boards-sidebar">
-            <div class="sidebar-header">
-                <h3>板块列表</h3>
-                <button class="create-board-btn" id="createBoardBtn" title="创建新板块">+</button>
-            </div>
-            <div class="boards-list" id="boardsListContainer">
-                <div class="board-item active" data-board-id="main">
-                    <span class="board-icon">🏠</span>
-                    <span class="board-name">主板块</span>
-                </div>
-            </div>
-        </aside>
-        
-        <!-- 右侧：帖子流 -->
+        <!-- 帖子时间线 -->
         <main class="posts-main">
-            <!-- 当前板块信息 -->
-            <div class="current-board-header">
-                <div class="board-info">
-                    <h2 id="currentBoardName">主板块</h2>
-                    <span class="board-member-count" id="boardMemberCount">42 人</span>
+            <!-- 帖子墙精致卡片头部 -->
+            <div class="posts-wall-header">
+                <div class="wall-title-area">
+                    <h2 class="wall-title">帖子墙</h2>
+                    <p class="wall-subtitle">在这里，分享你的校园生活与心得感受 ✨</p>
                 </div>
-                <div class="board-actions">
-                    <button class="join-board-btn" id="joinBoardBtn" style="display: none;">加入板块</button>
-                    <button class="new-post-btn" id="newPostBtn">发新帖</button>
+                <div class="wall-actions">
+                    <button class="new-post-btn-pill" id="newPostBtn">
+                        <span class="btn-icon">✍️</span>
+                        <span>发表新帖</span>
+                    </button>
                 </div>
             </div>
 
@@ -220,12 +208,10 @@
 
                 </div>
 
-                <!-- 发布板块 (可多选) -->
-                <div class="form-group">
-                    <label>发布到板块 (可多选)</label>
-                    <div id="postBoardCheckboxes" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 120px; overflow-y: auto; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-2);">
-                        <!-- Dynamic checkboxes will go here -->
-                    </div>
+                <!-- 发布板块 (已隐藏) -->
+                <div class="form-group" style="display: none;">
+                    <label>发布到板块</label>
+                    <div id="postBoardCheckboxes"></div>
                 </div>
 
                 <!-- 可见范围 -->

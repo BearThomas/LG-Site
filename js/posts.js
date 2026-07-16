@@ -70,9 +70,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     fetchAndApplyCacheVersion().catch(() => {});
-    await fetchCustomBoards();
     await loadBoards();
-    renderBoardsSidebar();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await Promise.all([loadAllUsers(), loadPosts()]);
     if (postsSnapshot.length) renderPostsSnapshotPage();
@@ -249,28 +247,6 @@ async function loadColdPostDocuments() {
 async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
-
-        // Check if user is a member of the current board
-        const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
-        joinedSet.add('main');
-
-        const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
-            ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
-            : null;
-        if (classBoardId) joinedSet.add(classBoardId);
-
-        const isMember = joinedSet.has(currentBoard.$id) || 
-                         (currentUser && (currentUser.role === 'admin' || currentUser.profile?.role === 'admin' || currentUser.permissions === 255));
-
-        if (!isMember) {
-            postsList.innerHTML = `<div class="empty-state"><p>🔒 你尚未加入该板块，无法查看内容。</p></div>`;
-            const pag = document.querySelector('.pagination-container');
-            if (pag) pag.style.display = 'none';
-            return;
-        } else {
-            const pag = document.querySelector('.pagination-container');
-            if (pag) pag.style.display = 'flex';
-        }
         
         const currentUserId = currentUser?.studentId || 'guest';
         const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
@@ -582,13 +558,7 @@ async function submitPost() {
         targetUsers = Array.from(selectedUserIds);
     }
     
-    const checkboxes = document.querySelectorAll('input[name="postBoards"]:checked');
-    const boardIds = Array.from(checkboxes).map(cb => cb.value);
-
-    if (boardIds.length === 0) {
-        alert('请至少选择一个发布的板块');
-        return;
-    }
+    const boardIds = ['main'];
     
     // 🔒 通过同步表单校验后，立即将发布按钮锁死，文字替换为加载状态
     if (submitPostBtn) {

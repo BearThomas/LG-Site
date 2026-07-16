@@ -65,26 +65,6 @@
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
         if (userNameSpan) userNameSpan.textContent = name || '同学';
         renderNavbarAvatar(name, avatar);
-        injectBoardManageLink();
-    }
-
-    function injectBoardManageLink() {
-        if (!dropdownMenu) return;
-        const user = readSavedUser();
-        if (!user) return;
-        const owned = user.ownedBoards || [];
-        const isAdmin = user.role === 'admin' || user.permissions === 255;
-        if (owned.length > 0 || isAdmin) {
-            if (!document.getElementById('boardManageLink')) {
-                const link = document.createElement('a');
-                link.id = 'boardManageLink';
-                link.href = './board-manage.html';
-                link.textContent = '版主中心';
-                dropdownMenu.insertBefore(link, dropdownMenu.firstChild);
-            }
-        } else {
-            document.getElementById('boardManageLink')?.remove();
-        }
     }
 
     async function checkLoginStatus() {
@@ -120,7 +100,6 @@
             showLoggedIn(user.name, user.avatar);
         } catch (error) {
             console.warn('顶栏资料同步失败，继续使用本地缓存:', error.message);
-            injectBoardManageLink();
         }
     }
 
