@@ -706,12 +706,377 @@ function assertNotMuted(profile) {
 }
 __name(assertNotMuted, "assertNotMuted");
 
+// api/board/members.js
+async function onRequestGet({ request, env }) {
+  try {
+    const url = new URL(request.url);
+    const boardId = String(url.searchParams.get("boardId") || "").trim();
+    if (!boardId) throw new HttpError(400, "\u672A\u6307\u5B9A\u677F\u5757 ID");
+    const auth = await requireAuth(request, env, {});
+    const userId = normalizeUserId(auth.profile.id);
+    const db = requireDb(env);
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== userId && !isAdmin(auth.profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6743\u7BA1\u7406\u677F\u5757\u6210\u5458");
+    }
+    const membersResult = await db.prepare(`
+      SELECT id, name, avatar, class_name, role 
+      FROM users 
+      WHERE EXISTS (
+        SELECT 1 FROM json_each(users.joined_boards) 
+        WHERE json_each.value = ?
+      )
+      ORDER BY id ASC
+    `).bind(boardId).all();
+    const members = (membersResult.results || []).map((m) => ({
+      userId: m.id,
+      name: m.name || `\u540C\u5B66${m.id.slice(-4)}`,
+      className: m.class_name || "",
+      avatar: m.avatar || "",
+      role: m.role || "normal",
+      isOwner: normalizeUserId(board.owner_id) === normalizeUserId(m.id)
+    }));
+    return json({ success: true, members });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/members", method: "GET", message: error.message }));
+    return errorResponse(error, "\u83B7\u53D6\u6210\u5458\u5217\u8868\u5931\u8D25");
+  }
+}
+__name(onRequestGet, "onRequestGet");
+async function onRequestDelete({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const callerId = normalizeUserId(profile.id);
+    const db = requireDb(env);
+    const boardId = String(body.boardId || "").trim();
+    const targetUserId = normalizeUserId(body.userId);
+    if (!boardId || !targetUserId) throw new HttpError(400, "\u677F\u5757 ID \u6216\u76EE\u6807\u7528\u6237 ID \u4E0D\u80FD\u4E3A\u7A7A");
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== callerId && !isAdmin(profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6743\u79FB\u51FA\u6210\u5458");
+    }
+    if (normalizeUserId(board.owner_id) === targetUserId) {
+      throw new HttpError(400, "\u4E3B\u7406\u4EBA\u65E0\u6CD5\u79FB\u51FA\u81EA\u5DF1\uFF0C\u5982\u9700\u6CE8\u9500\u677F\u5757\u8BF7\u76F4\u63A5\u5220\u9664\u677F\u5757");
+    }
+    const targetUser = await getUserRow(env, targetUserId);
+    if (!targetUser) throw new HttpError(404, "\u8BE5\u7528\u6237\u4E0D\u5B58\u5728");
+    const joinedBoards = parseJsonArray(targetUser.joined_boards);
+    const hasJoined = joinedBoards.includes(boardId);
+    if (!hasJoined) {
+      return json({ success: true, message: "\u7528\u6237\u5DF2\u4E0D\u5728\u8BE5\u677F\u5757\u4E2D", boardId, userId: targetUserId });
+    }
+    const newJoined = joinedBoards.filter((id) => id !== boardId);
+    const updateUserStmt = db.prepare(`UPDATE users SET joined_boards = ? WHERE id = ?`).bind(JSON.stringify(newJoined), targetUserId);
+    const decBoardStmt = db.prepare(`UPDATE boards SET member_count = MAX(0, member_count - 1) WHERE id = ?`).bind(boardId);
+    await db.batch([updateUserStmt, decBoardStmt]);
+    return json({ success: true, kicked: true, boardId, userId: targetUserId });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/members", method: "DELETE", message: error.message }));
+    return errorResponse(error, "\u79FB\u51FA\u6210\u5458\u5931\u8D25");
+  }
+}
+__name(onRequestDelete, "onRequestDelete");
+function onRequestPost() {
+  return methodNotAllowed(["GET", "DELETE"]);
+}
+__name(onRequestPost, "onRequestPost");
+function onRequestPatch() {
+  return methodNotAllowed(["GET", "DELETE"]);
+}
+__name(onRequestPatch, "onRequestPatch");
+
+// api/board/posts.js
+async function onRequestGet2({ request, env }) {
+  try {
+    const url = new URL(request.url);
+    const boardId = String(url.searchParams.get("boardId") || "").trim();
+    if (!boardId) throw new HttpError(400, "\u672A\u6307\u5B9A\u677F\u5757 ID");
+    const auth = await requireAuth(request, env, {});
+    const userId = normalizeUserId(auth.profile.id);
+    const db = requireDb(env);
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== userId && !isAdmin(auth.profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6743\u7BA1\u7406\u8BE5\u677F\u5757\u5185\u7684\u5E16\u5B50");
+    }
+    const postsResult = await db.prepare(`
+      SELECT id, title, author_name, created_at, comment_count
+      FROM posts
+      WHERE board_id = ?
+      ORDER BY created_at DESC
+    `).bind(boardId).all();
+    const posts = (postsResult.results || []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      authorName: p.author_name,
+      commentCount: Number(p.comment_count || 0),
+      createdAt: p.created_at
+    }));
+    return json({ success: true, posts });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/posts", method: "GET", message: error.message }));
+    return errorResponse(error, "\u83B7\u53D6\u677F\u5757\u5E16\u5B50\u5217\u8868\u5931\u8D25");
+  }
+}
+__name(onRequestGet2, "onRequestGet");
+async function onRequestDelete2({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const userId = normalizeUserId(profile.id);
+    const db = requireDb(env);
+    const postId = String(body.postId || "").trim();
+    if (!postId) throw new HttpError(400, "\u672A\u6307\u5B9A\u8981\u5220\u9664\u7684\u5E16\u5B50 ID");
+    const post = await getPostRow(env, postId);
+    if (!post) throw new HttpError(404, "\u8BE5\u5E16\u5B50\u4E0D\u5B58\u5728");
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? LIMIT 1`).bind(post.board_id).first();
+    const isBoardOwner = board && normalizeUserId(board.owner_id) === userId;
+    const isPostAuthor = normalizeUserId(post.author_id) === userId;
+    if (!isBoardOwner && !isPostAuthor && !isAdmin(profile)) {
+      throw new HttpError(403, "\u65E0\u6743\u5220\u9664\u6B64\u8D34\uFF08\u4EC5\u9650\u4F5C\u8005\u3001\u7248\u4E3B\u6216\u7BA1\u7406\u5458\uFF09");
+    }
+    const statements = [
+      db.prepare("DELETE FROM posts WHERE id = ?").bind(postId),
+      db.prepare("DELETE FROM likes WHERE post_id = ?").bind(postId),
+      db.prepare("DELETE FROM comments WHERE post_id = ?").bind(postId)
+    ];
+    const isCustomBoard = board && post.board_id !== "main" && !post.board_id.startsWith("class_");
+    if (isCustomBoard) {
+      statements.push(
+        db.prepare("UPDATE boards SET post_count = MAX(0, post_count - 1) WHERE id = ?").bind(post.board_id)
+      );
+    }
+    await db.batch(statements);
+    return json({ success: true, deletedPostId: postId });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/posts", method: "DELETE", message: error.message }));
+    return errorResponse(error, "\u5220\u9664\u5E16\u5B50\u5931\u8D25");
+  }
+}
+__name(onRequestDelete2, "onRequestDelete");
+async function onRequestPatch2({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const userId = normalizeUserId(profile.id);
+    const db = requireDb(env);
+    const postId = String(body.postId || "").trim();
+    const targetBoardId = String(body.targetBoardId || "").trim();
+    if (!postId || !targetBoardId) throw new HttpError(400, "\u5E16\u5B50 ID \u6216\u76EE\u6807\u677F\u5757 ID \u4E0D\u80FD\u4E3A\u7A7A");
+    const post = await getPostRow(env, postId);
+    if (!post) throw new HttpError(404, "\u5E16\u5B50\u4E0D\u5B58\u5728");
+    const sourceBoardId = post.board_id;
+    if (sourceBoardId === targetBoardId) {
+      return json({ success: true, message: "\u5E16\u5B50\u5DF2\u7ECF\u5728\u8BE5\u677F\u5757\u4E2D", postId });
+    }
+    const [sourceBoard, targetBoard] = await Promise.all([
+      db.prepare(`SELECT * FROM boards WHERE id = ? LIMIT 1`).bind(sourceBoardId).first(),
+      db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(targetBoardId).first()
+    ]);
+    const isSourceBoardOwner = sourceBoard && normalizeUserId(sourceBoard.owner_id) === userId;
+    if (!isSourceBoardOwner && !isAdmin(profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u539F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6CD5\u8FC1\u79FB\u6B64\u8D34");
+    }
+    const isTargetCustom = targetBoardId !== "main" && !targetBoardId.startsWith("class_");
+    if (isTargetCustom && !targetBoard) {
+      throw new HttpError(404, "\u76EE\u6807\u677F\u5757\u4E0D\u5B58\u5728\u6216\u5DF2\u88AB\u7981\u7528");
+    }
+    const statements = [
+      db.prepare(`UPDATE posts SET board_id = ?, updated_at = ? WHERE id = ?`).bind(targetBoardId, (/* @__PURE__ */ new Date()).toISOString(), postId)
+    ];
+    const isSourceCustom = sourceBoardId !== "main" && !sourceBoardId.startsWith("class_");
+    if (isSourceCustom && sourceBoard) {
+      statements.push(
+        db.prepare("UPDATE boards SET post_count = MAX(0, post_count - 1) WHERE id = ?").bind(sourceBoardId)
+      );
+    }
+    if (isTargetCustom && targetBoard) {
+      statements.push(
+        db.prepare("UPDATE boards SET post_count = post_count + 1 WHERE id = ?").bind(targetBoardId)
+      );
+    }
+    await db.batch(statements);
+    return json({ success: true, migrated: true, postId, sourceBoardId, targetBoardId });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/posts", method: "PATCH", message: error.message }));
+    return errorResponse(error, "\u8FC1\u79FB\u5E16\u5B50\u5931\u8D25");
+  }
+}
+__name(onRequestPatch2, "onRequestPatch");
+function onRequestPost2() {
+  return methodNotAllowed(["GET", "DELETE", "PATCH"]);
+}
+__name(onRequestPost2, "onRequestPost");
+
+// api/board/requests.js
+async function onRequestGet3({ request, env }) {
+  try {
+    const url = new URL(request.url);
+    const boardId = String(url.searchParams.get("boardId") || "").trim();
+    if (!boardId) throw new HttpError(400, "\u672A\u6307\u5B9A\u677F\u5757 ID");
+    const auth = await requireAuth(request, env, {});
+    const userId = normalizeUserId(auth.profile.id);
+    const db = requireDb(env);
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== userId && !isAdmin(auth.profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6743\u7BA1\u7406\u52A0\u5165\u7533\u8BF7");
+    }
+    const requestsResult = await db.prepare(`
+      SELECT r.user_id, r.created_at, u.name, u.class_name
+      FROM board_requests r
+      LEFT JOIN users u ON r.user_id = u.id
+      WHERE r.board_id = ? AND r.status = 0
+      ORDER BY r.created_at ASC
+    `).bind(boardId).all();
+    const requests = (requestsResult.results || []).map((r) => ({
+      userId: r.user_id,
+      name: r.name || `\u540C\u5B66${r.user_id.slice(-4)}`,
+      className: r.class_name || "",
+      createdAt: r.created_at
+    }));
+    return json({ success: true, requests });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/requests", method: "GET", message: error.message }));
+    return errorResponse(error, "\u83B7\u53D6\u7533\u8BF7\u5217\u8868\u5931\u8D25");
+  }
+}
+__name(onRequestGet3, "onRequestGet");
+async function onRequestPost3({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const callerId = normalizeUserId(profile.id);
+    const db = requireDb(env);
+    const boardId = String(body.boardId || "").trim();
+    const targetUserId = normalizeUserId(body.userId);
+    const action = String(body.action || "").trim();
+    if (!boardId || !targetUserId) throw new HttpError(400, "\u677F\u5757 ID \u6216\u7533\u8BF7\u7528\u6237 ID \u4E0D\u80FD\u4E3A\u7A7A");
+    if (action !== "approve" && action !== "reject") {
+      throw new HttpError(400, "\u64CD\u4F5C\u7C7B\u578B\u5FC5\u987B\u4E3A approve \u6216 reject");
+    }
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== callerId && !isAdmin(profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6743\u5904\u7406\u52A0\u5165\u7533\u8BF7");
+    }
+    const pendingReq = await db.prepare(`
+      SELECT * FROM board_requests 
+      WHERE board_id = ? AND user_id = ? AND status = 0 
+      LIMIT 1
+    `).bind(boardId, targetUserId).first();
+    if (!pendingReq) {
+      throw new HttpError(404, "\u672A\u627E\u5230\u5BF9\u5E94\u7684\u5F85\u5904\u7406\u7533\u8BF7\u8BB0\u5F55");
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    if (action === "approve") {
+      const targetUser = await getUserRow(env, targetUserId);
+      if (!targetUser) throw new HttpError(404, "\u7533\u8BF7\u7528\u6237\u4E0D\u5B58\u5728");
+      const joinedBoards = parseJsonArray(targetUser.joined_boards);
+      if (!joinedBoards.includes(boardId)) {
+        joinedBoards.push(boardId);
+      }
+      const updateRequestStmt = db.prepare(`
+        UPDATE board_requests SET status = 1, updated_at = ? WHERE board_id = ? AND user_id = ?
+      `).bind(now, boardId, targetUserId);
+      const updateUserStmt = db.prepare(`
+        UPDATE users SET joined_boards = ? WHERE id = ?
+      `).bind(JSON.stringify(joinedBoards), targetUserId);
+      const incBoardStmt = db.prepare(`
+        UPDATE boards SET member_count = member_count + 1 WHERE id = ?
+      `).bind(boardId);
+      await db.batch([updateRequestStmt, updateUserStmt, incBoardStmt]);
+      return json({ success: true, status: "approved", boardId, userId: targetUserId });
+    } else {
+      await db.prepare(`
+        UPDATE board_requests SET status = 2, updated_at = ? WHERE board_id = ? AND user_id = ?
+      `).bind(now, boardId, targetUserId).run();
+      return json({ success: true, status: "rejected", boardId, userId: targetUserId });
+    }
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/requests", method: "POST", message: error.message }));
+    return errorResponse(error, "\u5904\u7406\u7533\u8BF7\u5931\u8D25");
+  }
+}
+__name(onRequestPost3, "onRequestPost");
+function onRequestDelete3() {
+  return methodNotAllowed(["GET", "POST"]);
+}
+__name(onRequestDelete3, "onRequestDelete");
+function onRequestPatch3() {
+  return methodNotAllowed(["GET", "POST"]);
+}
+__name(onRequestPatch3, "onRequestPatch");
+
+// api/board/settings.js
+async function onRequestPatch4({ request, env }) {
+  try {
+    const body = await readJsonBody(request);
+    const { profile } = await requireAuth(request, env, body);
+    const userId = normalizeUserId(profile.id);
+    const db = requireDb(env);
+    const boardId = String(body.boardId || "").trim();
+    const description = String(body.description ?? "").trim();
+    const joinType = body.joinType !== void 0 ? Number(body.joinType) : null;
+    if (!boardId) throw new HttpError(400, "\u672A\u6307\u5B9A\u677F\u5757 ID");
+    const board = await db.prepare(`SELECT * FROM boards WHERE id = ? AND status = 0 LIMIT 1`).bind(boardId).first();
+    if (!board) throw new HttpError(404, "\u677F\u5757\u672A\u627E\u5230\u6216\u5DF2\u88AB\u5220\u9664");
+    if (normalizeUserId(board.owner_id) !== userId && !isAdmin(profile)) {
+      throw new HttpError(403, "\u4F60\u4E0D\u662F\u677F\u5757\u4E3B\u7406\u4EBA\uFF0C\u65E0\u6CD5\u4FEE\u6539\u8BBE\u7F6E");
+    }
+    const updates = [];
+    const params = [];
+    if (body.description !== void 0) {
+      if (description.length > 80) throw new HttpError(400, "\u677F\u5757\u63CF\u8FF0\u6700\u591A 80 \u4E2A\u5B57\u7B26");
+      updates.push("description = ?");
+      params.push(description);
+    }
+    if (joinType !== null) {
+      if (joinType !== 0 && joinType !== 1) throw new HttpError(400, "\u65E0\u6548\u7684\u52A0\u5165\u65B9\u5F0F\u8BBE\u7F6E");
+      updates.push("join_type = ?");
+      params.push(joinType);
+    }
+    if (updates.length === 0) {
+      return json({ success: true, message: "\u672A\u68C0\u6D4B\u5230\u914D\u7F6E\u66F4\u6539", boardId });
+    }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
+    updates.push("updated_at = ?");
+    params.push(now);
+    params.push(boardId);
+    await db.prepare(`
+      UPDATE boards 
+      SET ${updates.join(", ")} 
+      WHERE id = ?
+    `).bind(...params).run();
+    return json({ success: true, message: "\u677F\u5757\u8BBE\u7F6E\u66F4\u65B0\u6210\u529F", boardId });
+  } catch (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/board/settings", method: "PATCH", message: error.message }));
+    return errorResponse(error, "\u66F4\u65B0\u677F\u5757\u8BBE\u7F6E\u5931\u8D25");
+  }
+}
+__name(onRequestPatch4, "onRequestPatch");
+function onRequestGet4() {
+  return methodNotAllowed(["PATCH"]);
+}
+__name(onRequestGet4, "onRequestGet");
+function onRequestPost4() {
+  return methodNotAllowed(["PATCH"]);
+}
+__name(onRequestPost4, "onRequestPost");
+function onRequestDelete4() {
+  return methodNotAllowed(["PATCH"]);
+}
+__name(onRequestDelete4, "onRequestDelete");
+
 // api/auth-jwt.js
 function validStudentId(value) {
   return /^\d{6,12}$/.test(String(value || ""));
 }
 __name(validStudentId, "validStudentId");
-async function onRequestPost({ request, env }) {
+async function onRequestPost5({ request, env }) {
   let config = null;
   let sessionSecret = "";
   try {
@@ -754,14 +1119,14 @@ async function onRequestPost({ request, env }) {
     return errorResponse(error, "\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
   }
 }
-__name(onRequestPost, "onRequestPost");
-function onRequestGet() {
+__name(onRequestPost5, "onRequestPost");
+function onRequestGet5() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet, "onRequestGet");
+__name(onRequestGet5, "onRequestGet");
 
 // api/auth-logout.js
-async function onRequestPost2({ request, env }) {
+async function onRequestPost6({ request, env }) {
   try {
     const body = await readJsonBody(request).catch(() => ({}));
     const { profile, credentials } = await requireAuth(request, env, body);
@@ -781,14 +1146,14 @@ async function onRequestPost2({ request, env }) {
     return response;
   }
 }
-__name(onRequestPost2, "onRequestPost");
-function onRequestGet2() {
+__name(onRequestPost6, "onRequestPost");
+function onRequestGet6() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet2, "onRequestGet");
+__name(onRequestGet6, "onRequestGet");
 
 // api/auth-me.js
-async function onRequestGet3({ request, env }) {
+async function onRequestGet7({ request, env }) {
   try {
     const { profile, credentials } = await requireAuth(request, env);
     return json({
@@ -803,11 +1168,11 @@ async function onRequestGet3({ request, env }) {
     return errorResponse(error, "\u8BFB\u53D6\u767B\u5F55\u72B6\u6001\u5931\u8D25");
   }
 }
-__name(onRequestGet3, "onRequestGet");
-function onRequestPost3() {
+__name(onRequestGet7, "onRequestGet");
+function onRequestPost7() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPost3, "onRequestPost");
+__name(onRequestPost7, "onRequestPost");
 
 // api/auth-register.js
 function validStudentId2(studentId) {
@@ -824,7 +1189,7 @@ async function verifyRegistration(env, studentId, token) {
   if (String(payload.sub) !== studentId) throw new HttpError(403, "\u6821\u56ED\u8EAB\u4EFD\u9A8C\u8BC1\u4E0E\u5F53\u524D\u5B66\u53F7\u4E0D\u5339\u914D");
 }
 __name(verifyRegistration, "verifyRegistration");
-async function onRequestPost4({ request, env }) {
+async function onRequestPost8({ request, env }) {
   let newlyCreatedAuthUser = false;
   let studentId = "";
   let transientSessionSecret = "";
@@ -893,11 +1258,11 @@ async function onRequestPost4({ request, env }) {
     return errorResponse(error, "\u6CE8\u518C\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
   }
 }
-__name(onRequestPost4, "onRequestPost");
-function onRequestGet4() {
+__name(onRequestPost8, "onRequestPost");
+function onRequestGet8() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet4, "onRequestGet");
+__name(onRequestGet8, "onRequestGet");
 
 // api/board.js
 var RESERVED_BOARD_IDS = /* @__PURE__ */ new Set([
@@ -913,7 +1278,7 @@ var RESERVED_BOARD_IDS = /* @__PURE__ */ new Set([
   "tombstone",
   "like"
 ]);
-async function onRequestGet5({ request, env }) {
+async function onRequestGet9({ request, env }) {
   try {
     const db = requireDb(env);
     const result = await db.prepare(`
@@ -936,8 +1301,8 @@ async function onRequestGet5({ request, env }) {
     return errorResponse(error, "\u83B7\u53D6\u677F\u5757\u5217\u8868\u5931\u8D25");
   }
 }
-__name(onRequestGet5, "onRequestGet");
-async function onRequestPost5({ request, env }) {
+__name(onRequestGet9, "onRequestGet");
+async function onRequestPost9({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1001,8 +1366,8 @@ async function onRequestPost5({ request, env }) {
     return errorResponse(error, "\u521B\u5EFA\u677F\u5757\u5931\u8D25");
   }
 }
-__name(onRequestPost5, "onRequestPost");
-async function onRequestDelete({ request, env }) {
+__name(onRequestPost9, "onRequestPost");
+async function onRequestDelete5({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1022,10 +1387,10 @@ async function onRequestDelete({ request, env }) {
     return errorResponse(error, "\u5220\u9664\u677F\u5757\u5931\u8D25");
   }
 }
-__name(onRequestDelete, "onRequestDelete");
+__name(onRequestDelete5, "onRequestDelete");
 
 // api/board-membership.js
-async function onRequestPost6({ request, env }) {
+async function onRequestPost10({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1048,6 +1413,30 @@ async function onRequestPost6({ request, env }) {
       if (hasJoined) {
         return json({ success: true, message: "\u4F60\u5DF2\u7ECF\u52A0\u5165\u4E86\u8BE5\u677F\u5757", boardId });
       }
+      const joinType = Number(board.join_type || 0);
+      if (joinType === 1) {
+        const existingRequest = await db.prepare(`
+          SELECT * FROM board_requests 
+          WHERE board_id = ? AND user_id = ? 
+          LIMIT 1
+        `).bind(boardId, userId).first();
+        if (existingRequest && Number(existingRequest.status) === 0) {
+          return json({ success: true, pending: true, message: "\u60A8\u7684\u52A0\u5165\u7533\u8BF7\u6B63\u5728\u5BA1\u6838\u4E2D\uFF0C\u8BF7\u8010\u5FC3\u7B49\u5F85" });
+        }
+        const now = (/* @__PURE__ */ new Date()).toISOString();
+        if (existingRequest) {
+          await db.prepare(`
+            UPDATE board_requests SET status = 0, updated_at = ? 
+            WHERE board_id = ? AND user_id = ?
+          `).bind(now, boardId, userId).run();
+        } else {
+          await db.prepare(`
+            INSERT INTO board_requests (board_id, user_id, status, created_at, updated_at)
+            VALUES (?, ?, 0, ?, ?)
+          `).bind(boardId, userId, now, now).run();
+        }
+        return json({ success: true, pending: true, message: "\u7533\u8BF7\u5DF2\u63D0\u4EA4\uFF0C\u7B49\u5F85\u4E3B\u7406\u4EBA\u5BA1\u6838" });
+      }
       joinedBoards.push(boardId);
       const updateUserStmt = db.prepare(`UPDATE users SET joined_boards = ? WHERE id = ?`).bind(JSON.stringify(joinedBoards), userId);
       const incBoardStmt = db.prepare(`UPDATE boards SET member_count = member_count + 1 WHERE id = ?`).bind(boardId);
@@ -1068,19 +1457,19 @@ async function onRequestPost6({ request, env }) {
     return errorResponse(error, "\u52A0\u5165/\u9000\u51FA\u677F\u5757\u5931\u8D25");
   }
 }
-__name(onRequestPost6, "onRequestPost");
-function onRequestGet6() {
+__name(onRequestPost10, "onRequestPost");
+function onRequestGet10() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet6, "onRequestGet");
-function onRequestPatch() {
+__name(onRequestGet10, "onRequestGet");
+function onRequestPatch5() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestPatch, "onRequestPatch");
-function onRequestDelete2() {
+__name(onRequestPatch5, "onRequestPatch");
+function onRequestDelete6() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestDelete2, "onRequestDelete");
+__name(onRequestDelete6, "onRequestDelete");
 
 // api/cache-version.js
 function requireDb2(env) {
@@ -1089,7 +1478,7 @@ function requireDb2(env) {
   return db;
 }
 __name(requireDb2, "requireDb");
-async function onRequestGet7({ env }) {
+async function onRequestGet11({ env }) {
   try {
     const db = requireDb2(env);
     const [versionRow, tombstoneRows] = await Promise.all([
@@ -1119,22 +1508,22 @@ async function onRequestGet7({ env }) {
     return errorResponse(error, "\u83B7\u53D6\u7F13\u5B58\u7248\u672C\u5931\u8D25");
   }
 }
-__name(onRequestGet7, "onRequestGet");
-function onRequestPost7() {
+__name(onRequestGet11, "onRequestGet");
+function onRequestPost11() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPost7, "onRequestPost");
-function onRequestPatch2() {
+__name(onRequestPost11, "onRequestPost");
+function onRequestPatch6() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPatch2, "onRequestPatch");
-function onRequestDelete3() {
+__name(onRequestPatch6, "onRequestPatch");
+function onRequestDelete7() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestDelete3, "onRequestDelete");
+__name(onRequestDelete7, "onRequestDelete");
 
 // api/create-comment.js
-async function onRequestPost8({ request, env }) {
+async function onRequestPost12({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1175,14 +1564,14 @@ async function onRequestPost8({ request, env }) {
     return errorResponse(error, "\u53D1\u8868\u8BC4\u8BBA\u5931\u8D25");
   }
 }
-__name(onRequestPost8, "onRequestPost");
-function onRequestGet8() {
+__name(onRequestPost12, "onRequestPost");
+function onRequestGet12() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet8, "onRequestGet");
+__name(onRequestGet12, "onRequestGet");
 
 // api/create-confession.js
-async function onRequestPost9({ request, env }) {
+async function onRequestPost13({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1215,31 +1604,41 @@ async function onRequestPost9({ request, env }) {
     return errorResponse(error, "\u53D1\u5E03\u5931\u8D25");
   }
 }
-__name(onRequestPost9, "onRequestPost");
-function onRequestGet9() {
+__name(onRequestPost13, "onRequestPost");
+function onRequestGet13() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet9, "onRequestGet");
+__name(onRequestGet13, "onRequestGet");
 
 // api/create-post.js
-async function onRequestPost10({ request, env }) {
+async function onRequestPost14({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
     assertNotMuted(profile);
-    const boardId = String(body.boardId || "main").trim();
+    let boardIds = [];
+    if (Array.isArray(body.boardIds) && body.boardIds.length > 0) {
+      boardIds = body.boardIds.map((id) => String(id).trim()).filter(Boolean);
+    } else {
+      const singleBoardId = String(body.boardId || "main").trim();
+      if (singleBoardId) boardIds.push(singleBoardId);
+    }
     const title = String(body.title || "").trim();
     const content = String(body.content || "").trim();
     const viewPermission = Number(body.viewPermission || 1);
     const targetGroups = Array.isArray(body.targetUsers) ? body.targetUsers.map((value) => String(value).trim()).filter(Boolean).slice(0, 50) : [];
-    if (!boardId || !title || !content) throw new HttpError(400, "\u677F\u5757\u3001\u6807\u9898\u548C\u6B63\u6587\u4E0D\u80FD\u4E3A\u7A7A");
+    if (boardIds.length === 0 || !title || !content) {
+      throw new HttpError(400, "\u53D1\u5E03\u677F\u5757\u3001\u6807\u9898\u548C\u6B63\u6587\u4E0D\u80FD\u4E3A\u7A7A");
+    }
     if (title.length > 100) throw new HttpError(400, "\u6807\u9898\u4E0D\u80FD\u8D85\u8FC7 100 \u4E2A\u5B57\u7B26");
     if (content.length > 2e4) throw new HttpError(400, "\u6B63\u6587\u4E0D\u80FD\u8D85\u8FC7 20000 \u4E2A\u5B57\u7B26");
     if (![1, 2, 4, 8].includes(viewPermission)) throw new HttpError(400, "\u67E5\u770B\u6743\u9650\u8BBE\u7F6E\u65E0\u6548");
     if (viewPermission === 4 && !targetGroups.length) throw new HttpError(400, "\u8BF7\u81F3\u5C11\u9009\u62E9\u4E00\u4E2A\u53EF\u89C1\u7528\u6237\u6216\u7FA4\u7EC4");
     const joinedBoards = parseJsonArray(profile.joined_boards);
-    if (!isAdmin(profile) && boardId !== "main" && !joinedBoards.includes(boardId)) {
-      throw new HttpError(403, "\u4F60\u5C1A\u672A\u52A0\u5165\u8BE5\u677F\u5757");
+    for (const bId of boardIds) {
+      if (!isAdmin(profile) && bId !== "main" && !joinedBoards.includes(bId)) {
+        throw new HttpError(403, `\u4F60\u5C1A\u672A\u52A0\u5165\u677F\u5757: ${bId}`);
+      }
     }
     const runtime = getRuntimeConfig(env);
     const dayStart = localDayStartIso(runtime.timezoneOffsetMinutes);
@@ -1248,50 +1647,53 @@ async function onRequestPost10({ request, env }) {
       FROM posts
       WHERE author_id = ? AND created_at >= ?
     `).bind(normalizeUserId(profile.id), dayStart).first();
-    if (Number(countRow?.total || 0) >= runtime.postDailyLimit) {
-      throw new HttpError(429, `\u4ECA\u65E5\u53D1\u5E16\u5DF2\u8FBE\u4E0A\u9650\uFF08${runtime.postDailyLimit} \u6761\uFF09\uFF0C\u8BF7\u660E\u5929\u518D\u6765`);
+    if (Number(countRow?.total || 0) + boardIds.length > runtime.postDailyLimit) {
+      throw new HttpError(429, `\u4ECA\u65E5\u53D1\u5E16\u5DF2\u8FBE\u4E0A\u9650\uFF08${runtime.postDailyLimit} \u6761\uFF09\uFF0C\u60A8\u8FD8\u53EF\u4EE5\u53D1 ${Math.max(0, runtime.postDailyLimit - Number(countRow?.total || 0))} \u6761`);
     }
-    const id = crypto.randomUUID();
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const db = requireDb(env);
-    const insertStmt = db.prepare(`
-      INSERT INTO posts (
-        id, board_id, title, content, author_id, author_name,
-        view_permission, target_groups, status, edited_at,
-        comment_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, ?, ?)
-    `).bind(
-      id,
-      boardId,
-      title,
-      content,
-      normalizeUserId(profile.id),
-      profile.name,
-      viewPermission,
-      JSON.stringify(targetGroups),
-      now,
-      now
-    );
-    const isCustomBoard = boardId !== "main" && !boardId.startsWith("class_");
-    if (isCustomBoard) {
-      const updateBoardStmt = db.prepare(`
-        UPDATE boards SET post_count = post_count + 1 WHERE id = ?
-      `).bind(boardId);
-      await db.batch([insertStmt, updateBoardStmt]);
-    } else {
-      await insertStmt.run();
+    const statements = [];
+    const createdPostIds = [];
+    for (const bId of boardIds) {
+      const id = crypto.randomUUID();
+      createdPostIds.push(id);
+      statements.push(db.prepare(`
+        INSERT INTO posts (
+          id, board_id, title, content, author_id, author_name,
+          view_permission, target_groups, status, edited_at,
+          comment_count, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, 0, ?, ?)
+      `).bind(
+        id,
+        bId,
+        title,
+        content,
+        normalizeUserId(profile.id),
+        profile.name,
+        viewPermission,
+        JSON.stringify(targetGroups),
+        now,
+        now
+      ));
+      const isCustomBoard = bId !== "main" && !bId.startsWith("class_");
+      if (isCustomBoard) {
+        statements.push(db.prepare(`
+          UPDATE boards SET post_count = post_count + 1 WHERE id = ?
+        `).bind(bId));
+      }
     }
-    return json({ success: true, postId: id }, 201);
+    await db.batch(statements);
+    return json({ success: true, postIds: createdPostIds, postId: createdPostIds[0] }, 201);
   } catch (error) {
     console.error(JSON.stringify({ level: "error", route: "/api/create-post", message: error.message, status: error.status }));
     return errorResponse(error, "\u53D1\u5E16\u5931\u8D25");
   }
 }
-__name(onRequestPost10, "onRequestPost");
-function onRequestGet10() {
+__name(onRequestPost14, "onRequestPost");
+function onRequestGet14() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet10, "onRequestGet");
+__name(onRequestGet14, "onRequestGet");
 
 // api/data.js
 var COLLECTIONS = /* @__PURE__ */ new Set(["users", "posts", "confessions"]);
@@ -1467,7 +1869,7 @@ async function getDocument(env, collection, documentId, viewer) {
   throw new HttpError(400, "\u4E0D\u652F\u6301\u7684\u6570\u636E\u96C6\u5408");
 }
 __name(getDocument, "getDocument");
-async function onRequestGet11({ request, env }) {
+async function onRequestGet15({ request, env }) {
   try {
     const url = new URL(request.url);
     const collection = String(url.searchParams.get("collection") || "");
@@ -1485,8 +1887,8 @@ async function onRequestGet11({ request, env }) {
     return errorResponse(error, "\u8BFB\u53D6\u6570\u636E\u5931\u8D25");
   }
 }
-__name(onRequestGet11, "onRequestGet");
-async function onRequestPatch3({ request, env }) {
+__name(onRequestGet15, "onRequestGet");
+async function onRequestPatch7({ request, env }) {
   try {
     const body = await readJsonBody(request);
     if (body.collection !== "posts") throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u7F16\u8F91");
@@ -1513,8 +1915,8 @@ async function onRequestPatch3({ request, env }) {
     return errorResponse(error, "\u7F16\u8F91\u5E16\u5B50\u5931\u8D25");
   }
 }
-__name(onRequestPatch3, "onRequestPatch");
-async function onRequestDelete4({ request, env }) {
+__name(onRequestPatch7, "onRequestPatch");
+async function onRequestDelete8({ request, env }) {
   try {
     const body = await readJsonBody(request);
     if (body.collection !== "posts") throw new HttpError(400, "\u8BE5\u96C6\u5408\u4E0D\u652F\u6301\u5220\u9664");
@@ -1531,14 +1933,14 @@ async function onRequestDelete4({ request, env }) {
     return errorResponse(error, "\u5220\u9664\u5E16\u5B50\u5931\u8D25");
   }
 }
-__name(onRequestDelete4, "onRequestDelete");
-function onRequestPost11() {
+__name(onRequestDelete8, "onRequestDelete");
+function onRequestPost15() {
   return methodNotAllowed(["GET", "PATCH", "DELETE"]);
 }
-__name(onRequestPost11, "onRequestPost");
+__name(onRequestPost15, "onRequestPost");
 
 // api/delete-comment.js
-async function onRequestPost12({ request, env }) {
+async function onRequestPost16({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1564,14 +1966,14 @@ async function onRequestPost12({ request, env }) {
     return errorResponse(error, "\u5220\u9664\u8BC4\u8BBA\u5931\u8D25");
   }
 }
-__name(onRequestPost12, "onRequestPost");
-function onRequestGet12() {
+__name(onRequestPost16, "onRequestPost");
+function onRequestGet16() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet12, "onRequestGet");
+__name(onRequestGet16, "onRequestGet");
 
 // api/like.js
-async function onRequestPost13({ request, env }) {
+async function onRequestPost17({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1599,14 +2001,14 @@ async function onRequestPost13({ request, env }) {
     return errorResponse(error, "\u70B9\u8D5E\u64CD\u4F5C\u5931\u8D25");
   }
 }
-__name(onRequestPost13, "onRequestPost");
-function onRequestGet13() {
+__name(onRequestPost17, "onRequestPost");
+function onRequestGet17() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet13, "onRequestGet");
+__name(onRequestGet17, "onRequestGet");
 
 // api/list-comments.js
-async function onRequestGet14({ request, env }) {
+async function onRequestGet18({ request, env }) {
   try {
     const url = new URL(request.url);
     const postId = String(url.searchParams.get("postId") || "").trim();
@@ -1630,11 +2032,11 @@ async function onRequestGet14({ request, env }) {
     return errorResponse(error, "\u8BC4\u8BBA\u5217\u8868\u52A0\u8F7D\u5931\u8D25");
   }
 }
-__name(onRequestGet14, "onRequestGet");
-function onRequestPost14() {
+__name(onRequestGet18, "onRequestGet");
+function onRequestPost18() {
   return methodNotAllowed(["GET"]);
 }
-__name(onRequestPost14, "onRequestPost");
+__name(onRequestPost18, "onRequestPost");
 
 // api/runtime-config.js
 function parseMap(value) {
@@ -1646,7 +2048,7 @@ function parseMap(value) {
   }
 }
 __name(parseMap, "parseMap");
-async function onRequestGet15(context) {
+async function onRequestGet19(context) {
   const config = {
     appwriteEndpoint: String(context.env.APPWRITE_ENDPOINT || ""),
     appwriteProjectId: String(context.env.APPWRITE_PROJECT_ID || ""),
@@ -1663,7 +2065,7 @@ async function onRequestGet15(context) {
     }
   });
 }
-__name(onRequestGet15, "onRequestGet");
+__name(onRequestGet19, "onRequestGet");
 
 // api/tombstone.js
 var VALID_COLLECTIONS = /* @__PURE__ */ new Set(["posts", "comments", "confessions"]);
@@ -1673,7 +2075,7 @@ function requireDb3(env) {
   return db;
 }
 __name(requireDb3, "requireDb");
-async function onRequestPost15({ request, env }) {
+async function onRequestPost19({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1689,8 +2091,8 @@ async function onRequestPost15({ request, env }) {
     return errorResponse(error, "\u6DFB\u52A0\u8F6F\u5220\u9664\u6807\u8BB0\u5931\u8D25");
   }
 }
-__name(onRequestPost15, "onRequestPost");
-async function onRequestDelete5({ request, env }) {
+__name(onRequestPost19, "onRequestPost");
+async function onRequestDelete9({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1706,8 +2108,8 @@ async function onRequestDelete5({ request, env }) {
     return errorResponse(error, "\u79FB\u9664\u8F6F\u5220\u9664\u6807\u8BB0\u5931\u8D25");
   }
 }
-__name(onRequestDelete5, "onRequestDelete");
-async function onRequestGet16({ request, env }) {
+__name(onRequestDelete9, "onRequestDelete");
+async function onRequestGet20({ request, env }) {
   try {
     const { profile } = await requireAuth(request, env, {});
     if (!isAdmin(profile)) throw new HttpError(403, "\u4EC5\u7BA1\u7406\u5458\u53EF\u4EE5\u67E5\u770B\u8F6F\u5220\u9664\u5217\u8868");
@@ -1718,14 +2120,14 @@ async function onRequestGet16({ request, env }) {
     return errorResponse(error, "\u83B7\u53D6\u8F6F\u5220\u9664\u5217\u8868\u5931\u8D25");
   }
 }
-__name(onRequestGet16, "onRequestGet");
-function onRequestPatch4() {
+__name(onRequestGet20, "onRequestGet");
+function onRequestPatch8() {
   return methodNotAllowed(["GET", "POST", "DELETE"]);
 }
-__name(onRequestPatch4, "onRequestPatch");
+__name(onRequestPatch8, "onRequestPatch");
 
 // api/update-password.js
-async function onRequestPost16({ request, env }) {
+async function onRequestPost20({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1756,11 +2158,11 @@ async function onRequestPost16({ request, env }) {
     return errorResponse(error, "\u4FEE\u6539\u5BC6\u7801\u5931\u8D25");
   }
 }
-__name(onRequestPost16, "onRequestPost");
-function onRequestGet17() {
+__name(onRequestPost20, "onRequestPost");
+function onRequestGet21() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet17, "onRequestGet");
+__name(onRequestGet21, "onRequestGet");
 
 // api/update-profile.js
 function allowedAvatar(value) {
@@ -1774,7 +2176,7 @@ function allowedAvatar(value) {
   }
 }
 __name(allowedAvatar, "allowedAvatar");
-async function onRequestPost17({ request, env }) {
+async function onRequestPost21({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -1800,18 +2202,18 @@ async function onRequestPost17({ request, env }) {
     return errorResponse(error, "\u4FDD\u5B58\u4E2A\u4EBA\u8D44\u6599\u5931\u8D25");
   }
 }
-__name(onRequestPost17, "onRequestPost");
-function onRequestGet18() {
+__name(onRequestPost21, "onRequestPost");
+function onRequestGet22() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet18, "onRequestGet");
+__name(onRequestGet22, "onRequestGet");
 
 // api/verify-question.js
 function normalizeAnswer(value) {
   return String(value || "").trim().toLocaleLowerCase("zh-CN").replace(/\s+/g, "");
 }
 __name(normalizeAnswer, "normalizeAnswer");
-async function onRequestPost18({ request, env }) {
+async function onRequestPost22({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const questions = getRegistrationQuestions(env);
@@ -1860,332 +2262,444 @@ async function onRequestPost18({ request, env }) {
     return errorResponse(error, "\u9A8C\u8BC1\u5931\u8D25\uFF0C\u8BF7\u7A0D\u540E\u91CD\u8BD5");
   }
 }
-__name(onRequestPost18, "onRequestPost");
-function onRequestGet19() {
+__name(onRequestPost22, "onRequestPost");
+function onRequestGet23() {
   return methodNotAllowed(["POST"]);
 }
-__name(onRequestGet19, "onRequestGet");
+__name(onRequestGet23, "onRequestGet");
 function onRequestOptions() {
   return new Response(null, { status: 204, headers: { Allow: "POST, OPTIONS" } });
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-N3Rw2O/functionsRoutes-0.9267441880857833.mjs
+// ../.wrangler/tmp/pages-1NnWX6/functionsRoutes-0.041465125549784876.mjs
 var routes = [
   {
-    routePath: "/api/auth-jwt",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet]
-  },
-  {
-    routePath: "/api/auth-jwt",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost]
-  },
-  {
-    routePath: "/api/auth-logout",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet2]
-  },
-  {
-    routePath: "/api/auth-logout",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost2]
-  },
-  {
-    routePath: "/api/auth-me",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet3]
-  },
-  {
-    routePath: "/api/auth-me",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost3]
-  },
-  {
-    routePath: "/api/auth-register",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet4]
-  },
-  {
-    routePath: "/api/auth-register",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost4]
-  },
-  {
-    routePath: "/api/board",
-    mountPath: "/api",
+    routePath: "/api/board/members",
+    mountPath: "/api/board",
     method: "DELETE",
     middlewares: [],
     modules: [onRequestDelete]
   },
   {
-    routePath: "/api/board",
+    routePath: "/api/board/members",
+    mountPath: "/api/board",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet]
+  },
+  {
+    routePath: "/api/board/members",
+    mountPath: "/api/board",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch]
+  },
+  {
+    routePath: "/api/board/members",
+    mountPath: "/api/board",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost]
+  },
+  {
+    routePath: "/api/board/posts",
+    mountPath: "/api/board",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete2]
+  },
+  {
+    routePath: "/api/board/posts",
+    mountPath: "/api/board",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet2]
+  },
+  {
+    routePath: "/api/board/posts",
+    mountPath: "/api/board",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch2]
+  },
+  {
+    routePath: "/api/board/posts",
+    mountPath: "/api/board",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost2]
+  },
+  {
+    routePath: "/api/board/requests",
+    mountPath: "/api/board",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete3]
+  },
+  {
+    routePath: "/api/board/requests",
+    mountPath: "/api/board",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet3]
+  },
+  {
+    routePath: "/api/board/requests",
+    mountPath: "/api/board",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch3]
+  },
+  {
+    routePath: "/api/board/requests",
+    mountPath: "/api/board",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost3]
+  },
+  {
+    routePath: "/api/board/settings",
+    mountPath: "/api/board",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete4]
+  },
+  {
+    routePath: "/api/board/settings",
+    mountPath: "/api/board",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet4]
+  },
+  {
+    routePath: "/api/board/settings",
+    mountPath: "/api/board",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch4]
+  },
+  {
+    routePath: "/api/board/settings",
+    mountPath: "/api/board",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost4]
+  },
+  {
+    routePath: "/api/auth-jwt",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet5]
   },
   {
-    routePath: "/api/board",
+    routePath: "/api/auth-jwt",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost5]
   },
   {
-    routePath: "/api/board-membership",
-    mountPath: "/api",
-    method: "DELETE",
-    middlewares: [],
-    modules: [onRequestDelete2]
-  },
-  {
-    routePath: "/api/board-membership",
+    routePath: "/api/auth-logout",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet6]
   },
   {
-    routePath: "/api/board-membership",
-    mountPath: "/api",
-    method: "PATCH",
-    middlewares: [],
-    modules: [onRequestPatch]
-  },
-  {
-    routePath: "/api/board-membership",
+    routePath: "/api/auth-logout",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost6]
   },
   {
-    routePath: "/api/cache-version",
-    mountPath: "/api",
-    method: "DELETE",
-    middlewares: [],
-    modules: [onRequestDelete3]
-  },
-  {
-    routePath: "/api/cache-version",
+    routePath: "/api/auth-me",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet7]
   },
   {
-    routePath: "/api/cache-version",
-    mountPath: "/api",
-    method: "PATCH",
-    middlewares: [],
-    modules: [onRequestPatch2]
-  },
-  {
-    routePath: "/api/cache-version",
+    routePath: "/api/auth-me",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost7]
   },
   {
-    routePath: "/api/create-comment",
+    routePath: "/api/auth-register",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet8]
   },
   {
-    routePath: "/api/create-comment",
+    routePath: "/api/auth-register",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost8]
   },
   {
-    routePath: "/api/create-confession",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet9]
-  },
-  {
-    routePath: "/api/create-confession",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost9]
-  },
-  {
-    routePath: "/api/create-post",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet10]
-  },
-  {
-    routePath: "/api/create-post",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost10]
-  },
-  {
-    routePath: "/api/data",
-    mountPath: "/api",
-    method: "DELETE",
-    middlewares: [],
-    modules: [onRequestDelete4]
-  },
-  {
-    routePath: "/api/data",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet11]
-  },
-  {
-    routePath: "/api/data",
-    mountPath: "/api",
-    method: "PATCH",
-    middlewares: [],
-    modules: [onRequestPatch3]
-  },
-  {
-    routePath: "/api/data",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost11]
-  },
-  {
-    routePath: "/api/delete-comment",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet12]
-  },
-  {
-    routePath: "/api/delete-comment",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost12]
-  },
-  {
-    routePath: "/api/like",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet13]
-  },
-  {
-    routePath: "/api/like",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost13]
-  },
-  {
-    routePath: "/api/list-comments",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet14]
-  },
-  {
-    routePath: "/api/list-comments",
-    mountPath: "/api",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost14]
-  },
-  {
-    routePath: "/api/runtime-config",
-    mountPath: "/api",
-    method: "GET",
-    middlewares: [],
-    modules: [onRequestGet15]
-  },
-  {
-    routePath: "/api/tombstone",
+    routePath: "/api/board",
     mountPath: "/api",
     method: "DELETE",
     middlewares: [],
     modules: [onRequestDelete5]
   },
   {
-    routePath: "/api/tombstone",
+    routePath: "/api/board",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
-    modules: [onRequestGet16]
+    modules: [onRequestGet9]
   },
   {
-    routePath: "/api/tombstone",
+    routePath: "/api/board",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost9]
+  },
+  {
+    routePath: "/api/board-membership",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete6]
+  },
+  {
+    routePath: "/api/board-membership",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet10]
+  },
+  {
+    routePath: "/api/board-membership",
     mountPath: "/api",
     method: "PATCH",
     middlewares: [],
-    modules: [onRequestPatch4]
+    modules: [onRequestPatch5]
   },
   {
-    routePath: "/api/tombstone",
+    routePath: "/api/board-membership",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost10]
+  },
+  {
+    routePath: "/api/cache-version",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete7]
+  },
+  {
+    routePath: "/api/cache-version",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet11]
+  },
+  {
+    routePath: "/api/cache-version",
+    mountPath: "/api",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch6]
+  },
+  {
+    routePath: "/api/cache-version",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost11]
+  },
+  {
+    routePath: "/api/create-comment",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet12]
+  },
+  {
+    routePath: "/api/create-comment",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost12]
+  },
+  {
+    routePath: "/api/create-confession",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet13]
+  },
+  {
+    routePath: "/api/create-confession",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost13]
+  },
+  {
+    routePath: "/api/create-post",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet14]
+  },
+  {
+    routePath: "/api/create-post",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost14]
+  },
+  {
+    routePath: "/api/data",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete8]
+  },
+  {
+    routePath: "/api/data",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet15]
+  },
+  {
+    routePath: "/api/data",
+    mountPath: "/api",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch7]
+  },
+  {
+    routePath: "/api/data",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost15]
   },
   {
-    routePath: "/api/update-password",
+    routePath: "/api/delete-comment",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
-    modules: [onRequestGet17]
+    modules: [onRequestGet16]
   },
   {
-    routePath: "/api/update-password",
+    routePath: "/api/delete-comment",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost16]
   },
   {
-    routePath: "/api/update-profile",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
-    modules: [onRequestGet18]
+    modules: [onRequestGet17]
   },
   {
-    routePath: "/api/update-profile",
+    routePath: "/api/like",
     mountPath: "/api",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost17]
   },
   {
-    routePath: "/api/verify-question",
+    routePath: "/api/list-comments",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet18]
+  },
+  {
+    routePath: "/api/list-comments",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost18]
+  },
+  {
+    routePath: "/api/runtime-config",
     mountPath: "/api",
     method: "GET",
     middlewares: [],
     modules: [onRequestGet19]
+  },
+  {
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete9]
+  },
+  {
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet20]
+  },
+  {
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "PATCH",
+    middlewares: [],
+    modules: [onRequestPatch8]
+  },
+  {
+    routePath: "/api/tombstone",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost19]
+  },
+  {
+    routePath: "/api/update-password",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet21]
+  },
+  {
+    routePath: "/api/update-password",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost20]
+  },
+  {
+    routePath: "/api/update-profile",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet22]
+  },
+  {
+    routePath: "/api/update-profile",
+    mountPath: "/api",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost21]
+  },
+  {
+    routePath: "/api/verify-question",
+    mountPath: "/api",
+    method: "GET",
+    middlewares: [],
+    modules: [onRequestGet23]
   },
   {
     routePath: "/api/verify-question",
@@ -2199,7 +2713,7 @@ var routes = [
     mountPath: "/api",
     method: "POST",
     middlewares: [],
-    modules: [onRequestPost18]
+    modules: [onRequestPost22]
   }
 ];
 

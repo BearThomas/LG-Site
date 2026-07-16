@@ -62,7 +62,7 @@ const cancelPostBtn = document.getElementById('cancelPostBtn');
 const submitPostBtn = document.getElementById('submitPostBtn');
 const postTitle = document.getElementById('postTitle');
 const postContent = document.getElementById('postContent');
-const postBoardSelect = document.getElementById('postBoardSelect');
+const postBoardCheckboxes = document.getElementById('postBoardCheckboxes');
 
 // ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
@@ -557,6 +557,14 @@ async function submitPost() {
         targetUsers = Array.from(selectedUserIds);
     }
     
+    const checkboxes = document.querySelectorAll('input[name="postBoards"]:checked');
+    const boardIds = Array.from(checkboxes).map(cb => cb.value);
+
+    if (boardIds.length === 0) {
+        alert('请至少选择一个发布的板块');
+        return;
+    }
+    
     // 🔒 通过同步表单校验后，立即将发布按钮锁死，文字替换为加载状态
     if (submitPostBtn) {
         submitPostBtn.disabled = true;
@@ -575,7 +583,7 @@ async function submitPost() {
                 userId: `student_${user.studentId}`,
                 sessionSecret: user.token || '',
                 appToken: user.appToken || '',
-                boardId: document.getElementById('postBoardSelect')?.value || currentBoard.$id || 'main',
+                boardIds, // Multi-board posting array
                 title,
                 content,
                 viewPermission,
@@ -617,8 +625,8 @@ function openModal() {
         return;
     }
     
-    if (postBoardSelect) {
-        renderPostBoardSelect();
+    if (postBoardCheckboxes) {
+        renderPostBoardCheckboxes();
     }
     
     if (postModal) postModal.style.display = 'flex';
@@ -912,14 +920,26 @@ function renderBoardsSidebar() {
         `;
     }
 
+    // 4. Mobile Create Board entry at the bottom of the list
+    if (currentUser) {
+        html += `
+            <div class="board-item create-board-trigger-item" style="border: 1px dashed #3b82f6; background: rgba(59, 130, 246, 0.05); margin-top: 10px;">
+                <span class="board-icon" style="color:#3b82f6;">➕</span>
+                <span class="board-name" style="color:#3b82f6; font-weight:600;">新建板块</span>
+            </div>
+        `;
+    }
+
     container.innerHTML = html;
 
-    container.querySelectorAll('.board-item').forEach(el => {
+    container.querySelectorAll('.board-item:not(.create-board-trigger-item)').forEach(el => {
         el.addEventListener('click', () => {
             const boardId = el.getAttribute('data-board-id');
             switchBoard(boardId);
         });
     });
+
+    container.querySelector('.create-board-trigger-item')?.addEventListener('click', openCreateBoardModal);
 }
 
 async function switchBoard(boardId) {
@@ -1091,9 +1111,9 @@ async function submitCreateBoard() {
     }
 }
 
-function renderPostBoardSelect() {
-    const select = document.getElementById('postBoardSelect');
-    if (!select) return;
+function renderPostBoardCheckboxes() {
+    const container = document.getElementById('postBoardCheckboxes');
+    if (!container) return;
 
     const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
     joinedSet.add('main');
@@ -1104,24 +1124,39 @@ function renderPostBoardSelect() {
     if (classBoardId) joinedSet.add(classBoardId);
 
     let html = '';
-    html += `<option value="main">主板块</option>`;
+    
+    const isDefaultChecked = (bId) => bId === currentBoard.$id;
 
+    // 1. Main board checkbox
+    html += `
+        <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+            <input type="checkbox" name="postBoards" value="main" ${isDefaultChecked('main') ? 'checked' : ''}>
+            <span>主板块</span>
+        </label>
+    `;
+
+    // 2. Class board checkbox
     if (classBoardId) {
         const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
-        html += `<option value="${classBoardId}">${className}</option>`;
+        html += `
+            <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" name="postBoards" value="${classBoardId}" ${isDefaultChecked(classBoardId) ? 'checked' : ''}>
+                <span>${className}</span>
+            </label>
+        `;
     }
 
+    // 3. Custom board checkboxes
     for (const b of customBoards) {
         if (joinedSet.has(b.id)) {
-            html += `<option value="${b.id}">${escapeHtml(b.name)}</option>`;
+            html += `
+                <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+                    <input type="checkbox" name="postBoards" value="${b.id}" ${isDefaultChecked(b.id) ? 'checked' : ''}>
+                    <span>${escapeHtml(b.name)}</span>
+                </label>
+            `;
         }
     }
 
-    select.innerHTML = html;
-
-    if (joinedSet.has(currentBoard.$id)) {
-        select.value = currentBoard.$id;
-    } else {
-        select.value = 'main';
-    }
+    container.innerHTML = html;
 }

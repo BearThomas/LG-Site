@@ -39,6 +39,36 @@ export async function onRequestPost({ request, env }) {
       if (hasJoined) {
         return json({ success: true, message: '你已经加入了该板块', boardId });
       }
+
+      // Check if board requires approval (join_type = 1)
+      const joinType = Number(board.join_type || 0);
+      if (joinType === 1) {
+        const existingRequest = await db.prepare(`
+          SELECT * FROM board_requests 
+          WHERE board_id = ? AND user_id = ? 
+          LIMIT 1
+        `).bind(boardId, userId).first();
+
+        if (existingRequest && Number(existingRequest.status) === 0) {
+          return json({ success: true, pending: true, message: '您的加入申请正在审核中，请耐心等待' });
+        }
+
+        const now = new Date().toISOString();
+        if (existingRequest) {
+          await db.prepare(`
+            UPDATE board_requests SET status = 0, updated_at = ? 
+            WHERE board_id = ? AND user_id = ?
+          `).bind(now, boardId, userId).run();
+        } else {
+          await db.prepare(`
+            INSERT INTO board_requests (board_id, user_id, status, created_at, updated_at)
+            VALUES (?, ?, 0, ?, ?)
+          `).bind(boardId, userId, now, now).run();
+        }
+
+        return json({ success: true, pending: true, message: '申请已提交，等待主理人审核' });
+      }
+
       joinedBoards.push(boardId);
 
       // Batch: Add to user joined_boards and increment board member_count
