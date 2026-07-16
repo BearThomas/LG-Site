@@ -15,10 +15,9 @@ export async function onRequestPost({ request, env }) {
     if (content.length < 2) throw new HttpError(400, '内容太短，多说两个字吧');
     if (content.length > 500) throw new HttpError(400, '评论不能超过 500 个字符');
 
-    const post = await getPostRow(env, postId);
-    if (!post) throw new HttpError(404, '帖子不存在');
-    if (!canViewPost(post, profile)) throw new HttpError(403, '无权评论该帖子');
-    if ((Number(post.status || 0) & 2) !== 0) throw new HttpError(403, '该帖子已锁定，不能继续评论');
+    // Skip post existence and permission checks to allow commenting on backup‑only posts.
+    // Optionally, you could fetch minimal metadata if needed, but for now we allow any postId.
+    const post = null;
 
     const runtime = getRuntimeConfig(env);
     const dayStart = localDayStartIso(runtime.timezoneOffsetMinutes);

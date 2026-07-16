@@ -10,31 +10,54 @@ export async function onRequestPost({ request, env }) {
     if (!commentId) throw new HttpError(400, '缺少评论 ID');
 
     const db = requireDb(env);
-    const comment = await db.prepare('SELECT * FROM comments WHERE id = ? LIMIT 1').bind(commentId).first();
+    let comment = await db.prepare('SELECT * FROM comments WHERE id = ? LIMIT 1').bind(commentId).first();
+    let isCold = false;
+    
     if (!comment) {
       if (isAdmin(profile)) {
-        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+        await db.prepare(`INSERT INTO mod_log (collection, item_id, action) VALUES (?, ?, 'delete')`)
           .bind('comments', commentId)
           .run();
         return json({ success: true, tombstoned: true });
       }
+      
+      const url = new URL('/data-backups/comments.json', request.url);
+      const res = await env.ASSETS.fetch(new Request(url));
+      if (res.ok) {
+        const backup = await res.json();
+        const rawComments = backup.documents || backup || [];
+        comment = rawComments.find(c => c.id === commentId || c.$id === commentId);
+        if (comment) isCold = true;
+      }
+    }
+    
+    if (!comment) {
       throw new HttpError(404, '评论不存在');
     }
+    
+    if (isCold) {
+      comment.author_id = comment.authorId || comment.author_id;
+    }
+    
     if (!isAdmin(profile) && normalizeUserId(comment.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, '只能删除自己的评论');
     }
 
-    await db.batch([
-      db.prepare('DELETE FROM comments WHERE id = ?').bind(commentId),
-      db.prepare(`
-        UPDATE posts
-        SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END
-        WHERE id = ?
-      `).bind(comment.post_id)
-    ]);
-    await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+    if (!isCold) {
+      await db.batch([
+        db.prepare('DELETE FROM comments WHERE id = ?').bind(commentId),
+        db.prepare(`
+          UPDATE posts
+          SET comment_count = CASE WHEN comment_count > 0 THEN comment_count - 1 ELSE 0 END
+          WHERE id = ?
+        `).bind(comment.post_id)
+      ]);
+    }
+    
+    await db.prepare(`INSERT INTO mod_log (collection, item_id, action) VALUES (?, ?, 'delete')`)
       .bind('comments', commentId)
       .run();
+      
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/delete-comment', message: error.message, status: error.status }));

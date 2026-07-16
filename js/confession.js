@@ -27,18 +27,78 @@ let totalPages = 1;
 const PAGE_SIZE = 15;
 let confessionsSnapshot = [];
 
+// Fetch cold backup hashes + pending mods from D1
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
 let tombstonedIds = { confessions: new Set() };
 
 async function loadTombstones() {
     try {
-        const res = await fetch('/api/cache-version');
+        const res = await fetch('/api/mod-log');
         if (res.ok) {
             const data = await res.json();
-            tombstonedIds.confessions = new Set(data.tombstoneIds?.confessions || []);
+            serverHashes = data.hashes || {};
+            pendingModifications = data.pendingModifications || [];
+            
+            const deletedConfessions = pendingModifications.filter(m => m.collection === 'confessions' && m.action === 'delete').map(m => m.item_id);
+            tombstonedIds.confessions = new Set(deletedConfessions);
         }
     } catch (e) {
-        console.warn('获取版本缓存及软删除标识失败', e);
+        console.warn('获取 mod-log 失败', e);
     }
+}
+
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
+            }
+        }
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) { }
+            }
+            return data;
+        } catch (e) { continue; }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
+        }
+    }
+    return modified;
 }
 
 // DOM 元素
@@ -213,28 +273,18 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         } catch (error) {
             console.warn('D1 表白墙读取失败，启用 public 备份:', error.message);
             try {
-                let localData = [];
-                for (const url of ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']) {
-                    try {
-                        const res = await fetch(url);
-                        if (!res.ok) continue;
-                        const data = await res.json();
-                        let raw = data.documents || data || [];
-                        if (data.encrypted) {
-                            await secureKeyReady;
-                            raw = await Promise.all(raw.map(async doc => ({
-                                ...doc,
-                                content: await decryptText(doc.content),
-                                authorName: await decryptText(doc.authorName)
-                            })));
-                        }
-                        localData = raw;
-                        break;
-                    } catch (e) {
-                        continue;
-                    }
+                let data = await fetchWithHashCache('confessions', ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']);
+                let raw = data.documents || data || [];
+                if (data.encrypted) {
+                    await secureKeyReady;
+                    raw = await Promise.all(raw.map(async doc => ({
+                        ...doc,
+                        content: await decryptText(doc.content),
+                        authorName: await decryptText(doc.authorName)
+                    })));
                 }
-                localRes = localData;
+                raw = applyPendingModifications('confessions', raw);
+                localRes = raw;
             } catch (backupError) {
                 console.warn('public 表白墙备份也无法读取:', backupError.message);
             }

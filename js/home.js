@@ -189,10 +189,14 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     // Fetch tombstones + version (fire and forget, best-effort)
     let tombstones = { posts: new Set() };
     try {
-        const vRes = await fetch('/api/cache-version');
+        const vRes = await fetch('/api/mod-log');
         if (vRes.ok) {
             const vData = await vRes.json();
-            tombstones.posts = new Set(vData.tombstoneIds?.posts || []);
+            window.serverHashes = vData.hashes || {};
+            window.pendingModifications = vData.pendingModifications || [];
+            
+            const deletedPosts = window.pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
+            tombstones.posts = new Set(deletedPosts);
         }
     } catch { /* non-critical */ }
 
@@ -229,33 +233,33 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
             Query.limit(25)
         ]).then(r => r.documents),
         (async () => {
-            for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) continue;
-                    const backupData = await res.json();
-                    let docs = backupData.documents || backupData || [];
-                    if (backupData.encrypted) {
-                        await secureKeyReady;
-                        docs = await Promise.all(docs.map(async post => {
-                            let targetGroups = [];
-                            if (post.targetGroups !== '已隐藏') {
-                                const decrypted = await decryptText(post.targetGroups);
-                                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                            }
-                            return {
-                                ...post,
-                                content: await decryptText(post.content),
-                                title: await decryptText(post.title),
-                                authorName: await decryptText(post.authorName),
-                                targetGroups
-                            };
-                        }));
-                    }
-                    return docs;
-                } catch { continue; }
+            try {
+                let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
+                let docs = backupData.documents || backupData || [];
+                if (backupData.encrypted) {
+                    await secureKeyReady;
+                    docs = await Promise.all(docs.map(async post => {
+                        let targetGroups = [];
+                        if (post.targetGroups !== '已隐藏') {
+                            const decrypted = await decryptText(post.targetGroups);
+                            try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                        }
+                        return {
+                            ...post,
+                            content: await decryptText(post.content),
+                            title: await decryptText(post.title),
+                            authorName: await decryptText(post.authorName),
+                            targetGroups: targetGroups
+                        };
+                    }));
+                }
+                
+                docs = applyPendingModifications('posts', docs);
+                return docs;
+            } catch (e) {
+                console.warn('获取备用Posts源失败', e);
+                return [];
             }
-            return [];
         })()
     ]);
 
@@ -421,28 +425,19 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     let coldConfessions = [];
     if (!hotConfessionsLoaded) {
         try {
-            let localData = [];
-            for (const url of ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']) {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) continue;
-                    const backupData = await res.json();
-                    let raw = backupData.documents || backupData || [];
-                    if (backupData.encrypted) {
-                        await secureKeyReady;
-                        raw = await Promise.all(raw.map(async c => ({
-                            ...c,
-                            content: await decryptText(c.content), 
-                            authorName: await decryptText(c.authorName)
-                        })));
-                    }
-                    localData = raw;
-                    break;
-                } catch (e) {
-                    continue;
+            try {
+                let backupData = await fetchWithHashCache('confessions', ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']);
+                let raw = backupData.documents || backupData || [];
+                if (backupData.encrypted) {
+                    await secureKeyReady;
+                    raw = await Promise.all(raw.map(async c => ({
+                        ...c,
+                        content: await decryptText(c.content), 
+                        authorName: await decryptText(c.authorName)
+                    })));
                 }
-            }
-            coldConfessions = localData;
+                raw = applyPendingModifications('confessions', raw);
+                coldConfessions = raw;
         } catch (e) {
             console.log('未发现表白冷备份数据', e);
         }

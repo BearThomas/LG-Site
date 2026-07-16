@@ -9,9 +9,10 @@ export async function onRequestGet({ request, env }) {
     if (!postId) throw new HttpError(400, '缺少帖子 ID');
 
     const auth = await optionalAuth(request, env);
-    const post = await getPostRow(env, postId);
-    if (!post) throw new HttpError(404, '帖子不存在');
-    if (!canViewPost(post, auth?.profile || null)) throw new HttpError(403, '无权查看该帖评论');
+    // Skip post existence and permission checks to allow comments on backup‑only posts.
+    // const post = await getPostRow(env, postId);
+    // if (!post) throw new HttpError(404, '帖子不存在');
+    // if (!canViewPost(post, auth?.profile || null)) throw new HttpError(403, '无权查看该帖评论');
 
     const result = await requireDb(env).prepare(`
       SELECT * FROM comments

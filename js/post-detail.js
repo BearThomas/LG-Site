@@ -67,20 +67,86 @@ function applyAppwriteAuth(savedUser) {
 }
 
 let tombstonedIds = { posts: new Set(), comments: new Set() };
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
 
 async function loadTombstones() {
     try {
-        const res = await fetch('/api/cache-version');
+        const res = await fetch('/api/mod-log');
         if (res.ok) {
             const data = await res.json();
+            serverHashes = data.hashes || serverHashes;
+            pendingModifications = data.pendingModifications || [];
+            
+            // Reconstruct tombstone sets for backward compatibility in frontend code
+            const deletedPosts = pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
+            const deletedComments = pendingModifications.filter(m => m.collection === 'comments' && m.action === 'delete').map(m => m.item_id);
             tombstonedIds = {
-                posts: new Set(data.tombstoneIds?.posts || []),
-                comments: new Set(data.tombstoneIds?.comments || [])
+                posts: new Set(deletedPosts),
+                comments: new Set(deletedComments)
             };
         }
     } catch (e) {
-        console.warn('获取版本缓存及软删除标识失败', e);
+        console.warn('获取 mod-log 失败', e);
     }
+}
+
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
+            }
+        }
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            
+            // Save to cache
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) {
+                    console.warn('LocalStorage 写入失败，可能配额不足', e);
+                }
+            }
+            return data;
+        } catch (e) {
+            continue;
+        }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
+        }
+    }
+    return modified;
 }
 
 // ========== 页面加载初始化生命周期调整 ==========
@@ -217,39 +283,30 @@ async function loadPostDetail() {
         }
         console.warn('D1 暂时不可用，正在排查 public 备份...');
         try {
-            let docs = [];
-            for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
-                try {
-                    const res = await fetch(url);
-                    if (!res.ok) continue;
-                    const backupData = await res.json();
-                    let raw = backupData.documents || backupData || [];
-                    
-                    if (backupData.encrypted) {
-                        await secureKeyReady;
-                        raw = await Promise.all(raw.map(async p => {
-                            let targetGroups = [];
-                            if (p.targetGroups !== '已隐藏') {
-                                const decrypted = await decryptText(p.targetGroups);
-                                try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                            }
-                            return {
-                                ...p,
-                                content: await decryptText(p.content),
-                                title: await decryptText(p.title),
-                                authorName: await decryptText(p.authorName),
-                                targetGroups: targetGroups
-                            };
-                        }));
+            let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
+            let raw = backupData.documents || backupData || [];
+            
+            if (backupData.encrypted) {
+                await secureKeyReady;
+                raw = await Promise.all(raw.map(async p => {
+                    let targetGroups = [];
+                    if (p.targetGroups !== '已隐藏') {
+                        const decrypted = await decryptText(p.targetGroups);
+                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
                     }
-                    docs = raw;
-                    break;
-                } catch (e) {
-                    continue;
-                }
+                    return {
+                        ...p,
+                        content: await decryptText(p.content),
+                        title: await decryptText(p.title),
+                        authorName: await decryptText(p.authorName),
+                        targetGroups: targetGroups
+                    };
+                }));
             }
             
-            currentPost = docs.find(p => (p.id === postId || p.$id === postId));
+            raw = applyPendingModifications('posts', raw);
+            
+            currentPost = raw.find(p => (p.id === postId || p.$id === postId));
             if (!currentPost) throw new Error('帖子实体不存在');
             currentPost._isCold = true;
             console.log("❄️ 成功激活冷备份归档帖子");
@@ -297,14 +354,14 @@ function renderPostDetail() {
     
     let actionsHtml = '';
     const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
-    if (isAuthor && !currentPost._isCold) { 
+    if (isAuthor) {
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
             <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
         `;
     } else if (isAdmin) {
         actionsHtml = `
-            ${!currentPost._isCold ? '<button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>' : ''}
+            <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
             <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
         `;
     }
@@ -356,9 +413,12 @@ function renderPostDetail() {
         </div>
     `;
     
-    if (isAuthor && !currentPost._isCold) {
+    if (isAuthor) {
         document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
         document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
+    } else if (isAdmin) {
+        document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
+        document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
     }
     
     const likeBtn = document.getElementById('likeBtn');
@@ -400,29 +460,19 @@ async function loadComments() {
         let localRes = [];
         if (cloudComments === null) {
             try {
-                let localData = [];
-                for (const url of ['./public/data-backups/comments.json', './public/data-fallback/comments.json']) {
-                    try {
-                        const res = await fetch(url);
-                        if (!res.ok) continue;
-                        const data = await res.json();
-                        let raw = data.documents || data || [];
-                        if (data.encrypted) {
-                            await secureKeyReady;
-                            raw = await Promise.all(raw.map(async comment => ({
-                                ...comment,
-                                content: await decryptText(comment.content),
-                                authorName: await decryptText(comment.authorName),
-                                authorId: await decryptText(comment.authorId)
-                            })));
-                        }
-                        localData = raw;
-                        break;
-                    } catch (e) {
-                        continue;
-                    }
+                let data = await fetchWithHashCache('comments', ['./public/data-backups/comments.json', './public/data-fallback/comments.json']);
+                let raw = data.documents || data || [];
+                if (data.encrypted) {
+                    await secureKeyReady;
+                    raw = await Promise.all(raw.map(async comment => ({
+                        ...comment,
+                        content: await decryptText(comment.content),
+                        authorName: await decryptText(comment.authorName),
+                        authorId: await decryptText(comment.authorId)
+                    })));
                 }
-                localRes = localData.filter(comment => comment.postId === postId);
+                raw = applyPendingModifications('comments', raw);
+                localRes = raw.filter(comment => comment.postId === postId);
             } catch (error) {
                 console.warn('public 评论备份也无法读取:', error.message);
             }
@@ -645,7 +695,6 @@ async function deleteComment(commentId) {
 
 // ========== 调出并激活编辑主贴框 ==========
 function openEditModal() {
-    if (currentPost._isCold) return;
     const editTitleEl = document.getElementById('editTitle');
     const editContentEl = document.getElementById('editContent');
     if (editTitleEl) editTitleEl.value = currentPost.title;
@@ -665,14 +714,25 @@ async function submitEdit() {
     
     try {
         const currentPostId = currentPost.$id || currentPost.id;
-        await databases.updateDocument(DATABASE_ID, COLLECTION_POSTS, currentPostId, {
-            title,
-            content,
-            editedAt: new Date().toISOString()
+        
+        const response = await fetch('/api/data', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                collection: 'posts',
+                documentId: currentPostId,
+                data: { title, content },
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
+            })
         });
         
-        closeEditModal();
-        await loadPostDetail();
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '保存失败');
+        
+        // Ensure cache bust by reloading the page or fetching latest mod-log
+        location.reload();
     } catch (error) {
         console.error('修改帖子失败:', error);
         alert('编辑提交保存失败');
@@ -681,15 +741,25 @@ async function submitEdit() {
 
 // ========== 主贴删除模块弹窗 ==========
 function openDeleteModal() {
-    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
-    if (currentPost._isCold && !isAdmin) return;
     if (deleteModal) deleteModal.style.display = 'flex';
 }
 
 async function confirmDelete() {
     try {
         const currentPostId = currentPost.$id || currentPost.id;
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_POSTS, currentPostId);
+        const response = await fetch('/api/data', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                collection: 'posts',
+                documentId: currentPostId,
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '删除失败');
         alert('帖子已成功销毁');
         location.href = 'posts.html';
     } catch (error) {

@@ -179,68 +179,115 @@ async function listAllPostDocuments(baseQueries, onFirstBatch) {
     return documents;
 }
 
-// Fetch cold backup version + tombstones from D1, cache in memory
+// Fetch cold backup hashes + pending mods from D1
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
+let tombstonedIds = { posts: new Set(), comments: new Set(), confessions: new Set() };
+
 async function fetchAndApplyCacheVersion() {
     try {
-        const res = await fetch('/api/cache-version');
+        const res = await fetch('/api/mod-log');
         if (!res.ok) return;
         const data = await res.json();
-        coldDataVersion = data.version || '0';
+        serverHashes = data.hashes || {};
+        pendingModifications = data.pendingModifications || [];
+        
+        const deletedPosts = pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
+        const deletedComments = pendingModifications.filter(m => m.collection === 'comments' && m.action === 'delete').map(m => m.item_id);
+        const deletedConfessions = pendingModifications.filter(m => m.collection === 'confessions' && m.action === 'delete').map(m => m.item_id);
+        
         tombstonedIds = {
-            posts:       new Set(data.tombstoneIds?.posts || []),
-            comments:    new Set(data.tombstoneIds?.comments || []),
-            confessions: new Set(data.tombstoneIds?.confessions || [])
+            posts:       new Set(deletedPosts),
+            comments:    new Set(deletedComments),
+            confessions: new Set(deletedConfessions)
         };
     } catch (e) {
         console.warn('获取缓存版本失败（不影响主流程）:', e.message);
     }
 }
 
-async function loadColdPostDocuments() {
-    // Cache key: version token ensures we re-fetch only when backup changes
-    const cacheKey = `cold_backup_posts_v${coldDataVersion || '0'}`;
-    const cached = coldDataVersion ? sessionStorage.getItem(cacheKey) : null;
-    if (cached) {
-        try { return JSON.parse(cached); } catch { /* fall through */ }
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
+            }
+        }
     }
-
-    // Try primary archive first, then legacy fallback
-    let docs = [];
-    for (const url of ['./public/data-backups/posts.json', './public/data-fallback/posts.json']) {
+    
+    for (const url of urls) {
         try {
             const res = await fetch(url);
             if (!res.ok) continue;
-            const backupData = await res.json();
-            let raw = backupData.documents || backupData || [];
-
-            if (backupData.encrypted) {
-                await secureKeyReady;
-                raw = await Promise.all(raw.map(async post => {
-                    let targetGroups = [];
-                    if (post.targetGroups !== '已隐藏') {
-                        const decrypted = await decryptText(post.targetGroups);
-                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                    }
-                    return {
-                        ...post,
-                        content: await decryptText(post.content),
-                        title: await decryptText(post.title),
-                        authorName: await decryptText(post.authorName),
-                        targetGroups
-                    };
-                }));
+            const data = await res.json();
+            
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) { }
             }
-            docs = raw;
-            break;
-        } catch (e) {
-            continue;
+            return data;
+        } catch (e) { continue; }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
         }
     }
+    return modified;
+}
 
-    if (coldDataVersion && docs.length) {
-        try { sessionStorage.setItem(cacheKey, JSON.stringify(docs)); } catch { /* quota exceeded, skip */ }
+async function loadColdPostDocuments() {
+    try {
+        let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
+        let docs = backupData.documents || backupData || [];
+        
+        if (backupData.encrypted) {
+            await secureKeyReady;
+            docs = await Promise.all(docs.map(async post => {
+                let targetGroups = [];
+                if (post.targetGroups !== '已隐藏') {
+                    const decrypted = await decryptText(post.targetGroups);
+                    try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
+                }
+                return {
+                    ...post,
+                    content: await decryptText(post.content),
+                    title: await decryptText(post.title),
+                    authorName: await decryptText(post.authorName),
+                    targetGroups
+                };
+            }));
+        }
+        
+        docs = applyPendingModifications('posts', docs);
+        return docs;
+    } catch (e) {
+        console.warn('获取冷备帖子失败', e);
+        return [];
     }
-    return docs;
 }
 
 // ========== 加载帖子（安全增强版） ==========

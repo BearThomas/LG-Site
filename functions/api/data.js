@@ -243,8 +243,24 @@ export async function onRequestPatch({ request, env }) {
     const body = await readJsonBody(request);
     if (body.collection !== 'posts') throw new HttpError(400, '该集合不支持编辑');
     const { profile } = await requireAuth(request, env, body);
-    const post = await getPostRow(env, body.documentId);
+    let post = await getPostRow(env, body.documentId);
+    let isCold = false;
+    if (!post) {
+      const url = new URL('/data-backups/posts.json', request.url);
+      const res = await env.ASSETS.fetch(new Request(url));
+      if (res.ok) {
+        const backup = await res.json();
+        const rawPosts = backup.documents || backup || [];
+        post = rawPosts.find(p => p.id === body.documentId || p.$id === body.documentId);
+        if (post) isCold = true;
+      }
+    }
     if (!post) throw new HttpError(404, '帖子不存在');
+    if (isCold) {
+      post.author_id = post.authorId || post.author_id;
+      post.id = post.$id || post.id;
+    }
+    
     if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, '只能编辑自己的帖子');
     }
@@ -255,12 +271,28 @@ export async function onRequestPatch({ request, env }) {
     if (title.length > 100) throw new HttpError(400, '标题不能超过 100 个字符');
     if (content.length > 20_000) throw new HttpError(400, '正文不能超过 20000 个字符');
     const now = new Date().toISOString();
+    
+    if (!isCold) {
+      await requireDb(env).prepare(`
+        UPDATE posts
+        SET title = ?, content = ?, edited_at = ?, updated_at = ?
+        WHERE id = ?
+      `).bind(title, content, now, now, post.id).run();
+    }
+    
+    // Record edit in mod_log for synchronization with backup JSONs
     await requireDb(env).prepare(`
-      UPDATE posts
-      SET title = ?, content = ?, edited_at = ?, updated_at = ?
-      WHERE id = ?
-    `).bind(title, content, now, now, post.id).run();
-    return json(toPostDocument(await getPostRow(env, post.id)));
+      INSERT INTO mod_log (collection, item_id, action, payload)
+      VALUES (?, ?, 'edit', ?)
+    `).bind('posts', post.id, JSON.stringify({ title, content, edited_at: now })).run();
+    
+    return json({ 
+      success: true, 
+      id: post.id,
+      title,
+      content,
+      edited_at: now
+    });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'PATCH', message: error.message, status: error.status }));
     return errorResponse(error, '编辑帖子失败');
@@ -283,31 +315,50 @@ export async function onRequestDelete({ request, env }) {
       if (!confessionId) throw new HttpError(400, '缺少表白 ID');
       
       await db.prepare('DELETE FROM confessions WHERE id = ?').bind(confessionId).run();
-      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+      await db.prepare(`INSERT INTO mod_log (collection, item_id, action) VALUES (?, ?, 'delete')`)
         .bind('confessions', confessionId)
         .run();
       return json({ success: true });
     }
 
-    const post = await getPostRow(env, body.documentId);
+    let post = await getPostRow(env, body.documentId);
+    let isCold = false;
     if (!post) {
       if (isAdmin(profile)) {
-        await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
+        await db.prepare(`INSERT INTO mod_log (collection, item_id, action) VALUES (?, ?, 'delete')`)
           .bind('posts', String(body.documentId))
           .run();
         return json({ success: true, tombstoned: true });
       }
-      throw new HttpError(404, '帖子不存在');
+      
+      const url = new URL('/data-backups/posts.json', request.url);
+      const res = await env.ASSETS.fetch(new Request(url));
+      if (res.ok) {
+        const backup = await res.json();
+        const rawPosts = backup.documents || backup || [];
+        post = rawPosts.find(p => p.id === body.documentId || p.$id === body.documentId);
+        if (post) isCold = true;
+      }
     }
+    
+    if (!post) throw new HttpError(404, '帖子不存在');
+    
+    if (isCold) {
+      post.author_id = post.authorId || post.author_id;
+      post.id = post.$id || post.id;
+    }
+    
     if (!isAdmin(profile) && normalizeUserId(post.author_id) !== normalizeUserId(profile.id)) {
       throw new HttpError(403, '只能删除自己的帖子');
     }
-    await db.prepare('DELETE FROM posts WHERE id = ?').bind(post.id).run();
-    if (isAdmin(profile)) {
-      await db.prepare(`INSERT OR REPLACE INTO tombstones (collection, item_id, deleted_at) VALUES (?, ?, datetime('now'))`)
-        .bind('posts', post.id)
-        .run();
+    if (!isCold) {
+      await db.prepare('DELETE FROM posts WHERE id = ?').bind(post.id).run();
     }
+    
+    await db.prepare(`INSERT INTO mod_log (collection, item_id, action) VALUES (?, ?, 'delete')`)
+      .bind('posts', post.id)
+      .run();
+      
     return json({ success: true });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'DELETE', message: error.message, status: error.status }));
