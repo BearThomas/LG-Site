@@ -41,9 +41,6 @@ let allUsers = null;
 let selectedUserIds = new Set(); 
 let postsSnapshot = [];
 
-// Tombstoned IDs fetched from /api/cache-version — cold items hidden by admin
-let tombstonedIds = { posts: new Set(), comments: new Set(), confessions: new Set() };
-let coldDataVersion = null; // track version to avoid redundant JSON fetches
 
 // Custom Boards cache
 let customBoards = [];
