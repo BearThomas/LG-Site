@@ -169,12 +169,12 @@ function isPostVisible(post, userBoards) {
     if (viewPermission === 8) return isAuthor; 
     if (viewPermission === 2) {             
         if (!currentUser) return false;
-        return userBoards.includes(post.boardId);
+        return userBoards.includes(post.boardId || 'main');
     }
     if (viewPermission === 4) {             
         if (!currentUser) return false;
         const targetGroups = post.targetGroups || [];
-        return targetGroups.includes(currentUser.studentId) || targetGroups.some(g => userBoards.includes(g));
+        return targetGroups.includes(currentUser.studentId) || targetGroups.some(g => userBoards.includes(g || 'main'));
     }
     return false;
 }
