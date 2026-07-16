@@ -228,6 +228,7 @@ async function loadPostDetail() {
             
             currentPost = docs.find(p => (p.id === postId || p.$id === postId));
             if (!currentPost) throw new Error('帖子实体不存在');
+            currentPost._isCold = true;
             console.log("❄️ 成功激活冷备份归档帖子");
         } catch (localErr) {
             if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
