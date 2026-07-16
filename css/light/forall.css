@@ -2,7 +2,7 @@
    🧱 基础骨架与全局盒模型加固 (全站公共底层)
    ========================================================================== */
 body {
-    background-color: #ffffff;
+    background-color: transparent !important;
     margin: 0px;
 }
 
@@ -553,15 +553,15 @@ body {
    ========================================================================== */
 :root {
     color-scheme: light;
-    --bg: #f6f7f9;
-    --surface: #ffffff;
-    --surface-2: #f2f4f7;
-    --surface-raised: #ffffff;
+    --bg: transparent;
+    --surface: rgba(255, 255, 255, 0.65);
+    --surface-2: rgba(242, 244, 247, 0.65);
+    --surface-raised: rgba(255, 255, 255, 0.85);
     --text: #111827;
     --text-soft: #374151;
     --muted: #6b7280;
-    --border: #e5e7eb;
-    --border-strong: #d1d5db;
+    --border: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.15);
     --accent: #2563eb;
     --accent-hover: #1d4ed8;
     --accent-soft: #eef4ff;
@@ -580,15 +580,15 @@ body {
 
 :root[data-theme="dark"] {
     color-scheme: dark;
-    --bg: #0f1115;
-    --surface: #171a21;
-    --surface-2: #20242c;
-    --surface-raised: #1c2028;
+    --bg: transparent;
+    --surface: rgba(23, 26, 33, 0.65);
+    --surface-2: rgba(32, 36, 44, 0.65);
+    --surface-raised: rgba(28, 32, 40, 0.85);
     --text: #f3f4f6;
     --text-soft: #d1d5db;
     --muted: #9ca3af;
-    --border: #2b3039;
-    --border-strong: #3a414d;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.15);
     --accent: #60a5fa;
     --accent-hover: #93c5fd;
     --accent-soft: rgba(96, 165, 250, 0.14);
@@ -1429,3 +1429,149 @@ textarea::placeholder {
     .skeleton-block::after,
     .pull-refresh-indicator.refreshing .pull-refresh-spinner { animation-duration: 2.4s; }
 }
+
+/* ========== 液态玻璃拟态 (Glassmorphism) 及文字投影 ========== */
+
+/* 1. 主板容器及重要卡片全面应用毛玻璃效果 */
+.title-bar,
+.post-card,
+.modal-container,
+.home-content,
+.event-board,
+.selector-section,
+.manage-tabs,
+.detail-card,
+.comment-card,
+.comment-input-area,
+.posts-wall-header {
+    backdrop-filter: blur(16px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    background: rgba(255, 255, 255, 0.45) !important;
+}
+
+:root[data-theme="dark"] .title-bar,
+:root[data-theme="dark"] .post-card,
+:root[data-theme="dark"] .modal-container,
+:root[data-theme="dark"] .home-content,
+:root[data-theme="dark"] .event-board,
+:root[data-theme="dark"] .selector-section,
+:root[data-theme="dark"] .manage-tabs,
+:root[data-theme="dark"] .detail-card,
+:root[data-theme="dark"] .comment-card,
+:root[data-theme="dark"] .comment-input-area,
+:root[data-theme="dark"] .posts-wall-header {
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    background: rgba(23, 26, 33, 0.45) !important;
+}
+
+/* 2. 液态玻璃按钮定制 */
+.new-post-btn,
+.add-confession-btn,
+.submit-btn,
+.publish-btn,
+.login-btn,
+.save-btn,
+.back-to-top,
+.view-more-btn,
+.cancel-btn,
+.page-btn,
+.post-action-btn,
+.sort-btn,
+.join-board-btn,
+.discover-btn,
+.new-post-btn-pill {
+    backdrop-filter: blur(8px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(8px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 
+      inset 0 1px 1px rgba(255, 255, 255, 0.5),
+      0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 按钮 Hover 反光增强与轻微抬起 */
+.new-post-btn:hover,
+.add-confession-btn:hover,
+.submit-btn:hover,
+.publish-btn:hover,
+.login-btn:hover,
+.save-btn:hover,
+.back-to-top:hover,
+.view-more-btn:hover,
+.cancel-btn:hover,
+.page-btn:hover:not(:disabled),
+.post-action-btn:hover,
+.sort-btn:hover,
+.join-board-btn:hover,
+.discover-btn:hover,
+.new-post-btn-pill:hover {
+    background: rgba(255, 255, 255, 0.35) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.6),
+      0 8px 20px rgba(0, 0, 0, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* 暗色模式下按钮微调 */
+:root[data-theme="dark"] .new-post-btn,
+:root[data-theme="dark"] .add-confession-btn,
+:root[data-theme="dark"] .submit-btn,
+:root[data-theme="dark"] .publish-btn,
+:root[data-theme="dark"] .login-btn,
+:root[data-theme="dark"] .save-btn,
+:root[data-theme="dark"] .back-to-top,
+:root[data-theme="dark"] .view-more-btn,
+:root[data-theme="dark"] .cancel-btn,
+:root[data-theme="dark"] .page-btn,
+:root[data-theme="dark"] .post-action-btn,
+:root[data-theme="dark"] .sort-btn,
+:root[data-theme="dark"] .join-board-btn,
+:root[data-theme="dark"] .discover-btn,
+:root[data-theme="dark"] .new-post-btn-pill {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 
+      inset 0 1px 1px rgba(255, 255, 255, 0.15),
+      0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+:root[data-theme="dark"] .new-post-btn:hover,
+:root[data-theme="dark"] .add-confession-btn:hover,
+:root[data-theme="dark"] .submit-btn:hover,
+:root[data-theme="dark"] .publish-btn:hover,
+:root[data-theme="dark"] .login-btn:hover,
+:root[data-theme="dark"] .save-btn:hover,
+:root[data-theme="dark"] .back-to-top:hover,
+:root[data-theme="dark"] .view-more-btn:hover,
+:root[data-theme="dark"] .cancel-btn:hover,
+:root[data-theme="dark"] .page-btn:hover:not(:disabled),
+:root[data-theme="dark"] .post-action-btn:hover,
+:root[data-theme="dark"] .sort-btn:hover,
+:root[data-theme="dark"] .join-board-btn:hover,
+:root[data-theme="dark"] .discover-btn:hover,
+:root[data-theme="dark"] .new-post-btn-pill:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 
+      inset 0 1px 2px rgba(255, 255, 255, 0.25),
+      0 8px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 3. 文字软投影 (有文字的进行微模糊呼吸感投影) */
+.wall-title,
+.site-title,
+.post-title,
+.nav-bar-item {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 0 30px rgba(255, 255, 255, 0.5);
+}
+
+:root[data-theme="dark"] .wall-title,
+:root[data-theme="dark"] .site-title,
+:root[data-theme="dark"] .post-title,
+:root[data-theme="dark"] .nav-bar-item {
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.15);
+}
+
