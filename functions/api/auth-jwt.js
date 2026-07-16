@@ -1,4 +1,4 @@
-import { createPasswordSession, deleteCurrentSession, getAccountWithSession } from '../_lib/appwrite.js';
+import { createPasswordSession, deleteCurrentSession, getAuthUser } from '../_lib/appwrite.js';
 import { issueAppToken } from '../_lib/auth.js';
 import { getAppwriteConfig } from '../_lib/config.js';
 import { ensureUserRow, toUserDocument } from '../_lib/db.js';
@@ -20,15 +20,26 @@ export async function onRequestPost({ request, env }) {
     if (!password) throw new HttpError(400, '请输入密码');
 
     config = getAppwriteConfig(env, { requireApiKey: true });
-    const session = await createPasswordSession(config, studentId, password);
-    sessionSecret = String(session.secret || '').trim();
-    if (!sessionSecret) {
-      throw new HttpError(502, 'Appwrite 未返回可用的登录会话，请检查项目的会话配置');
-    }
 
-    const account = await getAccountWithSession(config, sessionSecret);
-    const profile = await ensureUserRow(env, account);
+    // Step 1: Verify password via client-side endpoint (no API Key).
+    // If wrong password, Appwrite returns 401 and we throw here.
+    // session.secret may be empty in server-side context (no browser cookies).
+    const session = await createPasswordSession(config, studentId, password);
+    sessionSecret = String(session.secret || session.$id || session.token || '').trim();
+
+    // Step 2: Fetch authoritative user info via Server API Key.
+    // This is safe because password was already verified in step 1.
+    const account = await getAuthUser(config, studentId);
+
+    const profile = await ensureUserRow(env, account, { userId: studentId });
     if (Number(profile.banned || 0) === 1) throw new HttpError(403, '该账号已被封禁');
+
+    // Step 3: Clean up the Appwrite session — we use our own JWT (appToken) for auth.
+    // Only attempt cleanup if we actually got a secret back.
+    if (sessionSecret) {
+      deleteCurrentSession(config, sessionSecret).catch(() => {});
+    }
+    sessionSecret = ''; // prevent double-cleanup in catch block
 
     const publicProfile = toUserDocument(profile, { includePrivate: true });
     return json({
@@ -39,8 +50,6 @@ export async function onRequestPost({ request, env }) {
       avatar: profile.avatar || '',
       profile: publicProfile,
       appToken: await issueAppToken(env, profile)
-    }, 200, {
-      'Set-Cookie': createSessionCookie(request, env, sessionSecret, session.expire)
     });
   } catch (error) {
     if (config && sessionSecret) {

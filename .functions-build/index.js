@@ -169,6 +169,10 @@ function createAuthUser(config, studentId, password, name) {
   });
 }
 __name(createAuthUser, "createAuthUser");
+function getAuthUser(config, userId) {
+  return appwriteRequest(config, `/users/${encodeURIComponent(userId)}`, { method: "GET" });
+}
+__name(getAuthUser, "getAuthUser");
 async function deleteAuthUser(config, userId) {
   try {
     await appwriteRequest(config, `/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
@@ -718,13 +722,15 @@ async function onRequestPost({ request, env }) {
     if (!password) throw new HttpError(400, "\u8BF7\u8F93\u5165\u5BC6\u7801");
     config = getAppwriteConfig(env, { requireApiKey: true });
     const session = await createPasswordSession(config, studentId, password);
-    sessionSecret = String(session.secret || "").trim();
-    if (!sessionSecret) {
-      throw new HttpError(502, "Appwrite \u672A\u8FD4\u56DE\u53EF\u7528\u7684\u767B\u5F55\u4F1A\u8BDD\uFF0C\u8BF7\u68C0\u67E5\u9879\u76EE\u7684\u4F1A\u8BDD\u914D\u7F6E");
-    }
-    const account = await getAccountWithSession(config, sessionSecret);
-    const profile = await ensureUserRow(env, account);
+    sessionSecret = String(session.secret || session.$id || session.token || "").trim();
+    const account = await getAuthUser(config, studentId);
+    const profile = await ensureUserRow(env, account, { userId: studentId });
     if (Number(profile.banned || 0) === 1) throw new HttpError(403, "\u8BE5\u8D26\u53F7\u5DF2\u88AB\u5C01\u7981");
+    if (sessionSecret) {
+      deleteCurrentSession(config, sessionSecret).catch(() => {
+      });
+    }
+    sessionSecret = "";
     const publicProfile = toUserDocument(profile, { includePrivate: true });
     return json({
       success: true,
@@ -734,8 +740,6 @@ async function onRequestPost({ request, env }) {
       avatar: profile.avatar || "",
       profile: publicProfile,
       appToken: await issueAppToken(env, profile)
-    }, 200, {
-      "Set-Cookie": createSessionCookie(request, env, sessionSecret, session.expire)
     });
   } catch (error) {
     if (config && sessionSecret) {
@@ -1563,7 +1567,7 @@ function onRequestOptions() {
 }
 __name(onRequestOptions, "onRequestOptions");
 
-// ../.wrangler/tmp/pages-O8fa0f/functionsRoutes-0.5877325968274936.mjs
+// ../.wrangler/tmp/pages-q8qT0N/functionsRoutes-0.14082208424588671.mjs
 var routes = [
   {
     routePath: "/api/auth-jwt",
