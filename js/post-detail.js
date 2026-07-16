@@ -367,7 +367,7 @@ async function loadComments() {
     try {
         if (!commentsList) return;
 
-        const cloudComments = await loadCloudComments();
+        const cloudComments = currentPost._isCold ? null : await loadCloudComments();
         let localRes = [];
         if (cloudComments === null) {
             try {
@@ -755,6 +755,11 @@ function toggleEditPreview() {
 async function toggleLike() {
     const likeBtn = document.getElementById('likeBtn');
     if (!likeBtn || !currentUser || !currentPost) return;
+    if (currentPost._isCold) {
+        likeBtn.disabled = true;
+        likeBtn.setAttribute('disabled', 'true');
+        return;
+    }
     likeBtn.disabled = true;
     try {
         const token = currentUser.appToken || '';
