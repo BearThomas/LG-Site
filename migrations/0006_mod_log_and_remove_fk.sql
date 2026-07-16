@@ -1,6 +1,5 @@
 -- 0006_mod_log_and_remove_fk.sql
 -- Migration to create mod_log table and recreate comments without foreign key constraints.
-BEGIN;
 
 -- Create mod_log table
 CREATE TABLE IF NOT EXISTS mod_log (
@@ -29,5 +28,3 @@ INSERT INTO comments (id, post_id, content, author_id, author_name, created_at, 
 SELECT id, post_id, content, author_id, author_name, created_at, updated_at FROM comments_old;
 
 DROP TABLE comments_old;
-
-COMMIT;
