@@ -246,7 +246,7 @@ export async function onRequestPatch({ request, env }) {
     let post = await getPostRow(env, body.documentId);
     let isCold = false;
     if (!post) {
-      const url = new URL('/data-backups/posts.json', request.url);
+      const url = new URL('/public/data-backups/posts.json', request.url);
       const res = await env.ASSETS.fetch(new Request(url));
       if (res.ok) {
         const backup = await res.json();
@@ -331,7 +331,7 @@ export async function onRequestDelete({ request, env }) {
         return json({ success: true, tombstoned: true });
       }
       
-      const url = new URL('/data-backups/posts.json', request.url);
+      const url = new URL('/public/data-backups/posts.json', request.url);
       const res = await env.ASSETS.fetch(new Request(url));
       if (res.ok) {
         const backup = await res.json();

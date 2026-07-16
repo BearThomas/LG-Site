@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
         return json({ success: true, tombstoned: true });
       }
       
-      const url = new URL('/data-backups/comments.json', request.url);
+      const url = new URL('/public/data-backups/comments.json', request.url);
       const res = await env.ASSETS.fetch(new Request(url));
       if (res.ok) {
         const backup = await res.json();
