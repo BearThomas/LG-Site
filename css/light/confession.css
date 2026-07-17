@@ -1,18 +1,14 @@
-/* ========== 表白墙样式 ========== */
-:root {
-    --pink: #ec4899;
-    --pink-soft: rgba(236, 72, 153, 0.2);
-}
+/* ========== 表白墙样式 — confession.css ========== */
 
 .confession-container {
-    width: 100%;             /* 📱 手机端宽度占满 */
-    max-width: 680px;        /* 💻 电脑端最大限制 */
-    margin: 24px auto;
-    padding: 0 24px;
-    box-sizing: border-box;  /* 刚性防爆：包含边距在内计算宽度 */
+    width: 100%;
+    max-width: 720px;
+    margin: 28px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
-/* 页面头部 */
+/* === HEADER === */
 .confession-header {
     text-align: center;
     margin-bottom: 28px;
@@ -20,70 +16,74 @@
 }
 
 .confession-header h1 {
-    font-size: 2.2rem;
+    font-size: 2.1rem;
+    font-family: var(--font-serif);
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text);
     margin-bottom: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap; /* 📱 手机端如果字数太长允许自动换行 */
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .confession-subtitle {
-    color: #64748b;
-    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-size: 0.93rem;
 }
 
-/* 发表卡片 */
+/* === PUBLISH CARD === */
 .publish-card {
-    background: white;
-    border-radius: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     padding: 24px;
-    box-shadow: 0 4px 20px rgba(236, 72, 153, 0.08);
-    margin-bottom: 28px;
-    border: 1px solid #fce7f3;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+    backdrop-filter: blur(var(--blur));
+    transition: box-shadow 0.3s var(--ease);
 }
+
+.publish-card:hover { box-shadow: var(--shadow-md); }
 
 .publish-header {
     display: flex;
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    color: #1e293b;
+    color: var(--text);
     margin-bottom: 16px;
+    font-size: 0.97rem;
 }
 
-.publish-icon {
-    font-size: 1.2rem;
-}
+.publish-icon { font-size: 1.2rem; }
 
 .confession-textarea {
     width: 100%;
-    padding: 16px;
-    border: 1.5px solid #f1f5f9;
-    border-radius: 18px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
     font-size: 1rem;
-    line-height: 1.6;
+    line-height: 1.65;
     resize: vertical;
-    font-family: inherit;
+    font-family: var(--font-sans);
     outline: none;
-    transition: border-color 0.15s;
-    background: #fafafa;
-    box-sizing: border-box; /* 刚性防爆 */
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    background: var(--surface-2);
+    color: var(--text);
+    box-sizing: border-box;
+    min-height: 100px;
 }
 
 .confession-textarea:focus {
-    border-color: #ec4899;
-    background: white;
+    border-color: var(--pink);
+    box-shadow: 0 0 0 3px var(--pink-soft);
+    background: var(--surface);
 }
 
-.confession-textarea::placeholder {
-    color: #a0aec0;
-}
+.confession-textarea::placeholder { color: var(--text-muted); }
 
-/* 📱 移动端自适应页脚布局 */
 .publish-footer {
     display: flex;
     align-items: center;
@@ -93,265 +93,270 @@
 }
 
 .char-count {
-    font-size: 0.85rem;
-    color: #94a3b8;
+    font-size: 0.83rem;
+    color: var(--text-muted);
 }
 
 .publish-btn {
-    padding: 12px 32px; /* 📱 手机端手指点击热区优化 */
-    background: linear-gradient(135deg, #ec4899, #db2777);
+    padding: 11px 30px;
+    background: linear-gradient(135deg, var(--pink), #db2777);
     border: none;
-    border-radius: 40px;
-    color: white;
+    border-radius: var(--radius-pill);
+    color: #fff;
     font-weight: 600;
-    font-size: 1rem;
+    font-size: 0.97rem;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.15s;
-    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.3);
-    white-space: nowrap; /* 拒绝手机端按钮文字挤压换行 */
+    transition: transform 0.2s var(--ease), box-shadow 0.2s;
+    box-shadow: 0 4px 16px var(--pink-soft);
+    white-space: nowrap;
+    font-family: var(--font-sans);
 }
 
 .publish-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
+    box-shadow: 0 8px 24px var(--pink-soft);
 }
 
 .publish-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
     transform: none;
+    box-shadow: none;
 }
 
+/* === LOGIN TIP === */
 .login-tip {
     margin-top: 16px;
-    padding: 12px;
-    background: #f8fafc;
-    border-radius: 14px;
+    padding: 12px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-2);
 }
 
 .login-tip a {
-    color: #ec4899;
+    color: var(--pink);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 600;
 }
+.login-tip a:hover { text-decoration: underline; }
 
-/* 排序栏 */
+/* === SORT BAR === */
 .sort-bar {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 20px;
-    overflow-x: auto; /* 📱 手机端如果选项卡太多支持丝滑左右滑动 */
-    scrollbar-width: none; /* 隐藏火狐滚动条 */
+    overflow-x: auto;
+    scrollbar-width: none;
     padding: 4px 0;
 }
-
-.sort-bar::-webkit-scrollbar {
-    display: none; /* 隐藏谷歌滚动条，保持精致感 */
-}
+.sort-bar::-webkit-scrollbar { display: none; }
 
 .sort-btn {
-    padding: 8px 20px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 30px;
-    font-size: 0.9rem;
-    color: #64748b;
+    padding: 7px 18px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    font-size: 0.88rem;
+    color: var(--text-2);
     cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap; /* 拒绝由于挤压导致的按钮文字换行 */
+    transition: all 0.2s var(--ease);
+    white-space: nowrap;
+    font-family: var(--font-sans);
 }
 
 .sort-btn:hover {
-    border-color: #ec4899;
-    color: #ec4899;
+    border-color: var(--pink);
+    color: var(--pink);
+    background: var(--pink-soft);
 }
 
 .sort-btn.active {
-    background: #ec4899;
-    border-color: #ec4899;
-    color: white;
+    background: var(--pink);
+    border-color: var(--pink);
+    color: #fff;
 }
 
-/* 表白卡片 */
+/* === CONFESSION LIST === */
 .confession-list {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    min-height: 300px;
+    gap: 16px;
+    min-height: 280px;
 }
 
 .confession-card {
-    background: white;
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-    transition: box-shadow 0.2s;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 22px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s var(--ease), border-color 0.2s, transform 0.2s;
     position: relative;
     box-sizing: border-box;
+    border-left: 3px solid transparent;
 }
 
 .confession-card:hover {
-    box-shadow: 0 6px 20px rgba(236, 72, 153, 0.1);
+    box-shadow: var(--shadow-md);
+    border-left-color: var(--pink);
+    transform: translateY(-1px);
 }
 
 .confession-content {
-    font-size: 1.1rem;
-    line-height: 1.7;
-    color: #1e293b;
-    margin-bottom: 18px;
+    font-size: 1.07rem;
+    line-height: 1.72;
+    color: var(--text);
+    margin-bottom: 16px;
     white-space: pre-wrap;
     word-break: break-word;
-    padding-right: 0; /* 🧼 清洗掉多余偏置，防止大屏文本排版不对称 */
 }
 
-/* 📱 手机端页脚自适应：解决元数据、时间与操作按钮堆叠挤扁的核心 */
 .confession-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    flex-wrap: wrap; /* 📱 空间不足时自动优雅折行 */
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .confession-meta {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
     flex-wrap: wrap;
 }
 
 .confession-time {
-    font-size: 0.8rem;
-    color: #94a3b8;
+    font-size: 0.78rem;
+    color: var(--text-muted);
 }
 
 .confession-actions {
     display: flex;
-    gap: 8px;
-    margin-left: auto; /* 💻 电脑端右侧对齐，📱 手机端折行后也依旧紧贴右边缘 */
+    gap: 6px;
+    margin-left: auto;
 }
 
 .confession-action {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 14px; /* 📱 扩展手机端手指操作空间 */
+    gap: 5px;
+    padding: 7px 13px;
     background: transparent;
     border: none;
-    border-radius: 30px;
+    border-radius: var(--radius-pill);
     font-size: 0.85rem;
-    color: #64748b;
+    color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.15s;
-    user-select: none; /* 防止频繁点赞时误选中文本 */
+    transition: all 0.2s var(--ease);
+    user-select: none;
+    font-family: var(--font-sans);
 }
 
 .confession-action:hover {
-    background: #fdf2f8;
-    color: #ec4899;
+    background: var(--pink-soft);
+    color: var(--pink);
 }
 
-.confession-action.liked {
-    color: #ec4899;
-}
+.confession-action.liked { color: var(--pink); }
 
 .confession-action.report:hover {
-    background: #fef2f2;
-    color: #dc2626;
+    background: var(--danger-soft);
+    color: var(--danger);
 }
 
-/* 空状态 */
+/* === EMPTY STATE === */
 .empty-state {
     text-align: center;
-    padding: 60px 20px;
-    background: white;
-    border-radius: 24px;
+    padding: 56px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
     box-sizing: border-box;
+    box-shadow: var(--shadow-sm);
 }
 
 .empty-icon {
-    font-size: 3.5rem;
-    margin-bottom: 16px;
+    font-size: 3.2rem;
+    margin-bottom: 14px;
+    display: block;
 }
 
-.empty-state p {
-    color: #94a3b8;
-    font-size: 1rem;
-}
+.empty-state p { color: var(--text-muted); font-size: 1rem; }
 
-/* 加载状态 */
+/* === LOADING STATE === */
 .loading-state {
     text-align: center;
     padding: 40px;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
-/* 分页器自适应 */
+/* === PAGINATION === */
 .pagination {
     display: flex;
     justify-content: center;
     gap: 6px;
-    margin-top: 32px;
-    flex-wrap: wrap; /* 📱 页码过多时防止戳出屏幕 */
+    margin-top: 28px;
+    flex-wrap: wrap;
 }
 
 .page-btn {
-    min-width: 38px;
-    height: 38px;
+    min-width: 36px;
+    height: 36px;
     padding: 0 10px;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    color: #1e293b;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s var(--ease);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
 }
 
 .page-btn:hover:not(:disabled) {
-    border-color: #ec4899;
-    color: #ec4899;
+    border-color: var(--pink);
+    color: var(--pink);
+    background: var(--pink-soft);
 }
 
 .page-btn.active {
-    background: #ec4899;
-    border-color: #ec4899;
-    color: white;
+    background: var(--pink);
+    border-color: var(--pink);
+    color: #fff;
 }
 
-.page-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
+.page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* 弹窗遮罩 */
+/* === MODAL === */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.6); /* 稍微加深蒙层突出重点 */
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10000; /* 🔥 提高权重，确保压在移动端底部导航栏上面 */
-    backdrop-filter: blur(4px);
-    padding: 16px; /* 📱 保证手机端弹窗不紧贴屏幕边缘 */
+    z-index: 10000;
+    backdrop-filter: blur(6px);
+    padding: 16px;
     box-sizing: border-box;
 }
 
-/* 弹窗主体（大厂自适应行为） */
 .modal-container {
-    background: white;
-    border-radius: 24px;
-    width: 100%;             /* 📱 手机端自适应缩放 */
-    max-width: 400px;        /* 💻 电脑端最大卡死 */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 400px;
     overflow: hidden;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(var(--blur));
 }
 
 .modal-header {
@@ -359,300 +364,171 @@
     align-items: center;
     justify-content: space-between;
     padding: 20px 24px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border);
 }
 
 .modal-header h3 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 650;
+    color: var(--text);
 }
 
 .modal-close {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
     background: transparent;
     border: none;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     cursor: pointer;
-    color: #64748b;
+    color: var(--text-muted);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    transition: background 0.2s, color 0.2s;
 }
+.modal-close:hover { background: var(--surface-2); color: var(--text); }
 
-.modal-body {
-    padding: 24px;
-}
+.modal-body { padding: 24px; }
 
 .report-tip {
-    font-size: 0.85rem;
-    color: #94a3b8;
+    font-size: 0.83rem;
+    color: var(--text-muted);
     margin-top: 8px;
 }
 
 .form-actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
-    margin-top: 24px;
-}
-
-.cancel-btn, .submit-btn {
-    padding: 12px 24px; /* 📱 提升触控体验 */
-    border-radius: 30px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    white-space: nowrap;
+    margin-top: 22px;
 }
 
 .cancel-btn {
-    background: white;
-    border: 1.5px solid #e2e8f0;
-    color: #64748b;
+    padding: 10px 22px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    transition: all 0.2s var(--ease);
+    font-family: var(--font-sans);
 }
+.cancel-btn:hover { background: var(--surface); color: var(--text); }
 
 .submit-btn {
-    background: #ec4899;
+    padding: 10px 22px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    background: var(--pink);
     border: none;
-    color: white;
+    color: #fff;
+    transition: all 0.2s var(--ease);
+    font-family: var(--font-sans);
 }
+.submit-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
 
-.danger-btn {
-    background: #dc2626 !important;
-}
+.danger-btn { background: var(--danger) !important; }
+.danger-btn:hover { filter: brightness(1.12) !important; }
 
-/* 深色模式精细化 */
-.dark .publish-card,
-.dark .confession-card,
-.dark .empty-state,
-.dark .modal-container,
-.dark .cancel-btn {
-    background: #1e293b;
-}
-
-.dark .confession-header h1 {
-    color: #f1f5f9;
-}
-
-.dark .confession-content {
-    color: #e2e8f0;
-}
-
-.dark .confession-textarea {
-    background: #0f172a;
-    border-color: #334155;
-    color: #f1f5f9;
-}
-
-.dark .confession-textarea:focus {
-    background: #1e293b;
-}
-
-.dark .sort-btn {
-    background: #1e293b;
-    border-color: #334155;
-    color: #94a3b8;
-}
-
-.dark .login-tip {
-    background: #0f172a;
-}
-
-.dark .page-btn {
-    background: #1e293b;
-    border-color: #334155;
-    color: #e2e8f0;
-}
-
-.dark .cancel-btn {
-    border-color: #334155;
-    color: #e2e8f0;
-}
-
-/* 📱 极窄屏响应式刚性补丁（小于500px的手机） */
-@media (max-width: 500px) {
-    .confession-container {
-        padding: 0 14px; /* 缩小容器边距，让卡片变宽一些，极致利用屏幕空间 */
-        margin: 12px auto;
-    }
-    
-    .publish-card, .confession-card, .empty-state, .modal-body {
-        padding: 16px; /* 减小内衬卡片边距，防止字被挤扁 */
-        border-radius: 20px;
-    }
-    
-    .confession-content {
-        font-size: 1.02rem; /* 适当减小手机字号，增强排版紧凑感 */
-        line-height: 1.6;
-        margin-bottom: 14px;
-    }
-
-    .publish-btn {
-        padding: 10px 24px; /* 极窄屏缩减按钮体积 */
-    }
-
-    .confession-footer {
-        flex-direction: column; /* 📱 极窄屏状态下页脚强行切为纵向轴 */
-        align-items: flex-start;
-        gap: 14px;
-    }
-
-    .confession-actions {
-        width: 100%; /* 撑满 */
-        justify-content: flex-end; /* 动作按钮推向最右侧 */
-        border-top: 1px solid #f1f5f9; /* 补上一条清爽的手机端分割线 */
-        padding-top: 10px;
-    }
-    
-    .dark .confession-actions {
-        border-top-color: #334155;
-    }
-}
-
-/* 顶部缓存状态同步条说明 */
-.cache-notice-bar {
-    padding: 10px 16px;
-    margin-bottom: 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-    box-sizing: border-box;
-}
-
-/* 正在更新中的黄色状态 */
-.cache-notice-bar.waiting {
-    background-color: #fff9db;
-    color: #f59f00;
-    border: 1px solid #ffe066;
-    animation: pulseNotice 2s infinite ease-in-out;
-}
-
-/* 更新成功后的绿色状态 */
-.cache-notice-bar.success {
-    background-color: #e6fcf5;
-    color: #0ca678;
-    border: 1px solid #96f2d7;
-}
-
-/* 微弱呼吸动画 */
-@keyframes pulseNotice {
-    0% { opacity: 0.85; }
-    50% { opacity: 1; }
-    100% { opacity: 0.85; }
-}
-
-/* Minimal page theme */
-.confession-container {
-    max-width: 720px;
-}
-
-.confession-header h1,
-.publish-header,
-.confession-content,
-.modal-header h3 {
-    color: var(--text);
-}
-
-.confession-subtitle,
-.char-count,
-.confession-time,
-.report-tip,
-.empty-state p,
-.loading-state,
+.form-group { margin-bottom: 16px; }
 .form-group label {
-    color: var(--muted);
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
-
-.publish-card,
-.confession-card,
-.empty-state,
-.modal-container,
-.login-tip {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-soft);
-}
-
-.publish-card {
-    border-color: var(--border);
-}
-
-.confession-card:hover {
-    box-shadow: var(--shadow);
-}
-
-.confession-textarea,
-.sort-btn,
-.page-btn,
-.cancel-btn,
 .form-group input,
 .form-group textarea {
-    background: var(--surface);
-    border-color: var(--border);
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
     color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
-
-.confession-textarea:focus,
 .form-group input:focus,
 .form-group textarea:focus {
-    background: var(--surface);
     border-color: var(--pink);
     box-shadow: 0 0 0 3px var(--pink-soft);
 }
+.form-group input::placeholder,
+.form-group textarea::placeholder { color: var(--text-muted); }
 
-.sort-btn:hover,
-.confession-action:hover,
-.page-btn:hover:not(:disabled),
-.cancel-btn:hover,
-.modal-close:hover {
-    background: var(--surface-2);
+/* === CACHE NOTICE BAR === */
+.cache-notice-bar {
+    padding: 10px 16px;
+    margin-bottom: 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.4s var(--ease);
+    box-sizing: border-box;
 }
 
-.sort-btn.active,
-.publish-btn,
-.submit-btn,
-.page-btn.active {
-    background: var(--pink) !important;
-    border-color: var(--pink) !important;
-    color: #ffffff !important;
+.cache-notice-bar.waiting {
+    background: rgba(245, 158, 11, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    animation: pulseNotice 2s infinite ease-in-out;
 }
 
-.confession-action.liked,
-.confession-action:hover,
-.login-tip a {
-    color: var(--pink);
+.cache-notice-bar.success {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.25);
 }
 
-.modal-header {
-    border-color: var(--border);
+@keyframes pulseNotice {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
 }
 
-.modal-overlay {
-    background: rgba(15, 17, 21, 0.52);
-}
-
+/* === CONFESSION DELETE BTN === */
 .confession-delete-btn {
     background: none;
-    border: none;
-    color: #ff6b6b;
-    cursor: pointer;
-    font-size: 0.85rem;
-    padding: 6px 12px;
-    border-radius: 12px;
-    transition: all 0.2s ease;
     border: 1px dashed rgba(255, 107, 107, 0.3);
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 0.83rem;
+    padding: 5px 12px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s var(--ease);
+    font-family: var(--font-sans);
 }
 
 .confession-delete-btn:hover {
-    background-color: rgba(255, 107, 107, 0.1);
-    border-color: #ff6b6b;
+    background: var(--danger-soft);
+    border-color: var(--danger);
     transform: translateY(-1px);
+}
+
+/* === MOBILE RESPONSIVE === */
+@media (max-width: 500px) {
+    .confession-container { padding: 0 14px; margin: 14px auto; }
+    .publish-card, .confession-card, .empty-state, .modal-body { padding: 16px; border-radius: var(--radius-md); }
+    .confession-content { font-size: 1rem; line-height: 1.62; margin-bottom: 12px; }
+    .publish-btn { padding: 10px 22px; }
+    .confession-footer { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .confession-actions {
+        width: 100%;
+        justify-content: flex-end;
+        border-top: 1px solid var(--border);
+        padding-top: 10px;
+    }
 }

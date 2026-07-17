@@ -1,71 +1,67 @@
 /* ========== 帖子详情页样式 ========== */
 
+/* === CONTAINER === */
 .post-detail-container {
-    width: 100%;             /* 📱 手机端自动撑满 */
-    max-width: 800px;        /* 💻 电脑端最大卡死 */
-    margin: 24px auto;
-    padding: 0 24px;
-    box-sizing: border-box;  /* 刚性防爆仓 */
+    width: 100%;
+    max-width: 820px;
+    margin: 28px auto;
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
-/* 页面元素全部合入安全盒模型 */
 .post-detail-card, .comments-section, .comment-input-box, .comment-item, textarea {
     box-sizing: border-box !important;
 }
 
-/* 面包屑 */
+/* === BREADCRUMB === */
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-bottom: 20px;
-    color: #64748b;
-    font-size: 0.9rem;
-    flex-wrap: wrap; /* 📱 手机端层级过深时允许优雅自动换行 */
+    color: var(--text-muted);
+    font-size: 0.87rem;
+    flex-wrap: wrap;
 }
 
 .breadcrumb a {
-    color: #3b82f6;
+    color: var(--accent);
     text-decoration: none;
-    transition: color 0.15s;
+    transition: color 0.2s var(--ease);
 }
+.breadcrumb a:hover { color: var(--accent-hover); }
+.breadcrumb-divider { color: var(--text-muted); opacity: 0.5; }
 
-.breadcrumb a:hover {
-    color: #2563eb;
-}
-
-.breadcrumb-divider {
-    color: #cbd5e1;
-}
-
-/* 帖子卡片 */
+/* === POST CARD === */
 .post-detail-card {
-    background: white;
-    border-radius: 24px;
-    padding: 28px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-    margin-bottom: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 20px;
+    backdrop-filter: blur(var(--blur));
+    transition: box-shadow 0.3s var(--ease);
 }
 
-.post-detail-header {
-    margin-bottom: 20px;
-}
+.post-detail-header { margin-bottom: 20px; }
 
 .post-detail-title {
-    font-size: 1.8rem;
+    font-size: 1.85rem;
+    font-family: var(--font-serif);
     font-weight: 700;
-    color: #0f172a;
-    margin-bottom: 16px;
+    color: var(--text);
+    margin-bottom: 18px;
     line-height: 1.35;
-    word-wrap: break-word; /* 🛡️ 防御长符号和火星文撑破容器 */
+    word-wrap: break-word;
 }
 
 .post-detail-meta {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
     gap: 12px;
 }
 
@@ -78,163 +74,242 @@
 .post-detail-avatar {
     width: 46px;
     height: 46px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    border: 2px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: #fff;
     font-weight: bold;
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .post-author-detail {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 .post-author-name {
     font-weight: 650;
-    color: #1e293b;
-    font-size: 1.05rem;
+    color: var(--text);
+    font-size: 1rem;
 }
 
 .post-time {
-    font-size: 0.8rem;
-    color: #94a3b8;
+    font-size: 0.78rem;
+    color: var(--text-muted);
 }
 
+/* === POST ACTIONS === */
 .post-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap; /* 📱 保证管理按钮多开时在手机端能堆叠 */
+    flex-wrap: wrap;
 }
 
 .post-action-btn {
-    padding: 8px 16px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    color: #64748b;
+    padding: 7px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    font-size: 0.83rem;
+    color: var(--text-2);
     cursor: pointer;
-    transition: all 0.15s;
-    white-space: nowrap; /* 拒绝文字被挤压成两行 */
+    transition: all 0.2s var(--ease);
+    white-space: nowrap;
+    font-family: var(--font-sans);
 }
 
 .post-action-btn:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .post-action-btn.danger:hover {
-    background: #fef2f2;
-    border-color: #fecaca;
-    color: #dc2626;
+    background: var(--danger-soft);
+    border-color: var(--danger);
+    color: var(--danger);
 }
 
+/* === POST CONTENT === */
 .post-detail-content {
-    font-size: 1.08rem; /* 📱 轻微放大，手机端连续阅读不费眼 */
-    line-height: 1.75;
-    color: #334155;
-    padding: 16px 0;
+    font-size: 1.06rem;
+    line-height: 1.8;
+    color: var(--text-2);
+    padding: 18px 0;
     white-space: pre-wrap;
     word-break: break-word;
 }
 
+.post-detail-content.markdown-body { white-space: normal; }
+.post-detail-content.markdown-body pre,
+.post-detail-content.markdown-body code { word-break: normal; }
+
+/* Markdown rendered styles */
+.post-detail-content h1,
+.post-detail-content h2,
+.post-detail-content h3,
+.post-detail-content h4 {
+    color: var(--text);
+    font-family: var(--font-serif);
+    margin: 1.5em 0 0.6em;
+    line-height: 1.3;
+}
+.post-detail-content h1 { font-size: 1.7rem; }
+.post-detail-content h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+.post-detail-content h3 { font-size: 1.15rem; }
+.post-detail-content p { margin-bottom: 1em; }
+.post-detail-content code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 2px 7px;
+    font-size: 0.88em;
+    color: var(--accent);
+}
+.post-detail-content pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 18px;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+.post-detail-content pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text-2);
+    font-size: 0.9em;
+}
+.post-detail-content blockquote {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 20px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    margin: 1em 0;
+    color: var(--text-2);
+}
+.post-detail-content ul,
+.post-detail-content ol {
+    padding-left: 1.5em;
+    margin-bottom: 1em;
+}
+.post-detail-content li { margin-bottom: 0.4em; }
+.post-detail-content a { color: var(--accent); text-decoration: underline; }
+.post-detail-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2em 0;
+}
+
+/* === POST FOOTER (STATS) === */
 .post-detail-footer {
     display: flex;
-    gap: 20px;
+    gap: 8px;
     padding-top: 16px;
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
 }
 
 .post-stat-btn {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     padding: 8px 16px;
     background: transparent;
     border: none;
-    border-radius: 30px;
-    font-size: 0.95rem;
-    color: #64748b;
+    border-radius: var(--radius-pill);
+    font-size: 0.9rem;
+    color: var(--text-muted);
     cursor: pointer;
-    transition: all 0.15s;
+    transition: all 0.2s var(--ease);
     user-select: none;
+    font-family: var(--font-sans);
 }
 
 .post-stat-btn:hover {
-    background: #f8fafc;
-    color: #3b82f6;
+    background: var(--surface-2);
+    color: var(--accent);
 }
 
-.post-stat-btn.liked {
-    color: #ec4899;
-}
+.post-stat-btn.liked { color: var(--pink); }
 
-/* ========== 评论区 ========== */
+/* === COMMENTS SECTION === */
 .comments-section {
-    background: white;
-    border-radius: 24px;
-    padding: 24px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(var(--blur));
 }
 
 .comments-header {
-    margin-bottom: 20px;
+    margin-bottom: 24px;
 }
 
 .comments-header h3 {
     margin: 0;
-    font-size: 1.3rem;
+    font-size: 1.25rem;
     font-weight: 650;
-    color: #1e293b;
+    color: var(--text);
+    font-family: var(--font-sans);
 }
 
-/* 评论输入框 */
+/* === COMMENT INPUT === */
 .comment-input-box {
     display: flex;
     gap: 14px;
     margin-bottom: 24px;
     padding-bottom: 24px;
-    border-bottom: 1px solid #f1f5f9;
+    border-bottom: 1px solid var(--border);
 }
 
 .comment-avatar {
     width: 40px;
     height: 40px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #a5b4fc, #818cf8);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
+    color: #fff;
     font-weight: bold;
+    font-size: 0.9rem;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
-.comment-input-wrapper {
-    flex: 1;
-}
+.comment-input-wrapper { flex: 1; }
 
 .comment-input-wrapper textarea {
     width: 100%;
     padding: 12px 16px;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
     font-size: 0.95rem;
     outline: none;
     resize: vertical;
-    font-family: inherit;
-    transition: border-color 0.15s, background-color 0.15s;
+    font-family: var(--font-sans);
+    background: var(--surface-2);
+    color: var(--text);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    min-height: 80px;
 }
 
 .comment-input-wrapper textarea:focus {
-    border-color: #3b82f6;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
 }
+
+.comment-input-wrapper textarea::placeholder { color: var(--text-muted); }
 
 .comment-actions {
     display: flex;
@@ -246,55 +321,64 @@
 
 .comment-tip {
     font-size: 0.8rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .submit-comment-btn {
-    padding: 10px 26px; /* 📱 触控热区优化 */
-    background: #3b82f6;
+    padding: 9px 24px;
+    background: var(--accent);
     border: none;
-    border-radius: 30px;
-    color: white;
+    border-radius: var(--radius-pill);
+    color: #fff;
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s;
     white-space: nowrap;
+    font-family: var(--font-sans);
 }
 
 .submit-comment-btn:hover {
-    background: #2563eb;
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 .submit-comment-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.45;
     cursor: not-allowed;
+    transform: none;
 }
 
+/* === LOGIN TIP === */
 .login-tip {
     text-align: center;
     padding: 20px;
-    background: #f8fafc;
-    border-radius: 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
     margin-bottom: 20px;
+    color: var(--text-2);
+    font-size: 0.92rem;
 }
 
 .login-tip a {
-    color: #3b82f6;
+    color: var(--accent);
     text-decoration: none;
     font-weight: 600;
 }
+.login-tip a:hover { color: var(--accent-hover); }
 
-/* 评论列表 */
+/* === COMMENTS LIST === */
 .comments-list {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 0;
 }
 
 .comment-item {
-    padding-bottom: 20px;
-    border-bottom: 1px solid #f1f5f9;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
 }
 
 .comment-item:last-child {
@@ -312,15 +396,17 @@
 .comment-author-avatar {
     width: 34px;
     height: 34px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #c4b5fd, #a78bfa);
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+    border: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-size: 0.85rem;
+    color: #fff;
+    font-size: 0.8rem;
     font-weight: bold;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 .comment-author-info {
@@ -330,20 +416,20 @@
 
 .comment-author-name {
     font-weight: 600;
-    color: #1e293b;
-    font-size: 0.92rem;
+    color: var(--text);
+    font-size: 0.9rem;
 }
 
 .comment-time {
     font-size: 0.72rem;
-    color: #94a3b8;
+    color: var(--text-muted);
 }
 
 .comment-content {
-    margin-left: 44px; /* 💻 电脑端维持呼吸感 */
-    color: #475569;
-    font-size: 0.98rem;
-    line-height: 1.65;
+    margin-left: 44px;
+    color: var(--text-2);
+    font-size: 0.97rem;
+    line-height: 1.7;
     white-space: pre-wrap;
     word-break: break-word;
 }
@@ -357,255 +443,226 @@
 
 .comment-action {
     font-size: 0.78rem;
-    color: #94a3b8;
+    color: var(--text-muted);
     cursor: pointer;
     transition: color 0.15s;
     user-select: none;
+    background: none;
+    border: none;
+    font-family: var(--font-sans);
+    padding: 0;
 }
 
-.comment-action:hover {
-    color: #3b82f6;
-}
+.comment-action:hover { color: var(--accent); }
+.comment-action.danger:hover { color: var(--danger); }
 
-.comment-action.danger:hover {
-    color: #dc2626;
-}
-
-/* 空状态 */
+/* === EMPTY STATE === */
 .empty-comments {
     text-align: center;
-    padding: 40px 20px;
-    color: #94a3b8;
+    padding: 48px 20px;
+    color: var(--text-muted);
 }
 
 .empty-icon {
-    font-size: 2.5rem;
+    font-size: 2.8rem;
     margin-bottom: 12px;
+    display: block;
 }
 
-/* 小弹窗 */
-.modal-small {
-    max-width: 360px;
+/* === MODAL === */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(6px);
+    padding: 16px;
+    box-sizing: border-box;
 }
 
-.danger-btn {
-    background: #dc2626 !important;
+.modal-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 420px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    backdrop-filter: blur(var(--blur));
 }
 
-.danger-btn:hover {
-    background: #b91c1c !important;
+.modal-small { max-width: 360px; }
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
 }
 
-/* 深色模式适配 */
-.dark .post-detail-card,
-.dark .comments-section,
-.dark .login-tip { background: #1e293b; }
-.dark .post-detail-title, .dark .post-author-name, .dark .comments-header h3 { color: #f1f5f9; }
-.dark .post-detail-content { color: #cbd5e1; }
-.dark .post-detail-meta, .dark .post-detail-footer, .dark .comment-input-box, .dark .comment-item { border-bottom-color: #334155; border-top-color: #334155; }
-.dark .post-action-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
-.dark .post-action-btn:hover { background: #1e293b; }
-.dark .comment-input-wrapper textarea { background: #0f172a; border-color: #334155; color: #f1f5f9; }
-.dark .comment-content { color: #cbd5e1; }
-.dark .comment-author-name { color: #e2e8f0; }
-.dark .login-tip { background: #0f172a; }
-.dark .breadcrumb { color: #94a3b8; }
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 650;
+    color: var(--text);
+}
 
-/* ==========================================================================
-   📱 帖子详情高级移动端降维平铺补丁 (小于 600px 自动触发)
-   ========================================================================== */
+.modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: none;
+    font-size: 1.4rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.modal-close:hover { background: var(--surface-2); color: var(--text); }
+
+.modal-body { padding: 24px; }
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+.cancel-btn {
+    padding: 10px 22px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-2);
+    transition: all 0.2s var(--ease);
+    font-family: var(--font-sans);
+}
+.cancel-btn:hover { background: var(--surface); color: var(--text); }
+
+.submit-btn {
+    padding: 10px 22px;
+    border-radius: var(--radius-pill);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    transition: all 0.2s var(--ease);
+    font-family: var(--font-sans);
+}
+.submit-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+
+.danger-btn { background: var(--danger) !important; }
+.danger-btn:hover { filter: brightness(1.12) !important; }
+
+.form-group { margin-bottom: 18px; }
+.form-group label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-2);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.form-group input:focus,
+.form-group textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.report-tip {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+/* === MOBILE RESPONSIVE === */
 @media (max-width: 600px) {
     .post-detail-container {
-        padding: 0 12px; /* 极致压榨两边，防止卡片太窄 */
-        margin: 12px auto;
+        padding: 0 14px;
+        margin: 14px auto;
     }
-    
-    .post-detail-card, .comments-section {
-        padding: 16px; /* 减小内边距 */
-        border-radius: 20px;
+
+    .post-detail-card,
+    .comments-section {
+        padding: 18px 16px;
+        border-radius: var(--radius-md);
     }
-    
+
     .post-detail-title {
-        font-size: 1.45rem; /* 调整手机标题比例 */
+        font-size: 1.45rem;
         margin-bottom: 12px;
     }
-    
-    /* 核心重构：将头像信息和控制按钮切为纵向，并拉大间距 */
+
     .post-detail-meta {
         flex-direction: column;
         align-items: flex-start;
         gap: 14px;
         padding-bottom: 14px;
     }
-    
+
     .post-actions {
         width: 100%;
-        justify-content: flex-end; /* 按钮整体向右靠拢 */
-        border-top: 1px dashed #e2e8f0; /* 给移动端补上一条优雅的管理虚线 */
+        justify-content: flex-end;
+        border-top: 1px dashed var(--border);
         padding-top: 10px;
     }
-    
-    .dark .post-actions {
-        border-top-color: #334155;
-    }
 
-    .post-action-btn {
-        padding: 6px 14px;
-        font-size: 0.8rem;
-    }
+    .post-action-btn { padding: 6px 14px; font-size: 0.8rem; }
 
     .post-detail-content {
-        font-size: 1.02rem;
+        font-size: 1rem;
         padding: 12px 0;
     }
 
-    .post-detail-footer {
-        gap: 16px;
-    }
-
-    /* 评论框自适应升级 */
     .comment-input-box {
         gap: 10px;
-        margin-bottom: 20px;
-        padding-bottom: 18px;
+        margin-bottom: 18px;
+        padding-bottom: 16px;
     }
 
-    .comment-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        font-size: 0.9rem;
-    }
+    .comment-avatar { width: 36px; height: 36px; }
 
     .comment-input-wrapper textarea {
         padding: 10px 12px;
         font-size: 0.9rem;
-        border-radius: 12px;
+        border-radius: var(--radius-sm);
     }
 
-    /* 🌟【高级平铺微调】：手机端把评论左边距无感收回，横向排版瞬间宽敞！ */
     .comment-content {
-        margin-left: 0px;  /* 物理清空缩进 */
-        margin-top: 8px;   /* 转入下一行展示，极度紧凑清爽 */
+        margin-left: 0;
+        margin-top: 8px;
         font-size: 0.92rem;
-        color: #334155;
     }
 
     .comment-actions-bar {
-        margin-left: 0px; /* 动作条同样无感靠左对齐 */
-        margin-top: 10px;
-        justify-content: flex-end; /* 手机端点赞回复推向右侧，大拇指点击更顺手 */
+        margin-left: 0;
+        margin-top: 8px;
+        justify-content: flex-end;
     }
-    
-    /* 联动底部微信常驻导航栏安全边界补丁 */
-    body {
-        padding-bottom: 85px !important;
-    }
-}
-
-/* Minimal page theme */
-.post-detail-container {
-    max-width: 820px;
-}
-
-.breadcrumb,
-.post-time,
-.comment-time,
-.comment-tip,
-.comment-action,
-.empty-comments {
-    color: var(--muted);
-}
-
-.breadcrumb a,
-.login-tip a {
-    color: var(--accent);
-}
-
-.post-detail-card,
-.comments-section,
-.login-tip,
-.modal-container {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-soft);
-}
-
-.post-detail-title,
-.post-author-name,
-.comments-header h3,
-.comment-author-name,
-.modal-header h3,
-.form-group label {
-    color: var(--text);
-}
-
-.post-detail-content,
-.comment-content {
-    color: var(--text-soft);
-}
-
-.post-detail-meta,
-.post-detail-footer,
-.comment-input-box,
-.comment-item,
-.modal-header {
-    border-color: var(--border);
-}
-
-.post-action-btn,
-.post-stat-btn,
-.cancel-btn,
-.comment-input-wrapper textarea,
-.form-group input,
-.form-group textarea {
-    background: var(--surface);
-    border-color: var(--border);
-    color: var(--text);
-}
-
-.post-action-btn:hover,
-.post-stat-btn:hover,
-.login-tip,
-.modal-close:hover {
-    background: var(--surface-2);
-}
-
-.comment-input-wrapper textarea:focus,
-.form-group input:focus,
-.form-group textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.submit-comment-btn,
-.submit-btn {
-    background: var(--accent);
-    color: #ffffff;
-}
-
-.submit-comment-btn:hover,
-.submit-btn:hover {
-    background: var(--accent-hover);
-}
-
-.post-stat-btn.liked {
-    color: var(--pink);
-}
-
-.post-detail-avatar,
-.comment-avatar,
-.comment-author-avatar {
-    border-radius: 50%;
-    overflow: hidden;
-}
-
-.post-detail-content.markdown-body {
-    white-space: normal;
-}
-
-.post-detail-content.markdown-body pre,
-.post-detail-content.markdown-body code {
-    word-break: normal;
 }
