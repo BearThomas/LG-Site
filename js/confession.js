@@ -301,7 +301,14 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 $createdAt: doc.$createdAt || doc.createdAt,
                 content: doc.content,
                 authorId: doc.authorId,
-                authorName: doc.authorName || '匿名',
+                
+                authorName: (() => {
+                    let n = doc.authorName || '匿名';
+                    let sid = (doc.authorId || doc.studentId || '').toString().replace(/^student_/, '').trim();
+                    if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+                    return n;
+                })(),
+
                 likes: doc.likes || 0,
                 status: doc.status !== undefined ? doc.status : 0
             };

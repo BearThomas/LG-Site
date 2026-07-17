@@ -60,10 +60,15 @@
         if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
 
-    function showLoggedIn(name, avatar) {
+    function showLoggedIn(name, avatar, studentId) {
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
-        if (userNameSpan) userNameSpan.textContent = name || '同学';
+        
+        let displayName = name || '同学';
+        const sid = (studentId || '').toString().replace(/^student_/, '').trim();
+        if (sid.length >= 4) displayName = `${displayName} · ${sid.substring(0, 4)}届`;
+        if (userNameSpan) userNameSpan.textContent = displayName;
+
         renderNavbarAvatar(name, avatar);
     }
 
@@ -75,7 +80,7 @@
             return;
         }
 
-        showLoggedIn(user.name || user.studentId, user.avatar || '');
+        showLoggedIn(user.name || user.studentId, user.avatar || '', user.studentId);
         try {
             const response = await fetch('/api/auth-me', { headers: authHeaders(user) });
             if (response.status === 401) {
@@ -97,7 +102,7 @@
             // /api/auth-me has now migrated it into an HttpOnly cookie.
             delete user.token;
             localStorage.setItem('campus_user', JSON.stringify(user));
-            showLoggedIn(user.name, user.avatar);
+            showLoggedIn(user.name, user.avatar, user.studentId);
         } catch (error) {
             console.warn('顶栏资料同步失败，继续使用本地缓存:', error.message);
         }

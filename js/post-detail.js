@@ -370,7 +370,13 @@ function renderPostDetail() {
         }
     } else {
         const rawName = currentPost.authorName || '';
+        
         finalName = rawName.includes(':') ? `同学${rawAuthorId.slice(-4)}` : (rawName || '匿名同学');
+        const __sid = rawAuthorId.replace(/^student_/, '').trim();
+        if (__sid.length >= 4) {
+            finalName = `${finalName} · ${__sid.substring(0, 4)}届`;
+        }
+
         avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
     }
     
@@ -549,7 +555,13 @@ function renderComments(comments) {
                 commentAvatarHtml = `<span style="line-height: 32px;">${escapeHtml(commentName.trim().charAt(0) || '?')}</span>`;
             }
         } else {
-            const rawCommentName = comment.authorName || '';
+            
+            let rawCommentName = comment.authorName || '';
+            const __csid = (comment.authorId || '').toString().replace(/^student_/, '').trim();
+            if (__csid.length >= 4) {
+                rawCommentName = `${rawCommentName} · ${__csid.substring(0, 4)}届`;
+            }
+
             commentName = rawCommentName.includes(':') ? `同学${rawCommentAuthorId.slice(-4)}` : (rawCommentName || '匿名同学');
             commentAvatarHtml = `<span style="line-height: 32px;">${escapeHtml(commentName.trim().charAt(0) || '?')}</span>`;
         }

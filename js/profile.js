@@ -62,7 +62,12 @@ async function initProfile() {
 
     // 1. 瞬间本地回显 (防止白屏)
     document.getElementById('profileUserId').textContent = `ID: ${currentUser.userId}`;
-    document.getElementById('profileUsername').textContent = currentUser.name || '未设置名称';
+    
+            let __name = currentUser.name || '未设置名称';
+            let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
+            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
+            document.getElementById('profileUsername').textContent = __name;
+            
     document.getElementById('nameInput').value = currentUser.name || '';
     document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链接
     updateAvatarPreview(currentUser.name, currentUser.avatar);
@@ -71,7 +76,12 @@ async function initProfile() {
     try {
         const userDoc = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, currentUser.userId);
         if (userDoc) {
-            document.getElementById('profileUsername').textContent = userDoc.name || '未设置名称';
+            
+            let __name = userDoc.name || '未设置名称';
+            let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
+            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
+            document.getElementById('profileUsername').textContent = __name;
+            
             document.getElementById('nameInput').value = userDoc.name || '';
             document.getElementById('avatarInput').value = userDoc.avatar || ''; // 刷入云端最新网址
             
@@ -152,7 +162,12 @@ async function saveProfile() {
         localStorage.setItem('campus_user', JSON.stringify(currentUser));
 
         // 刷新左侧卡片预览
-        document.getElementById('profileUsername').textContent = currentUser.name;
+        
+            let __name = currentUser.name;
+            let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
+            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
+            document.getElementById('profileUsername').textContent = __name;
+            
         updateAvatarPreview(currentUser.name, currentUser.avatar);
         
         alert('个人中心资料（含自定义头像）已成功保存！');

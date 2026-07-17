@@ -58,6 +58,18 @@ export function formatBoardName(boardId) {
     return boardId;
 }
 
+export function formatNameWithYear(name, studentId) {
+    let rawName = (name || '').toString().trim();
+    const sid = (studentId || '').toString().replace(/^student_/, '').trim();
+    if (!rawName) {
+        rawName = sid ? `同学${sid.slice(-4)}` : '未知成员';
+    }
+    if (sid.length >= 4) {
+        return `${rawName} · ${sid.substring(0, 4)}届`;
+    }
+    return rawName;
+}
+
 export function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text || '';
@@ -82,7 +94,9 @@ export function getPostAuthorDisplay(post, userCache = {}) {
     const rawName = (post.authorName || '').toString().trim();
     const fallbackName = cleanAuthorId ? `\u540c\u5b66${cleanAuthorId.slice(-4)}` : '\u672a\u77e5\u6210\u5458';
 
-    const name = cachedUser?.name || (!rawName || rawName.includes(':') ? fallbackName : rawName);
+    let name = cachedUser?.name || (!rawName || rawName.includes(':') ? fallbackName : rawName);
+    name = formatNameWithYear(name, cleanAuthorId);
+    
     const avatar = cachedUser?.avatar || '';
     const isImageAvatar = avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/');
     const initial = name.trim().charAt(0) || cleanAuthorId.charAt(0) || '?';

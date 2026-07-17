@@ -143,7 +143,14 @@ function checkLoginStatus() {
         
         const userNameEl = document.getElementById('userName');
         const userAvatarEl = document.getElementById('userAvatar');
-        if (userNameEl) userNameEl.textContent = currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`;
+        
+        if (userNameEl) {
+            let n = currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`;
+            const sid = (currentUser.studentId || '').toString().replace(/^student_/, '').trim();
+            if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+            userNameEl.textContent = n;
+        }
+
         if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
     } else {
         if (userNotLogin) userNotLogin.style.display = 'flex';
@@ -482,7 +489,14 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         $id: c.$id || c.id,
         $createdAt: c.$createdAt || c.createdAt,
         content: c.content,
-        authorName: c.authorName || '匿名',
+        
+        authorName: (() => {
+            let n = c.authorName || '匿名';
+            let sid = (c.authorId || c.studentId || '').toString().replace(/^student_/, '').trim();
+            if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+            return n;
+        })(),
+
         status: c.status !== undefined ? c.status : 0
     });
 

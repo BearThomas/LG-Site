@@ -104,7 +104,14 @@ function checkLoginStatus() {
             
             const userNameEl = document.getElementById('userName');
             const userAvatarEl = document.getElementById('userAvatar');
-            if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
+            
+            if (userNameEl) {
+                let n = currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`;
+                const sid = (currentUser.studentId || '').toString().replace(/^student_/, '').trim();
+                if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+                userNameEl.textContent = n;
+            }
+
             if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
             
         } catch (e) {
