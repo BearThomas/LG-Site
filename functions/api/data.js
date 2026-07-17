@@ -13,7 +13,7 @@ import {
 } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 
-const COLLECTIONS = new Set(['users', 'posts', 'confessions']);
+const COLLECTIONS = new Set(['users', 'posts', 'confessions', 'comments']);
 
 function parseQueries(raw) {
   if (!raw) return [];
@@ -129,6 +129,19 @@ async function listPosts(env, state, viewer) {
     }
     values.push(...boardValues.map(String));
   }
+
+  // Support authorId filter for "my footprint" feature
+  const authorValues = state.equals.get('authorId');
+  if (authorValues?.length) {
+    // Normalize: strip 'student_' prefix to match DB storage format
+    const normalizedAuthors = [...new Set(
+      authorValues.map(v => String(v).replace(/^student_/, ''))
+    )].filter(Boolean);
+    if (!normalizedAuthors.length) return { total: 0, documents: [] };
+    conditions.push(`author_id IN (${normalizedAuthors.map(() => '?').join(', ')})`);
+    values.push(...normalizedAuthors);
+  }
+
   appendPostVisibility(conditions, values, viewer);
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
@@ -149,6 +162,52 @@ async function listPosts(env, state, viewer) {
   return {
     total: Number(countResult.results?.[0]?.total || 0),
     documents: (rowsResult.results || []).map(toPostDocument)
+  };
+}
+
+async function listComments(env, state, viewer) {
+  const db = requireDb(env);
+  const conditions = [];
+  const values = [];
+
+  // Support authorId filter for "my footprint" feature
+  const authorValues = state.equals.get('authorId');
+  if (authorValues?.length) {
+    const normalizedAuthors = [...new Set(
+      authorValues.map(v => String(v).replace(/^student_/, ''))
+    )].filter(Boolean);
+    if (!normalizedAuthors.length) return { total: 0, documents: [] };
+    conditions.push(`author_id IN (${normalizedAuthors.map(() => '?').join(', ')})`);
+    values.push(...normalizedAuthors);
+  }
+
+  const postIdValues = state.equals.get('postId');
+  if (postIdValues?.length) {
+    conditions.push(`post_id IN (${postIdValues.map(() => '?').join(', ')})`);
+    values.push(...postIdValues.map(String));
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const orderDirection = state.order?.direction || 'DESC';
+
+  const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM comments ${where}`).bind(...values);
+  const rowsStatement = db.prepare(`
+    SELECT * FROM comments
+    ${where}
+    ORDER BY created_at ${orderDirection}
+    LIMIT ? OFFSET ?
+  `).bind(...values, state.limit, state.offset);
+  const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
+  return {
+    total: Number(countResult.results?.[0]?.total || 0),
+    documents: (rowsResult.results || []).map(row => ({
+      $id: row.id,
+      $createdAt: row.created_at,
+      postId: row.post_id,
+      content: row.content,
+      authorId: row.author_id,
+      authorName: row.author_name || ('同学' + String(row.author_id || '').slice(-4))
+    }))
   };
 }
 
@@ -231,6 +290,7 @@ export async function onRequestGet({ request, env }) {
     const state = queryState(parseQueries(url.searchParams.get('queries')));
     if (collection === 'users') return json(await listUsers(env, state, viewer));
     if (collection === 'posts') return json(await listPosts(env, state, viewer));
+    if (collection === 'comments') return json(await listComments(env, state, viewer));
     return json(await listConfessions(env, state, viewer));
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'GET', message: error.message, status: error.status }));
