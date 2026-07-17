@@ -159,3 +159,28 @@ export async function loadUserDirectory(databases, Query) {
 
     return indexUsersById(documents);
 }
+
+export function goToUserProfile(userId, event) {
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (!userId) return;
+    
+    try {
+        const currentUserData = localStorage.getItem('campus_user');
+        if (currentUserData) {
+            const currentUser = JSON.parse(currentUserData);
+            const rawCurrentId = (currentUser.studentId || currentUser.userId || '').toString().replace(/^student_/, '').trim();
+            const targetId = userId.toString().replace(/^student_/, '').trim();
+            
+            if (rawCurrentId === targetId) {
+                window.location.href = 'profile.html';
+                return;
+            }
+        }
+    } catch(e) {}
+
+    window.location.href = 'user.html?id=' + userId;
+}
+window.goToUserProfile = goToUserProfile;
