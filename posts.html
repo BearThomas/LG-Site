@@ -103,6 +103,7 @@
             <!-- 排序/筛选栏 -->
             <div class="posts-toolbar">
                 <div class="filter-options">
+                    <input type="text" id="searchInput" class="search-input" placeholder="搜索帖子..." style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; margin-right: 10px; font-size: 0.9rem;">
                     <select id="timeFilter" class="time-filter">
                         <option value="all">全部时间</option>
                         <option value="today">今天</option>
@@ -120,8 +121,10 @@
                 </div>
             </div>
 
-            <!-- 分页器 -->
-            <div class="pagination" id="pagination"></div>
+            <!-- 懒加载侦听器 -->
+            <div id="infiniteScrollAnchor" class="infinite-scroll-anchor" style="height: 20px; display: flex; justify-content: center; align-items: center; margin: 20px 0; color: #868e96;">
+                <!-- 动态显示加载状态 -->
+            </div>
         </main>
     </div>
 

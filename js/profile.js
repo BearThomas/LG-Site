@@ -233,3 +233,117 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initProfile();
     bindEvents();
 });
+
+
+// ========================== 我的足迹功能 ==========================
+const tabMyPosts = document.getElementById('tabMyPosts');
+const tabMyComments = document.getElementById('tabMyComments');
+const myPostsList = document.getElementById('myPostsList');
+const myCommentsList = document.getElementById('myCommentsList');
+
+if (tabMyPosts && tabMyComments) {
+    tabMyPosts.addEventListener('click', () => {
+        tabMyPosts.style.fontWeight = 'bold';
+        tabMyPosts.style.color = '#228be6';
+        tabMyComments.style.fontWeight = 'normal';
+        tabMyComments.style.color = '#495057';
+        myPostsList.style.display = 'block';
+        myCommentsList.style.display = 'none';
+        loadMyActivity('posts');
+    });
+
+    tabMyComments.addEventListener('click', () => {
+        tabMyComments.style.fontWeight = 'bold';
+        tabMyComments.style.color = '#228be6';
+        tabMyPosts.style.fontWeight = 'normal';
+        tabMyPosts.style.color = '#495057';
+        myCommentsList.style.display = 'block';
+        myPostsList.style.display = 'none';
+        loadMyActivity('comments');
+    });
+}
+
+async function loadMyActivity(type) {
+    const listElement = type === 'posts' ? myPostsList : myCommentsList;
+    if (!currentUser || !currentUser.studentId) {
+        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">请先登录</div>';
+        return;
+    }
+    
+    // Check if already loaded
+    if (listElement.getAttribute('data-loaded')) return;
+    
+    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #868e96;">正在检索...</div>';
+
+    try {
+        const studentId = currentUser.studentId;
+        
+        // Load hot data
+        let queries = [ Query.equal('authorId', studentId), Query.orderDesc('$createdAt'), Query.limit(50) ];
+        const { documents: hotDocs } = await databases.listDocuments(DATABASE_ID, type === 'posts' ? COLLECTION_POSTS : COLLECTION_COMMENTS, queries);
+        
+        // Load cold data using searchIndex
+        let coldDocs = [];
+        let indexName = type === 'posts' ? 'posts_search' : 'comments_search';
+        let indexPath = type === 'posts' ? './public/data-backups/posts/search-index.json' : './public/data-backups/comments/search-index.json';
+        
+        try {
+            const indexHashMeta = window.serverHashes ? window.serverHashes[indexName] : null;
+            const res = await fetch(indexPath);
+            if (res.ok) {
+                const searchIndex = await res.json();
+                // Find chunks where the author is this user
+                const myMeta = searchIndex.filter(m => m.authorId === studentId);
+                const chunkFiles = new Set(myMeta.map(m => 'chunk-' + m.c + '.json'));
+                
+                // We fetch those chunks and extract the docs
+                for (const file of chunkFiles) {
+                    try {
+                        const cres = await fetch('./public/data-backups/' + type + '/' + file);
+                        if (cres.ok) {
+                            const chunkData = await cres.json();
+                            coldDocs.push(...chunkData.filter(d => (d.authorId || d.author_id) === studentId));
+                        }
+                    } catch(e) {}
+                }
+            }
+        } catch(e) {}
+
+        const allDocs = [...hotDocs, ...coldDocs];
+        allDocs.sort((a,b) => new Date(b.$createdAt || b.createdAt || b.created_at) - new Date(a.$createdAt || a.createdAt || a.created_at));
+
+        if (allDocs.length === 0) {
+            listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">暂无足迹</div>';
+        } else {
+            listElement.innerHTML = allDocs.map(doc => {
+                const date = new Date(doc.$createdAt || doc.createdAt || doc.created_at).toLocaleString();
+                if (type === 'posts') {
+                    return `<div style="padding: 10px; border-bottom: 1px solid #f1f3f5; cursor: pointer;" onclick="location.href='post?id=${doc.$id || doc.id}'">
+                        <strong style="color: #343a40;">${doc.title || '无标题'}</strong>
+                        <div style="font-size: 0.8rem; color: #868e96; margin-top: 5px;">${date}</div>
+                    </div>`;
+                } else {
+                    return `<div style="padding: 10px; border-bottom: 1px solid #f1f3f5; cursor: pointer;" onclick="location.href='post?id=${doc.postId || doc.post_id}'">
+                        <div style="color: #495057;">${doc.content || '...'}</div>
+                        <div style="font-size: 0.8rem; color: #868e96; margin-top: 5px;">${date} - 回复</div>
+                    </div>`;
+                }
+            }).join('');
+        }
+        
+        listElement.setAttribute('data-loaded', 'true');
+    } catch(err) {
+        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #fa5252;">加载失败，请重试</div>';
+    }
+}
+
+// Ensure loadMyActivity is called once user is loaded. We can just add an interval to wait for currentUser to be set if it takes time.
+let activityLoadTimer = setInterval(() => {
+    if (currentUser && currentUser.studentId) {
+        clearInterval(activityLoadTimer);
+        loadMyActivity('posts'); // Load default
+    } else if (currentUser === null && window.localStorage.getItem('campus_user') === null) {
+        clearInterval(activityLoadTimer);
+        myPostsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">请先登录</div>';
+    }
+}, 500);

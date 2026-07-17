@@ -290,6 +290,22 @@
 
             <div class="profile-main">
                 
+                <div class="settings-section" id="myActivitySection">
+                    <h2>我的足迹</h2>
+                    <div class="activity-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #ced4da; padding-bottom: 10px;">
+                        <button id="tabMyPosts" class="tab-btn active" style="background: none; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; color: #228be6;">我的发帖</button>
+                        <button id="tabMyComments" class="tab-btn" style="background: none; border: none; font-size: 1rem; cursor: pointer; color: #495057;">我的评论</button>
+                    </div>
+
+                    <div id="myPostsList" class="activity-list" style="max-height: 400px; overflow-y: auto;">
+                        <div class="feed-initial-loader" style="text-align: center; padding: 20px;"><span class="feed-initial-orbit"></span> 加载中...</div>
+                    </div>
+
+                    <div id="myCommentsList" class="activity-list" style="display: none; max-height: 400px; overflow-y: auto;">
+                        <div class="feed-initial-loader" style="text-align: center; padding: 20px;"><span class="feed-initial-orbit"></span> 加载中...</div>
+                    </div>
+                </div>
+                
                 <div class="settings-section">
                     <h2>个人资料设置</h2>
                     <div class="form-group">

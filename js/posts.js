@@ -30,7 +30,9 @@ const databases = new Databases(client);
 let currentUser = null;
 let secureKeyReady = Promise.resolve(null);
 let currentBoard = { $id: 'main', name: '主板块' };
-let currentTimeFilter = 'all'; // 存储当前选中的时间：all, today, week, month
+let currentTimeFilter = 'all';
+let currentSearchKeyword = '';
+const searchInput = document.getElementById('searchInput'); // 存储当前选中的时间：all, today, week, month
 let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 10;
@@ -305,16 +307,25 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
-async function loadColdPostDocuments() {
-    try {
-        let docs = await loadChunkedCollection('posts');
-        
-        // Disable encryption support for cold chunks as it wasn't used in v2
-        return docs;
-    } catch (e) {
-        console.warn('获取冷备帖子失败', e);
-        return [];
-    }
+
+// ========== 瀑布流懒加载与按需加载支持 ==========
+let pendingChunks = [];
+let loadedColdPostsMap = new Map();
+let currentPostsPool = [];
+let allHotPosts = [];
+let coldIndex = null;
+let searchIndex = null;
+let infiniteObserver = null;
+let isFetchingChunk = false;
+let noMoreData = false;
+
+// 按需清理缓存的查询状态
+function resetPostsState() {
+    pendingChunks = [];
+    loadedColdPostsMap.clear();
+    currentPostsPool = [];
+    allHotPosts = [];
+    noMoreData = false;
 }
 
 // ========== 加载帖子（安全增强版） ==========
@@ -322,181 +333,166 @@ async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
         
-        const currentUserId = currentUser?.studentId || 'guest';
-        const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
-        const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
-
-        let hasRenderedCache = false;
-
-        if (localCache) {
-            try {
-                const parsedCache = JSON.parse(localCache);
-                if (parsedCache && Array.isArray(parsedCache.data)) {
-                    renderPosts(parsedCache.data);
-                    totalPages = parsedCache.totalPages || 1;
-                    renderPagination();
-                    showCacheNotice('正在展示本地缓存，正在同步云端最新内容...', 'waiting');
-                    hasRenderedCache = true;
-                }
-            } catch (err) {
-                console.warn('解析本地缓存异常:', err);
-            }
-        }
-
-        if (!hasRenderedCache && !forceRefresh) {
+        if (forceRefresh) {
             postsList.innerHTML = createListSkeleton('post', 5);
+            resetPostsState();
         }
 
-        const queries = [
-            Query.equal('boardId', currentBoard.$id),
-            Query.orderDesc('$createdAt')
-        ];
-
-        let hotPosts = [];
-        let coldPosts = [];
-
-        // Parallel: load D1 hot data + cold archive simultaneously
-        const [hotResult, coldResult] = await Promise.allSettled([
-            listAllPostDocuments(queries, firstBatch => {
-                if (hasRenderedCache || currentPage !== 1) return;
-                const preview = firstBatch
-                    .filter(post => {
-                        if (post.title == null || post.content == null) return false;
-                        if (tombstonedIds.posts.has(post.$id || post.id)) return false;
-                        const permission = Number(post.viewPermission) || 1;
-                        if (permission === 1) return true;
-                        return permission === 8 && currentUserId !== 'guest' &&
-                            normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
-                    }).slice(0, PAGE_SIZE);
-                if (preview.length) {
-                    renderPosts(preview);
-                    showCacheNotice('已加载最新一批，正在后台整理完整列表...', 'waiting');
-                    hasRenderedCache = true;
-                }
-            }),
-            loadColdPostDocuments()
-        ]);
-
-        if (hotResult.status === 'fulfilled') {
-            hotPosts = hotResult.value;
-        } else {
-            console.warn('D1 热数据读取失败:', hotResult.reason?.message);
+        // 初始化元数据
+        if (!coldIndex) {
+            try { coldIndex = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']); } catch(e){}
         }
-        if (coldResult.status === 'fulfilled') {
-            coldPosts = coldResult.value;
-        } else {
-            console.warn('冷备份读取失败:', coldResult.reason?.message);
+        if (!searchIndex) {
+            try { searchIndex = await fetchWithHashCache('posts_search', ['./public/data-backups/posts/search-index.json']); } catch(e){}
         }
 
-        const normalizePost = (post, isCold) => ({
-            $id: post.$id || post.id,
-            $createdAt: post.$createdAt || post.createdAt,
-            $updatedAt: post.$updatedAt || post.updatedAt,
-            title: post.title,
-            content: post.content,
-            authorId: post.authorId,
-            authorName: post.authorName,
-            boardId: post.boardId,
-            viewPermission: post.viewPermission,
-            targetGroups: post.targetGroups || [],
-            status: post.status || 0,
-            likes: Number(post.likes || 0),
-            liked: isCold ? false : Boolean(post.liked), // cold posts can't be liked in real-time
-            commentCount: Number(post.commentCount || post.comment_count || 0),
-            editedAt: post.editedAt || post.edited_at || null,
-            _isCold: isCold
-        });
+        // 1. 并发获取最新热数据
+        const queries = [ Query.orderDesc('$createdAt') ];
+        allHotPosts = await listAllPostDocuments(queries, firstBatch => {});
 
-        // Filter tombstones before merging
-        const normalizedHot = hotPosts
-            .map(p => normalizePost(p, false))
-            .filter(p => !tombstonedIds.posts.has(p.$id));
-        const normalizedCold = coldPosts
-            .map(p => normalizePost(p, true))
-            .filter(p => !tombstonedIds.posts.has(p.$id));
-
-        const seen = new Set();
-        const allPosts = [...normalizedHot, ...normalizedCold].filter(post => {
-            if (seen.has(post.$id)) return false;
-            seen.add(post.$id);
-            
-            // Filter by current boardId (treat empty/null as 'main')
-            const postBoard = post.boardId || 'main';
-            return postBoard === currentBoard.$id;
-        });
-
-        allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
-
-        let filteredPosts = allPosts;
-        if (currentTimeFilter !== 'all') {
-            const now = new Date();
-            let startTime = new Date();
-
-            if (currentTimeFilter === 'today') {
-                startTime.setHours(0, 0, 0, 0);
-            } else if (currentTimeFilter === 'week') {
-                startTime.setDate(now.getDate() - 7);
-            } else if (currentTimeFilter === 'month') {
-                startTime.setDate(now.getDate() - 30);
-            }
-
-            filteredPosts = allPosts.filter(post => 
-                new Date(post.$createdAt) >= startTime
-            );
+        // 2. 准备懒加载队列（如果冷备存在）
+        if (coldIndex && coldIndex.chunks) {
+            pendingChunks = coldIndex.chunks.map(c => c.file);
         }
 
-        const visiblePosts = filteredPosts.filter(post => {
-            if (post.title === null || post.content === null) return false;
-            const viewPermission = Number(post.viewPermission) || 1;
-            const isAuthor = currentUser && currentUser.studentId && post.authorId &&
-                normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
-            
-            if (viewPermission === 1) return true;  
-            if (viewPermission === 8) return isAuthor; 
-            if (viewPermission === 4) {             
-                if (!currentUserId || currentUserId === 'guest') return false;
-                return (post.targetGroups || []).includes(currentUserId);
-            }
-            return false;
-        });
-
-        postsSnapshot = visiblePosts;
-        totalPages = Math.ceil(postsSnapshot.length / PAGE_SIZE) || 1;
-        currentPage = Math.min(currentPage, totalPages);
-        renderPostsSnapshotPage();
-
-        if (hasRenderedCache) {
-            showCacheNotice('列表已成功同步至云端最新内容', 'success');
-        }
+        recomputePostsPool();
+        initInfiniteScroll();
 
     } catch (error) {
         console.error('加载最新数据失败:', error);
-        const currentUserId = currentUser?.studentId || 'guest';
-        if (!localStorage.getItem(`cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`)) {
-            postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
-        }
+        postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
     }
 }
 
-function renderPostsSnapshotPage() {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const paged = postsSnapshot.slice(start, start + PAGE_SIZE);
-    totalPages = Math.ceil(postsSnapshot.length / PAGE_SIZE) || 1;
-    renderPosts(paged);
-    renderPagination();
-
+function recomputePostsPool() {
     const currentUserId = currentUser?.studentId || 'guest';
-    const cacheKey = `cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
-    scheduleAfterPaint(() => {
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: paged,
-            totalPages,
-            updateAt: Date.now()
-        }));
+    
+    const normalizePost = (p, isCold) => ({
+        ...p,
+        $id: p.$id || p.id,
+        $createdAt: p.$createdAt || p.created_at || p.createdAt,
+        title: p.title,
+        content: p.content,
+        boardId: p.boardId || p.board_id,
+        authorId: p.authorId || p.author_id,
+        authorName: p.authorName || p.author_name,
+        targetGroups: typeof p.targetGroups === 'string' ? JSON.parse(p.targetGroups) : (p.targetGroups || []),
+        status: p.status || 0,
+        viewPermission: p.viewPermission,
+        _isCold: isCold
     });
+
+    const filterFn = (post) => {
+        if (tombstonedIds.posts.has(post.$id)) return false;
+        const postBoard = post.boardId || 'main';
+        if (postBoard !== currentBoard.$id) return false;
+        
+        // time filter
+        if (currentTimeFilter !== 'all') {
+            const now = new Date();
+            let startTime = new Date();
+            if (currentTimeFilter === 'today') startTime.setHours(0,0,0,0);
+            else if (currentTimeFilter === 'week') startTime.setDate(now.getDate()-7);
+            else if (currentTimeFilter === 'month') startTime.setDate(now.getDate()-30);
+            if (new Date(post.$createdAt) < startTime) return false;
+        }
+
+        // search filter
+        if (currentSearchKeyword) {
+            const kw = currentSearchKeyword.toLowerCase();
+            const titleMatch = post.title && post.title.toLowerCase().includes(kw);
+            const authorMatch = post.authorName && post.authorName.toLowerCase().includes(kw);
+            const contentMatch = post.content && post.content.toLowerCase().includes(kw);
+            if (!titleMatch && !authorMatch && !contentMatch) return false;
+        }
+
+        // permission filter
+        const viewPermission = Number(post.viewPermission) || 1;
+        if (viewPermission === 8) {
+            const isAuthor = currentUser && normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
+            if (!isAuthor) return false;
+        }
+        if (viewPermission === 4) {
+            if (currentUserId === 'guest') return false;
+            if (!(post.targetGroups || []).includes(currentUserId)) return false;
+        }
+        
+        return true;
+    };
+    
+    let pool = [];
+    pool.push(...allHotPosts.map(p => normalizePost(p, false)).filter(filterFn));
+    
+    // 动态调整 lazy load 的 chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
+    if (currentSearchKeyword && searchIndex && coldIndex && coldIndex.chunks) {
+        const kw = currentSearchKeyword.toLowerCase();
+        const hitChunks = new Set();
+        for (const meta of searchIndex) {
+            if (meta.title && meta.title.toLowerCase().includes(kw) || 
+                meta.authorName && meta.authorName.toLowerCase().includes(kw)) {
+                hitChunks.add('chunk-' + meta.c + '.json');
+            }
+        }
+        // 更新尚未加载的 chunks（剔除没命中的）
+        pendingChunks = pendingChunks.filter(file => hitChunks.has(file));
+    }
+    
+    for (const chunk of loadedColdPostsMap.values()) {
+        pool.push(...chunk.map(p => normalizePost(p, true)).filter(filterFn));
+    }
+    
+    pool = applyPendingModifications('posts', pool);
+    pool.sort((a,b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    
+    currentPostsPool = pool;
+    renderPosts(currentPostsPool);
 }
 
+function initInfiniteScroll() {
+    const anchor = document.getElementById('infiniteScrollAnchor');
+    if (!anchor) return;
+    
+    if (infiniteObserver) infiniteObserver.disconnect();
+    
+    infiniteObserver = new IntersectionObserver(async (entries) => {
+        if (entries[0].isIntersecting && !isFetchingChunk && !noMoreData) {
+            await loadNextChunk();
+        }
+    }, { rootMargin: '400px' }); // 提前 400px 触发
+    
+    infiniteObserver.observe(anchor);
+}
+
+async function loadNextChunk() {
+    const anchor = document.getElementById('infiniteScrollAnchor');
+    
+    if (pendingChunks.length === 0) {
+        noMoreData = true;
+        if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
+        return;
+    }
+    
+    isFetchingChunk = true;
+    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载历史档案...</span>';
+    
+    const chunkFile = pendingChunks.shift();
+    try {
+        const chunkObj = coldIndex && coldIndex.chunks ? coldIndex.chunks.find(c => c.file === chunkFile) : null;
+        let chunkData = await fetchChunkWithCache('posts', chunkFile, chunkObj ? chunkObj.hash : null);
+        loadedColdPostsMap.set(chunkFile, chunkData);
+        recomputePostsPool();
+    } catch(e) {
+        console.warn('获取区块失败', chunkFile, e);
+    }
+    
+    isFetchingChunk = false;
+    if (anchor && !noMoreData) anchor.innerHTML = ''; 
+}
+
+function renderPagination() { /* Deprecated */ }
+
 // ========== 🌟 智能化改写：不信任数据源渲染 ==========
+
 function renderPosts(posts) {
     if (!postsList) return;
     if (!posts.length) {

@@ -82,9 +82,11 @@ async function processCollection(collection) {
   
   // Clear existing chunks
   if (fs.existsSync(folder)) {
-    const files = fs.readdirSync(folder).filter(f => f.startsWith('chunk-') && f.endsWith('.json'));
+    const files = fs.readdirSync(folder).filter(f => f.startsWith('chunk-') && f.endsWith('.json') || f === 'search-index.json');
     for (const file of files) fs.rmSync(path.join(folder, file));
   }
+
+  let searchIndex = [];
 
   for (let i = 0; i < merged.length; i += CHUNK_SIZE) {
     const chunkData = merged.slice(i, i + CHUNK_SIZE);
@@ -102,6 +104,31 @@ async function processCollection(collection) {
       endDate: chunkData[0].created_at
     });
     
+    if (collection === 'posts') {
+        chunkData.forEach(p => {
+            searchIndex.push({
+                id: p.id || p.$id,
+                title: p.title,
+                authorId: p.author_id || p.authorId,
+                authorName: p.author_name || p.authorName,
+                tags: typeof p.targetGroups === 'string' ? p.targetGroups : JSON.stringify(p.targetGroups || []),
+                boardId: p.board_id || p.boardId || 'main',
+                c: chunkIndex,
+                t: p.created_at
+            });
+        });
+    } else if (collection === 'comments') {
+        chunkData.forEach(c => {
+            searchIndex.push({
+                id: c.id || c.$id,
+                postId: c.post_id || c.postId,
+                authorId: c.author_id || c.authorId,
+                c: chunkIndex,
+                t: c.created_at
+            });
+        });
+    }
+    
     chunkIndex++;
   }
   
@@ -115,6 +142,13 @@ async function processCollection(collection) {
   
   const indexStr = JSON.stringify(indexData, null, 2);
   fs.writeFileSync(path.join(folder, 'index.json'), indexStr, 'utf8');
+  
+  if (searchIndex.length > 0) {
+      const searchIndexStr = JSON.stringify(searchIndex);
+      fs.writeFileSync(path.join(folder, 'search-index.json'), searchIndexStr, 'utf8');
+      const searchHash = computeHash(searchIndexStr);
+      runD1Query(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('hash_${collection}_search', '${searchHash}')`);
+  }
   
   // 6. Update hash in data_meta
   const indexHash = computeHash(indexStr);
