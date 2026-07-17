@@ -820,7 +820,7 @@ body::before {
     padding: 0 4%;
     height: 60px;
   }
-  .title-bar img { width: 42px !important; height: 42px !important; }
+  .title-bar img { width: 48px !important; height: 48px !important; }
   .site-title { font-size: 1.1rem; margin-left: 10px; }
   .nav-bar { margin-left: auto; }
   .user-area { margin-left: auto; }
