@@ -631,7 +631,7 @@
 }
 
 /* ========== 深色模式适配 ========== */
-.dark .boards-sidebar, .dark .posts-main, .dark .modal-container, .dark .search-results { background: #1e293b; }
+.dark .boards-sidebar, .dark .modal-container, .dark .search-results { background: #1e293b; }
 .dark .sidebar-header h3, .dark .board-name, .dark .board-info h2, .dark .post-author, .dark .post-title { color: #f1f5f9; }
 .dark .board-item:hover { background: #334155; }
 .dark .board-item.active { background: #1e3a5f; }
@@ -808,7 +808,6 @@
 }
 
 .boards-sidebar,
-.posts-main,
 .modal-container,
 .search-results,
 .selected-users {
