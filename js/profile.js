@@ -246,9 +246,9 @@ const myCommentsList = document.getElementById('myCommentsList');
 if (tabMyPosts && tabMyComments) {
     tabMyPosts.addEventListener('click', () => {
         tabMyPosts.style.fontWeight = 'bold';
-        tabMyPosts.style.color = '#228be6';
+        tabMyPosts.style.color = 'var(--accent)';
         tabMyComments.style.fontWeight = 'normal';
-        tabMyComments.style.color = '#495057';
+        tabMyComments.style.color = 'var(--text-secondary)';
         myPostsList.style.display = 'block';
         myCommentsList.style.display = 'none';
         loadMyActivity('posts');
@@ -256,9 +256,9 @@ if (tabMyPosts && tabMyComments) {
 
     tabMyComments.addEventListener('click', () => {
         tabMyComments.style.fontWeight = 'bold';
-        tabMyComments.style.color = '#228be6';
+        tabMyComments.style.color = 'var(--accent)';
         tabMyPosts.style.fontWeight = 'normal';
-        tabMyPosts.style.color = '#495057';
+        tabMyPosts.style.color = 'var(--text-secondary)';
         myCommentsList.style.display = 'block';
         myPostsList.style.display = 'none';
         loadMyActivity('comments');
@@ -268,14 +268,14 @@ if (tabMyPosts && tabMyComments) {
 async function loadMyActivity(type) {
     const listElement = type === 'posts' ? myPostsList : myCommentsList;
     if (!currentUser || !currentUser.studentId) {
-        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">请先登录</div>';
+        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">请先登录</div>';
         return;
     }
     
     // Check if already loaded
     if (listElement.getAttribute('data-loaded')) return;
     
-    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: #868e96;">正在检索...</div>';
+    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">正在检索...</div>';
 
     try {
         const studentId = currentUser.studentId;
@@ -315,19 +315,19 @@ async function loadMyActivity(type) {
         allDocs.sort((a,b) => new Date(b.$createdAt || b.createdAt || b.created_at) - new Date(a.$createdAt || a.createdAt || a.created_at));
 
         if (allDocs.length === 0) {
-            listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">暂无足迹</div>';
+            listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">暂无足迹</div>';
         } else {
             listElement.innerHTML = allDocs.map(doc => {
                 const date = new Date(doc.$createdAt || doc.createdAt || doc.created_at).toLocaleString();
                 if (type === 'posts') {
-                    return `<div style="padding: 10px; border-bottom: 1px solid #f1f3f5; cursor: pointer;" onclick="location.href='post?id=${doc.$id || doc.id}'">
-                        <strong style="color: #343a40;">${doc.title || '无标题'}</strong>
-                        <div style="font-size: 0.8rem; color: #868e96; margin-top: 5px;">${date}</div>
+                    return `<div style="padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="location.href='post?id=${doc.$id || doc.id}'">
+                        <strong style="color: var(--text-primary);">${doc.title || '无标题'}</strong>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">${date}</div>
                     </div>`;
                 } else {
-                    return `<div style="padding: 10px; border-bottom: 1px solid #f1f3f5; cursor: pointer;" onclick="location.href='post?id=${doc.postId || doc.post_id}'">
-                        <div style="color: #495057;">${doc.content || '...'}</div>
-                        <div style="font-size: 0.8rem; color: #868e96; margin-top: 5px;">${date} - 回复</div>
+                    return `<div style="padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="location.href='post?id=${doc.postId || doc.post_id}'">
+                        <div style="color: var(--text-secondary);">${doc.content || '...'}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">${date} - 回复</div>
                     </div>`;
                 }
             }).join('');
@@ -336,7 +336,7 @@ async function loadMyActivity(type) {
         listElement.setAttribute('data-loaded', 'true');
     } catch(err) {
         console.error("加载足迹失败:", err);
-        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #fa5252;">加载失败，请重试</div>';
+        listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--danger, #fa5252);">加载失败，请重试</div>';
     }
 }
 
@@ -347,6 +347,6 @@ let activityLoadTimer = setInterval(() => {
         loadMyActivity('posts'); // Load default
     } else if (currentUser === null && window.localStorage.getItem('campus_user') === null) {
         clearInterval(activityLoadTimer);
-        myPostsList.innerHTML = '<div style="padding: 20px; text-align: center; color: #868e96;">请先登录</div>';
+        myPostsList.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">请先登录</div>';
     }
 }, 500);

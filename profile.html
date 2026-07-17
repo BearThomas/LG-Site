@@ -22,18 +22,18 @@
             }
             .profile-sidebar {
                 flex: 1;
-                background: #ffffff;
+                background: var(--surface);
                 border-radius: 12px;
                 padding: 30px 20px;
                 text-align: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                box-shadow: 0 4px 12px var(--shadow, rgba(0,0,0,0.05));
                 height: fit-content;
             }
             .avatar-preview {
                 width: 90px;
                 height: 90px;
-                background-color: #228be6;
-                color: #ffffff;
+                background-color: var(--accent);
+                color: var(--surface);
                 font-size: 2.2rem;
                 font-weight: bold;
                 border-radius: 50%;
@@ -46,13 +46,13 @@
             }
             .profile-sidebar h3 {
                 margin: 10px 0 5px;
-                color: #212529;
+                color: var(--text-primary);
                 font-size: 1.3rem;
             }
             .user-id-tag {
                 font-size: 0.85rem;
-                color: #868e96;
-                background: #f1f3f5;
+                color: var(--text-secondary);
+                background: var(--border);
                 padding: 4px 10px;
                 border-radius: 20px;
                 display: inline-block;
@@ -65,17 +65,17 @@
                 gap: 24px;
             }
             .settings-section {
-                background: #ffffff;
+                background: var(--surface);
                 border-radius: 12px;
                 padding: 24px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                box-shadow: 0 4px 12px var(--shadow, rgba(0,0,0,0.05));
             }
             .settings-section h2 {
                 font-size: 1.25rem;
-                color: #343a40;
+                color: var(--text-primary);
                 margin-top: 0;
                 margin-bottom: 20px;
-                border-bottom: 2px solid #f1f3f5;
+                border-bottom: 2px solid var(--border);
                 padding-bottom: 10px;
             }
             .form-group {
@@ -85,26 +85,26 @@
                 display: block;
                 font-size: 0.9rem;
                 font-weight: 600;
-                color: #495057;
+                color: var(--text-secondary);
                 margin-bottom: 8px;
             }
             .form-group input {
                 width: 100%;
                 padding: 10px 14px;
-                border: 1px solid #ced4da;
+                border: 1px solid var(--border);
                 border-radius: 6px;
                 font-size: 0.95rem;
-                color: #495057;
+                color: var(--text-secondary);
                 box-sizing: border-box;
                 transition: border-color 0.2s;
             }
             .form-group input:focus {
                 outline: none;
-                border-color: #228be6;
+                border-color: var(--accent);
             }
             .save-btn {
-                background-color: #228be6;
-                color: #ffffff;
+                background-color: var(--accent);
+                color: var(--surface);
                 border: none;
                 padding: 10px 20px;
                 font-size: 0.95rem;
@@ -114,17 +114,17 @@
                 transition: background-color 0.2s;
             }
             .save-btn:hover {
-                background-color: #1c7ed6;
+                background-color: var(--accent-hover);
             }
             .save-btn:disabled {
                 background-color: #adb5bd;
                 cursor: not-allowed;
             }
             .save-btn.danger {
-                background-color: #fa5252;
+                background-color: var(--danger, #fa5252);
             }
             .save-btn.danger:hover {
-                background-color: #e03131;
+                background-color: var(--danger-hover, #e03131);
             }
 
             /* Minimal profile theme */
@@ -245,7 +245,7 @@
             }
         </style>
     </head>
-    <body style="height: 100%; background-color: #f8f9fa;">
+    <body style="height: 100%; background-color: var(--bg-primary);">
         <div class="meteor-container"><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div></div>
         <script src="./js/theme-change.js"></script>
 
@@ -293,9 +293,9 @@
                 
                 <div class="settings-section" id="myActivitySection">
                     <h2>我的足迹</h2>
-                    <div class="activity-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #ced4da; padding-bottom: 10px;">
-                        <button id="tabMyPosts" class="tab-btn active" style="background: none; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; color: #228be6;">我的发帖</button>
-                        <button id="tabMyComments" class="tab-btn" style="background: none; border: none; font-size: 1rem; cursor: pointer; color: #495057;">我的评论</button>
+                    <div class="activity-tabs" style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                        <button id="tabMyPosts" class="tab-btn active" style="background: none; border: none; font-size: 1rem; cursor: pointer; font-weight: bold; color: var(--accent);">我的发帖</button>
+                        <button id="tabMyComments" class="tab-btn" style="background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-secondary);">我的评论</button>
                     </div>
 
                     <div id="myPostsList" class="activity-list" style="max-height: 400px; overflow-y: auto;">
