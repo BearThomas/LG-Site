@@ -1,4 +1,8 @@
 /* ========== 表白墙样式 ========== */
+:root {
+    --pink: #ec4899;
+    --pink-soft: rgba(236, 72, 153, 0.2);
+}
 
 .confession-container {
     width: 100%;             /* 📱 手机端宽度占满 */
