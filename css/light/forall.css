@@ -30,6 +30,13 @@
   
   --transition-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
   --blur-amount: 24px;
+  
+  /* Legacy compatibility variables for profile.html */
+  --surface: rgba(15, 15, 20, 0.5);
+  --border: rgba(255, 255, 255, 0.15);
+  --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  --radius-xl: 4px;
+  --text: #f8fafc;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -108,7 +115,7 @@ h1, h2, h3, h4, .site-title {
   position: sticky; top: 0; z-index: 1000; transition: all 0.5s var(--transition-smooth);
 }
 
-.title-bar img { border-radius: 8px; filter: grayscale(20%); opacity: 0.9; transition: filter 0.5s; }
+.title-bar img { border-radius: 8px; filter: grayscale(20%); opacity: 0.9; transition: filter 0.5s; width: auto; object-fit: contain; }
 .title-bar img:hover { filter: grayscale(0%); opacity: 1; }
 
 .site-title {
@@ -241,12 +248,22 @@ h1, h2, h3, h4, .site-title {
 .time-filter option { background: var(--bg-base); color: #fff; }
 
 .profile-wrapper { max-width: 1200px; padding: 0 5%; gap: 60px; }
-.profile-sidebar { background: transparent; border: none; box-shadow: none; padding: 0; text-align: left; }
-.profile-sidebar h3 { font-family: var(--font-serif); font-size: 1.8rem; margin: 20px 0 10px; }
-.avatar-preview { width: 120px; height: 120px; border-radius: 50%; font-family: var(--font-serif); background: var(--card-bg); border: 1px solid var(--glass-border); margin: 0; font-size: 3rem; }
-.settings-section { background: transparent; border: none; box-shadow: none; padding: 0; margin-bottom: 60px; }
-.settings-section h2 { font-family: var(--font-serif); font-size: 1.8rem; margin-bottom: 30px; border-bottom: 1px solid var(--glass-border); padding-bottom: 16px; }
-.activity-tabs button { font-family: var(--font-sans); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; padding-bottom: 10px; }
+.profile-sidebar { background: var(--card-bg); backdrop-filter: blur(var(--blur-amount)); border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 40px; text-align: left; border-radius: 4px; }
+.profile-sidebar h3 { font-family: var(--font-serif); font-size: 1.8rem; margin: 20px 0 10px; color: var(--text-primary); }
+.avatar-preview { width: 120px; height: 120px; border-radius: 50%; font-family: var(--font-serif); background: transparent; border: 1px solid var(--glass-border); margin: 0; font-size: 3rem; color: #fff; }
+.settings-section { background: var(--card-bg); backdrop-filter: blur(var(--blur-amount)); border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 40px; margin-bottom: 60px; border-radius: 4px; }
+.settings-section h2 { font-family: var(--font-serif); font-size: 1.8rem; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 16px; color: var(--text-primary); }
+.activity-tabs button { font-family: var(--font-sans); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; padding-bottom: 10px; color: var(--text-secondary); border-bottom: 1px solid transparent; transition: all 0.3s; }
+.activity-tabs button:hover, .activity-tabs button.active { color: #fff; border-bottom-color: #fff; font-weight: normal; }
+
+.save-btn {
+  background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 12px 30px;
+  border-radius: 2px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.15em; cursor: pointer;
+  transition: all 0.4s var(--transition-smooth); width: auto;
+}
+.save-btn:hover { background: #fff; color: #000; }
+.save-btn.danger { border-color: rgba(250, 82, 82, 0.4); color: #ff8787; }
+.save-btn.danger:hover { background: #fa5252; color: #fff; border-color: #fa5252; }
 
 .modal-overlay { background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); }
 .modal-container { background: var(--bg-base); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; box-shadow: var(--shadow-lg); }
