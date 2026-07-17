@@ -389,7 +389,7 @@ h1, h2, h3, h4, .site-title {
   .title-bar { padding: 0 5%; height: 70px; }
   .site-title { font-size: 1.4rem; margin-left: 10px; }
   .nav-bar { margin-left: auto; }
-  .user-area { display: none; /* Hide user area on mobile if it conflicts, or just let it wrap */ }
+  .user-area { display: flex; margin-left: auto; align-items: center; }
   
   .content-two-columns { flex-direction: column; gap: 40px; }
   .post-section, .confession-section { width: 100%; padding: 0; }
