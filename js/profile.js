@@ -278,10 +278,11 @@ async function loadMyActivity(type) {
     listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">正在检索...</div>';
 
     try {
-        const studentId = currentUser.studentId;
+        const rawStudentId = (currentUser.studentId || '').replace(/^student_/, '');
+        const fullAuthorId = 'student_' + rawStudentId;
         
         // Load hot data
-        let queries = [ Query.equal('authorId', studentId), Query.orderDesc('$createdAt'), Query.limit(50) ];
+        let queries = [ Query.equal('authorId', [rawStudentId, fullAuthorId]), Query.orderDesc('$createdAt'), Query.limit(50) ];
         const { documents: hotDocs } = await databases.listDocuments(DATABASE_ID, type === 'posts' ? COLLECTION_POSTS : COLLECTION_COMMENTS, queries);
         
         // Load cold data using searchIndex
@@ -295,7 +296,10 @@ async function loadMyActivity(type) {
             if (res.ok) {
                 const searchIndex = await res.json();
                 // Find chunks where the author is this user
-                const myMeta = searchIndex.filter(m => m.authorId === studentId);
+                const myMeta = searchIndex.filter(m => {
+                    const id = m.authorId || m.author_id;
+                    return id === rawStudentId || id === fullAuthorId;
+                });
                 const chunkFiles = new Set(myMeta.map(m => 'chunk-' + m.c + '.json'));
                 
                 // We fetch those chunks and extract the docs
@@ -304,7 +308,10 @@ async function loadMyActivity(type) {
                         const cres = await fetch('./public/data-backups/' + type + '/' + file);
                         if (cres.ok) {
                             const chunkData = await cres.json();
-                            coldDocs.push(...chunkData.filter(d => (d.authorId || d.author_id) === studentId));
+                            coldDocs.push(...chunkData.filter(d => {
+                                const id = d.authorId || d.author_id;
+                                return id === rawStudentId || id === fullAuthorId;
+                            }));
                         }
                     } catch(e) {}
                 }
