@@ -2,16 +2,16 @@
   "collection": "comments",
   "totalChunks": 2,
   "totalRecords": 61,
-  "updatedAt": "2026-07-17T08:05:00.260Z",
+  "updatedAt": "2026-07-17T14:36:52.487Z",
   "chunks": [
     {
       "file": "chunk-1.json",
-      "hash": "3ae1c667ef8ba2af978a587c944a72ea36213c384ecd4566651c00aa8f821be7",
+      "hash": "afc21947f0c7c9ac365cd9824b9a32218153c6de42e847b3bdc196df0fcc6e9f",
       "count": 50
     },
     {
       "file": "chunk-2.json",
-      "hash": "09accddb8a06d1eefc6d7aa1265a4fb830aaf849dfa43f330ab0ddfbfe594ffc",
+      "hash": "ae8e34a58f5afa7f172e1b2d3a2765a34cc234895a07929e86d6acb7873b45e5",
       "count": 11
     }
   ]

@@ -2,11 +2,11 @@
   "collection": "posts",
   "totalChunks": 1,
   "totalRecords": 40,
-  "updatedAt": "2026-07-17T08:04:33.072Z",
+  "updatedAt": "2026-07-17T14:36:47.542Z",
   "chunks": [
     {
       "file": "chunk-1.json",
-      "hash": "d5ebf97209f35c01c802111c21fa36fcd17d1f8e24f28825f13aebcd2f72a379",
+      "hash": "bc90da53359f06fb79eb70aae94b05de2159161306b2dae0ced6387a9165b96a",
       "count": 40
     }
   ]
