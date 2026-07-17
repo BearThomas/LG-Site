@@ -91,7 +91,8 @@
   border-color: var(--border);
 }
 :root[data-theme="light"] .new-post-btn:hover, .light .new-post-btn:hover {
-  background: var(--text-primary);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
   color: #fff;
 }
 
@@ -100,7 +101,8 @@
   border-color: var(--border);
 }
 :root[data-theme="light"] .save-btn:hover, .light .save-btn:hover {
-  background: var(--text-primary);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
   color: #fff;
 }
 
@@ -109,7 +111,8 @@
   border-color: var(--border);
 }
 :root[data-theme="light"] .add-confession-btn:hover, .light .add-confession-btn:hover {
-  background: var(--text-primary);
+  background: var(--accent-color);
+  border-color: var(--accent-color);
   color: #fff;
 }
 
