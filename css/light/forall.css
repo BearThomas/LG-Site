@@ -1,67 +1,73 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap');
 
+
 :root {
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
   
-  /* Premium Dark Space Theme (Default to dark for meteor theme) */
-  --bg-base: #050505;
-  --bg-gradient: linear-gradient(to bottom, #000000, #0a0f1d, #120e2b);
+  /* Vibrant Dark Space Theme */
+  --bg-base: #030014;
+  --bg-gradient: linear-gradient(135deg, #030014, #12002b, #00102a);
   
-  --glass-bg: rgba(20, 20, 25, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.15);
-  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
+  --glass-bg: rgba(20, 10, 35, 0.4);
+  --glass-border: rgba(0, 240, 255, 0.15);
+  --glass-shadow: 0 10px 40px -10px rgba(0, 240, 255, 0.1);
   
   --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
+  --text-secondary: #cbd5e1;
   --text-muted: #64748b;
   
-  --accent-color: #e2e8f0;
-  --accent-hover: #ffffff;
-  --accent-soft: rgba(255, 255, 255, 0.05);
+  --accent-color: #00f0ff;
+  --accent-hover: #70ffff;
+  --accent-soft: rgba(0, 240, 255, 0.1);
   
-  --card-bg: rgba(15, 15, 20, 0.5);
-  --board-bg: rgba(10, 10, 15, 0.7);
+  --card-bg: rgba(20, 15, 40, 0.55);
+  --board-bg: rgba(10, 5, 25, 0.7);
   
-  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 30px 50px -10px rgba(0, 0, 0, 0.6);
+  --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 10px 25px -5px rgba(0, 240, 255, 0.05);
+  --shadow-lg: 0 20px 40px -10px rgba(0, 240, 255, 0.15);
   
   --transition-smooth: cubic-bezier(0.2, 0.8, 0.2, 1);
   --blur-amount: 24px;
   
-  /* Legacy compatibility variables for profile.html */
-  --surface: rgba(15, 15, 20, 0.5);
-  --border: rgba(255, 255, 255, 0.15);
-  --shadow-soft: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-  --radius-xl: 4px;
+  /* Legacy */
+  --surface: rgba(20, 15, 40, 0.55);
+  --border: rgba(0, 240, 255, 0.2);
   --text: #f8fafc;
 }
 
+
+
 :root[data-theme="light"], .light {
-  --bg-base: #f8f9fa;
-  --bg-gradient: linear-gradient(to bottom, #fdfbfb, #ebedee);
+  /* Vibrant Light Sky Theme */
+  --bg-base: #f4f7f6;
+  --bg-gradient: linear-gradient(135deg, #fdfbfb, #e2ebf0, #d4e4ed);
   
   --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.12);
-  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  --glass-border: rgba(37, 99, 235, 0.15);
+  --glass-shadow: 0 10px 40px -10px rgba(37, 99, 235, 0.1);
   
   --text-primary: #1e293b;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
   
-  --accent-color: #3b82f6;
-  --accent-hover: #2563eb;
-  --accent-soft: rgba(59, 130, 246, 0.1);
+  --accent-color: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: rgba(37, 99, 235, 0.1);
   
-  --card-bg: rgba(255, 255, 255, 0.9);
-  --board-bg: rgba(255, 255, 255, 0.95);
+  --card-bg: rgba(255, 255, 255, 0.95);
+  --board-bg: rgba(255, 255, 255, 1);
   
-  --surface: rgba(255, 255, 255, 0.9);
-  --border: rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 10px 25px -5px rgba(37, 99, 235, 0.08);
+  --shadow-lg: 0 20px 40px -10px rgba(37, 99, 235, 0.15);
+  
+  --surface: rgba(255, 255, 255, 0.95);
+  --border: rgba(37, 99, 235, 0.2);
   --text: #1e293b;
 }
+
 
 :root[data-theme="light"] body::before, .light body::before {
   opacity: 0.05;
