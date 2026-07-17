@@ -114,6 +114,13 @@ function updateAvatarPreview(name, avatarUrl) {
         // 模式 A：渲染网络图片头像
         avatarText.style.display = 'none';
         avatarImg.src = avatarUrl.trim();
+        avatarImg.onerror = () => {
+            avatarImg.style.display = 'none';
+            avatarImg.src = '';
+            const cleanName = name ? name.trim() : '';
+            avatarText.textContent = cleanName ? cleanName.charAt(0) : '?';
+            avatarText.style.display = 'block';
+        };
         avatarImg.style.display = 'block';
     } else {
         // 模式 B：降级渲染动态首字文本头像

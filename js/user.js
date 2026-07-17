@@ -27,6 +27,11 @@ let userCache = {}; // Minimal cache for the target user
 function updateAvatarPreview(name, url) {
     if (url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:'))) {
         avatarImg.src = url;
+        avatarImg.onerror = () => {
+            avatarImg.style.display = 'none';
+            avatarText.style.display = 'block';
+            avatarText.textContent = (name || '?').charAt(0);
+        };
         avatarImg.style.display = 'block';
         avatarText.style.display = 'none';
     } else {
@@ -124,7 +129,8 @@ async function loadUserPosts(rawId, cleanSid) {
             div.onmouseout = () => div.style.background = 'transparent';
             div.onclick = () => window.location.href = `post-detail?id=${post.$id}`;
 
-            const timeStr = new Date(post.createdAt).toLocaleDateString('zh-CN', {
+            const postTime = post.$createdAt || post.createdAt || post.created_at;
+            const timeStr = new Date(postTime).toLocaleDateString('zh-CN', {
                 month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
             });
 
