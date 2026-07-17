@@ -530,9 +530,12 @@ function renderPosts(posts) {
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content, 150))}</div>
                 <div class="post-footer">
-                    <span class="post-stat"> 0</span>
-                    <span class="post-stat"> 0</span>
-                    <span class="post-stat"> 0</span>
+                    <span class="post-stat" style="display:flex; align-items:center; gap:4px; color: var(--text-secondary);">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-heart-fill" viewBox="0 0 16 16" style="color: #ef4444;">
+                          <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                        </svg>
+                        ${post.likes || 0}
+                    </span>
                 </div>
             </div>
         `;
