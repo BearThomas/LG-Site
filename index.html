@@ -9,6 +9,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     </head>
     <body>
+        <div class="meteor-container"><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div></div>
         <script src="./js/theme-change.js"></script>
         <script src="./js/events.js"></script>
         <div class="title-bar">
@@ -32,10 +33,10 @@
                 <div class="user-logged-in" id="userLoggedIn" style="display: none;">
                     <span class="user-name" id="userName">同学</span>
                     <div class="user-dropdown">
-                        <button class="user-avatar" id="userAvatar">👤</button>
+                        <button class="user-avatar" id="userAvatar"></button>
                         <div class="dropdown-menu" id="dropdownMenu">
                             <a href="./profile" id="profileLink"> 个人中心 </a>
-                            <a href="#" id="logoutBtn">🚪 退出登录</a>
+                            <a href="#" id="logoutBtn"> 退出登录</a>
                         </div>
                     </div>
                 </div>
@@ -45,7 +46,8 @@
             <!-- 1. 大事记板块 (顶部) -->
             <div class="event-board">
                 <h2>
-                    <span>📌 本周大事记</span>
+                    <span><?xml version="1.0" encoding="utf-8"?>
+<!-- License: Apache. Made by Iconscout: https://github.com/Iconscout/unicons -->本周大事记</span>
                     <a href="events.html" style="font-size: 0.9rem; color: rgba(255,255,255,0.8); text-decoration: none; margin-left: auto;">查看全部 →</a>
                 </h2>
                 <div class="event-scroll" id="weekEvents">
@@ -58,16 +60,18 @@
                 <!-- 左侧：帖子流 -->
                 <div class="post-section">
                     <div class="section-header">
-                        <h2>📋 最新帖子</h2>
+                        <h2> 最新帖子</h2>
                         <button class="new-post-btn" id="newPostBtn">+ 发新帖</button>
                     </div>
                     <div class="post-list" id="postList">
-                        <!-- 帖子 1 -->
-                        
+                        <div class="feed-initial-loader" role="status">
+                            <span class="feed-initial-orbit"></span>
+                            
+                        </div>
                     </div>
                     <!-- 查看更多按钮 -->
                     <div class="view-more-wrapper">
-                        <button class="view-more-btn" id="morePostsBtn" onclick="location.href='posts'">📄 查看更多帖子</button>
+                        <button class="view-more-btn" id="morePostsBtn" onclick="location.href='posts'"> 查看更多帖子 </button>
                     </div>
                 </div>
 
@@ -75,15 +79,17 @@
                 <!-- 右侧：表白墙 -->
                 <div class="confession-section">
                     <div class="confession-header">
-                        <span style="font-size: 2rem;">💗</span>
+                        <span style="font-size: 2rem;"></span>
                         <h2>表白墙</h2>
                     </div>
                     <div class="confession-list" id="confessionList">
-                        <!-- 示例表白 1 - 10 条 -->
-                        <!-- ... 共 10 条 ... -->
+                        <div class="feed-initial-loader" role="status">
+                            <span class="feed-initial-orbit"></span>
+                            
+                        </div>
                     </div>
                     <div class="view-more-wrapper" style="margin-top: 12px;">
-                        <button class="view-more-btn" id="moreConfessionsBtn" onclick="location.href='confession'">💕 更多表白</button>
+                        <button class="view-more-btn" id="moreConfessionsBtn" onclick="location.href='confession'">更多表白</button>
                     </div>
                 </div>
             </div>

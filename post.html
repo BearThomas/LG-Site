@@ -32,10 +32,10 @@
             <div class="user-logged-in" id="userLoggedIn" style="display: none;">
                 <span class="user-name" id="userName">同学</span>
                 <div class="user-dropdown">
-                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <button class="user-avatar" id="userAvatar"></button>
                     <div class="dropdown-menu" id="dropdownMenu">
                         <a href="./profile" id="profileLink"> 个人中心 </a>
-                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                        <a href="#" id="logoutBtn">退出登录</a>
                     </div>
                 </div>
             </div>
@@ -47,19 +47,17 @@
         <!-- 面包屑导航 -->
         <div class="breadcrumb">
             <a href="posts.html">← 返回帖子广场</a>
-            <span class="breadcrumb-divider">/</span>
-            <span id="boardName">加载中...</span>
         </div>
 
         <!-- 帖子主体 -->
         <div class="post-detail-card" id="postDetailCard">
-            <div class="loading-state">加载中...</div>
+            <div class="loading-state"></div>
         </div>
 
         <!-- 评论区 -->
         <div class="comments-section" id="commentsSection">
             <div class="comments-header">
-                <h3>💬 评论 (<span id="commentCount">0</span>)</h3>
+                <h3> 评论 (<span id="commentCount">0</span>)</h3>
             </div>
             
             <!-- 评论输入框 -->
@@ -68,7 +66,7 @@
                 <div class="comment-input-wrapper">
                     <textarea id="commentContent" placeholder="写下你的评论..." rows="2" maxlength="500"></textarea>
                     <div class="comment-actions">
-                        <span class="comment-tip">😊 友善交流</span>
+                        <span class="comment-tip"> 友善交流</span>
                         <button class="submit-comment-btn" id="submitCommentBtn">发 布</button>
                     </div>
                 </div>
@@ -88,20 +86,34 @@
 
     <!-- 编辑帖子弹窗 -->
     <div class="modal-overlay" id="editModal" style="display: none;">
-        <div class="modal-container">
+        <div class="modal-container editor-modal-container">
             <div class="modal-header">
                 <h3>编辑帖子</h3>
-                <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                <div class="editor-header-actions">
+                    <button type="button" class="preview-toggle-btn" id="toggleEditPreviewBtn">预览</button>
+                    <button class="modal-close" id="closeEditModalBtn">&times;</button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>标题</label>
-                    <input type="text" id="editTitle" placeholder="输入标题" maxlength="100">
+
+            <div class="modal-body editor-modal-body">
+                <div class="editor-layout">
+                    <div class="editor-pane">
+                        <div class="form-group">
+                            <label>标题</label>
+                            <input type="text" id="editTitle" placeholder="输入标题" maxlength="100">
+                        </div>
+
+                        <div class="form-group editor-content-group">
+                            <label>内容</label>
+                            <textarea id="editContent" placeholder="正文支持 Markdown" maxlength="10000"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="preview-pane markdown-body" id="editPreviewPane">
+                        <div class="preview-empty">预览将在这里显示</div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>内容</label>
-                    <textarea id="editContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
-                </div>
+
                 <div class="form-actions">
                     <button class="cancel-btn" id="cancelEditBtn">取消</button>
                     <button class="submit-btn" id="submitEditBtn">保存</button>
@@ -127,6 +139,7 @@
     </div>
 
     <script src="./js/theme-change.js"></script>
+    <script src="./js/dynamic-bg.js"></script>
     <script src="./js/nav-bar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <script type="module" src="./js/post-detail.js"></script>

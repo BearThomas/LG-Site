@@ -1,0 +1,18 @@
+{
+  "collection": "comments",
+  "totalChunks": 2,
+  "totalRecords": 61,
+  "updatedAt": "2026-07-17T08:05:00.260Z",
+  "chunks": [
+    {
+      "file": "chunk-1.json",
+      "hash": "3ae1c667ef8ba2af978a587c944a72ea36213c384ecd4566651c00aa8f821be7",
+      "count": 50
+    },
+    {
+      "file": "chunk-2.json",
+      "hash": "09accddb8a06d1eefc6d7aa1265a4fb830aaf849dfa43f330ab0ddfbfe594ffc",
+      "count": 11
+    }
+  ]
+}

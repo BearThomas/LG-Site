@@ -1,6 +1,20 @@
 .env
-.netlify/
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 node_modules/
-**/node_modules/
-data-backups/*.json
-!data-backups/.gitkeep
+dist/
+.wrangler/
+.DS_Store
+*.log
+
+# Generated migration files contain decrypted backup content.
+generated/*
+!generated/.gitkeep
+
+# The browser fallback backups are intentional and must remain tracked.
+!public/data-backups/
+!public/data-backups/*.json
+wrangler.d1.generated.jsonc

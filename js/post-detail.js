@@ -1,6 +1,8 @@
 // js/post-detail.js
 // Made by BearThomas 2026/5/30
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
+import { renderMarkdown } from './markdown.js';
+import { createListSkeleton } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -13,6 +15,7 @@ import {
     formatBoardName,
     formatTime,
     loadUserDirectory,
+    normalizeUserId,
     restoreSecureKey
 } from './shared.js';
 
@@ -27,6 +30,8 @@ const databases = new Databases(client);
 let currentUser = null;
 let currentPost = null;
 let postId = null;
+let secureKeyReady = Promise.resolve(null);
+let canRenderCurrentPost = false;
 
 // 🌟 核心新增：全局实名用户内存高速缓存字典
 let userCache = {};
@@ -47,9 +52,106 @@ const commentAvatar = document.getElementById('commentAvatar');
 const editModal = document.getElementById('editModal');
 const deleteModal = document.getElementById('deleteModal');
 
-// ========== ⚡ 页面加载初始化生命周期调整 ==========
+function applyAppwriteAuth(savedUser) {
+    const token = savedUser?.token;
+    if (!token) return;
+
+    if (typeof client.setSession === 'function') {
+        client.setSession(token);
+        return;
+    }
+
+    if (typeof token === 'string' && token.split('.').length === 3) {
+        client.setJWT(token);
+    }
+}
+
+let tombstonedIds = { posts: new Set(), comments: new Set() };
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
+
+async function loadTombstones() {
+    try {
+        const res = await fetch('/api/mod-log');
+        if (res.ok) {
+            const data = await res.json();
+            serverHashes = data.hashes || serverHashes;
+            pendingModifications = data.pendingModifications || [];
+            
+            // Reconstruct tombstone sets for backward compatibility in frontend code
+            const deletedPosts = pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
+            const deletedComments = pendingModifications.filter(m => m.collection === 'comments' && m.action === 'delete').map(m => m.item_id);
+            tombstonedIds = {
+                posts: new Set(deletedPosts),
+                comments: new Set(deletedComments)
+            };
+        }
+    } catch (e) {
+        console.warn('获取 mod-log 失败', e);
+    }
+}
+
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
+            }
+        }
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            
+            // Save to cache
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) {
+                    console.warn('LocalStorage 写入失败，可能配额不足', e);
+                }
+            }
+            return data;
+        } catch (e) {
+            continue;
+        }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
+        }
+    }
+    return modified;
+}
+
+// ========== 页面加载初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
     
@@ -59,10 +161,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     checkLoginStatus();
-    // 🌟 关键注入：必须在加载帖子及评论详情前，将全量活跃用户名片快照安全拉入内存
-    await loadAllUsers(); 
-    await loadPostDetail(); 
     bindEvents();
+    if (postDetailCard) postDetailCard.innerHTML = createListSkeleton('post', 1);
+
+    await loadTombstones();
+    if (tombstonedIds.posts.has(postId)) {
+        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存在</p></div>';
+        return;
+    }
+
+    // 正文和用户资料并行；正文优先显示，用户名片到达后再静默补全作者信息。
+    const userDirectoryTask = loadAllUsers();
+    await loadPostDetail();
+    void userDirectoryTask.then(() => {
+        if (currentPost && canRenderCurrentPost) renderPostDetail();
+    });
 });
 
 // ========== 🌟 一键预载全量用户到详情页本地缓存字典 ==========
@@ -71,7 +184,7 @@ async function loadAllUsers() {
         const directory = await loadUserDirectory(databases, Query);
         userCache = directory.userCache;
         allUsers = directory.allUsers;
-        console.log(`✅ 详情页身份链：已预载 ${allUsers.length} 个用户名片到高速内存字典`);
+        
     } catch (e) {
         console.warn('⚡ 初始化详情页用户身份快照失败，渲染将被迫降级使用内嵌冗余数据:', e.message);
     }
@@ -85,10 +198,14 @@ function checkLoginStatus() {
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
-            
-            if (currentUser.token) {
-                client.setJWT(currentUser.token);
+            if (currentUser.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                currentUser = null;
+                if (userNotLogin) userNotLogin.style.display = 'flex';
+                if (userLoggedIn) userLoggedIn.style.display = 'none';
+                return;
             }
+            applyAppwriteAuth(currentUser);
             
             if (userNotLogin) userNotLogin.style.display = 'none';
             if (userLoggedIn) userLoggedIn.style.display = 'flex';
@@ -134,18 +251,19 @@ function isPostVisible(post, userBoards) {
         return false; 
     }
     const viewPermission = post.viewPermission || 1;
-    const isAuthor = currentUser && currentUser.studentId === post.authorId;
+    const isAuthor = currentUser &&
+        normalizeUserId(currentUser.studentId) === normalizeUserId(post.authorId);
     
     if (viewPermission === 1) return true;  
     if (viewPermission === 8) return isAuthor; 
     if (viewPermission === 2) {             
         if (!currentUser) return false;
-        return userBoards.includes(post.boardId);
+        return userBoards.includes(post.boardId || 'main');
     }
     if (viewPermission === 4) {             
         if (!currentUser) return false;
         const targetGroups = post.targetGroups || [];
-        return targetGroups.includes(currentUser.studentId) || targetGroups.some(g => userBoards.includes(g));
+        return targetGroups.includes(currentUser.studentId) || targetGroups.some(g => userBoards.includes(g || 'main'));
     }
     return false;
 }
@@ -153,48 +271,43 @@ function isPostVisible(post, userBoards) {
 // ========== 加载帖子详情 ==========
 async function loadPostDetail() {
     try {
-        if (postDetailCard) postDetailCard.innerHTML = '<div class="loading-state">安全审查中...</div>';
-        
         currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId);
-        console.log("🔥 成功获取热数据帖子");
+        
     } catch (error) {
-        console.warn('云端未发现指定热数据，正在排查数据冷备份...');
+        const status = Number(error.code || 0);
+        if (status === 403) {
+            if (postDetailCard) {
+                postDetailCard.innerHTML = `<div class="empty-state"><p>${escapeHtml(error.message || '当前帖子不存在或无权查看')}</p></div>`;
+            }
+            return;
+        }
+        console.warn('D1 暂时不可用，正在排查 public 备份...');
         try {
-            const url = `./public/data-backups/posts.json`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error('冷备份读取失败');
-            
-            const backupData = await res.json();
-            let docs = backupData.documents || backupData || [];
-            
-            if (backupData.encrypted) {
-                docs = await Promise.all(docs.map(async p => {
-                    let targetGroups = [];
-                    if (p.targetGroups !== '已隐藏') {
-                        const decrypted = await decryptText(p.targetGroups);
-                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                    }
-                    return {
-                        ...p,
-                        content: await decryptText(p.content),
-                        title: await decryptText(p.title),
-                        authorName: await decryptText(p.authorName),
-                        targetGroups: targetGroups
-                    };
-                }));
+            let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
+            let raw = [];
+            if (index && index.chunks) {
+                const promises = index.chunks.map(chunk => fetchWithHashCache(`posts_${chunk.file}`, [`./public/data-backups/posts/${chunk.file}`]));
+                const arrays = await Promise.all(promises);
+                raw = arrays.flat();
             }
             
-            currentPost = docs.find(p => (p.id === postId || p.$id === postId));
+            raw = applyPendingModifications('posts', raw);
+            
+            currentPost = raw.find(p => (p.id === postId || p.$id === postId));
             if (!currentPost) throw new Error('帖子实体不存在');
-            console.log("❄️ 成功激活冷备份归档帖子");
+            currentPost._isCold = true;
+            
         } catch (localErr) {
-            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>📭 报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
+            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
             return;
         }
     }
 
-    const userBoards = await getUserJoinedBoards();
+    const permission = Number(currentPost.viewPermission) || 1;
+    const requiresBoardLookup = permission === 2 || permission === 4;
+    const userBoards = requiresBoardLookup ? await getUserJoinedBoards() : ['main'];
     if (!isPostVisible(currentPost, userBoards)) {
+        canRenderCurrentPost = false;
         if (postDetailCard) {
             postDetailCard.innerHTML = `
                 <div class="empty-state">
@@ -208,8 +321,8 @@ async function loadPostDetail() {
         return; 
     }
 
-    if (boardName) boardName.textContent = formatBoardName(currentPost.boardId);
     document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
+    canRenderCurrentPost = true;
     renderPostDetail();
     await loadComments(); 
 }
@@ -221,12 +334,19 @@ function renderPostDetail() {
     const isPinned = (postStatus & 1) !== 0;
     const isLocked = (postStatus & 2) !== 0;
     
-    const isAuthor = currentUser && currentUser.studentId === currentPost.authorId;
+    const isAuthor = currentUser &&
+        normalizeUserId(currentUser.studentId) === normalizeUserId(currentPost.authorId);
     const postCreatedAt = currentPost.$createdAt || currentPost.createdAt;
     const timeStr = formatTime(new Date(postCreatedAt));
     
     let actionsHtml = '';
-    if (isAuthor && !currentPost._isCold) { 
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
+    if (isAuthor) {
+        actionsHtml = `
+            <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
+            <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
+        `;
+    } else if (isAdmin) {
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
             <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
@@ -264,7 +384,7 @@ function renderPostDetail() {
                     </div>
                     <div class="post-author-detail">
                         <span class="post-author-name">${escapeHtml(finalName)}</span>
-                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">📌 置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">🔒 已锁定</span>' : ''}</span>
+                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁定</span>' : ''}</span>
                     </div>
                 </div>
                 <div class="post-actions">
@@ -272,18 +392,34 @@ function renderPostDetail() {
                 </div>
             </div>
         </div>
-        <div class="post-detail-content" style="white-space: pre-wrap; word-break: break-all;">${escapeHtml(currentPost.content)}</div>
+        <div class="post-detail-content markdown-body">${renderMarkdown(currentPost.content)}</div>
         <div class="post-detail-footer">
             <button class="post-stat-btn" id="likeBtn" disabled>
-                <span>👍</span>
-                <span id="likeCount">0</span>
+                <span></span>
             </button>
         </div>
     `;
     
-    if (isAuthor && !currentPost._isCold) {
+    if (isAuthor) {
         document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
         document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
+    } else if (isAdmin) {
+        document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
+        document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
+    }
+    
+    const likeBtn = document.getElementById('likeBtn');
+    if (likeBtn) {
+        likeBtn.innerHTML = `❤️ <span>${currentPost.likes || 0}</span>`;
+        if (currentPost.liked) {
+            likeBtn.classList.add('liked');
+        }
+        if (currentUser) {
+            likeBtn.removeAttribute('disabled');
+            likeBtn.addEventListener('click', toggleLike);
+        } else {
+            likeBtn.setAttribute('disabled', 'true');
+        }
     }
     
     if (isLocked) {
@@ -296,7 +432,7 @@ function renderPostDetail() {
             lockedTip.className = 'login-tip';
             lockedTip.style.backgroundColor = '#fff9db';
             lockedTip.style.borderColor = '#ffe066';
-            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">🔒 该帖子已被管理员锁定，当前处于只读模式，无法追加新回复。</p>';
+            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">该帖子已被管理员锁定，当前处于只读模式，无法追加新回复。</p>';
             commentsList?.insertAdjacentElement('beforebegin', lockedTip);
         }
     }
@@ -307,35 +443,24 @@ async function loadComments() {
     try {
         if (!commentsList) return;
 
-        const [appwriteRes, localRes] = await Promise.all([
-            databases.listDocuments(DATABASE_ID, COLLECTION_COMMENTS, [
-                Query.equal('postId', postId),
-                Query.orderAsc('$createdAt')
-            ]).catch(err => {
-                console.warn('实时云评论通信故障:', err.message);
-                return { documents: [] };
-            }),
-            (async () => {
-                try {
-                    const url = `./public/data-backups/comments.json`;
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        let docs = data.documents || data || [];
-                        
-                        if (data.encrypted) {
-                            docs = await Promise.all(docs.map(async c => ({
-                                ...c,
-                                content: await decryptText(c.content),
-                                authorName: await decryptText(c.authorName)
-                            })));
-                        }
-                        return docs.filter(c => c.postId === postId);
-                    }
-                } catch (e) {}
-                return [];
-            })()
-        ]);
+        const cloudComments = currentPost._isCold ? null : await loadCloudComments();
+        let localRes = [];
+        if (cloudComments === null) {
+            try {
+                let index = await fetchWithHashCache('comments', ['./public/data-backups/comments/index.json']);
+                let raw = [];
+                if (index && index.chunks) {
+                    const promises = index.chunks.map(chunk => fetchWithHashCache(`comments_${chunk.file}`, [`./public/data-backups/comments/${chunk.file}`]));
+                    const arrays = await Promise.all(promises);
+                    raw = arrays.flat();
+                }
+                
+                raw = applyPendingModifications('comments', raw);
+                localRes = raw.filter(comment => comment.postId === postId);
+            } catch (error) {
+                console.warn('public 评论备份也无法读取:', error.message);
+            }
+        }
 
         const normalizeComment = (c) => ({
             $id: c.$id || c.id,
@@ -346,8 +471,10 @@ async function loadComments() {
         });
 
         const seen = new Set();
-        const allComments = [...appwriteRes.documents.map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
+        const allComments = [...(cloudComments || []).map(c=>normalizeComment(c)), ...localRes.map(c=>normalizeComment(c))]
             .filter(c => {
+                if (!c.content || !c.authorId) return false;
+                if (tombstonedIds.comments.has(c.$id)) return false;
                 if(seen.has(c.$id)) return false;
                 seen.add(c.$id);
                 return true;
@@ -362,13 +489,35 @@ async function loadComments() {
     }
 }
 
+async function loadCloudComments() {
+    try {
+        const headers = {};
+        if (currentUser?.appToken) headers['X-LG-Token'] = currentUser.appToken;
+        if (currentUser?.token) headers['X-Appwrite-Session'] = currentUser.token;
+        const response = await fetch(
+            `/api/list-comments?postId=${encodeURIComponent(postId)}`,
+            { headers }
+        );
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(result.error || '评论列表加载失败');
+        }
+
+        return Array.isArray(result.documents) ? result.documents : [];
+    } catch (error) {
+        console.warn('D1 评论通信故障:', error.message);
+        return null;
+    }
+}
+
 // ========== 🌟 智能化改写点 2：动态映射子集回复评论区 ==========
 function renderComments(comments) {
     if (!commentsList) return;
     if (!comments.length) {
         commentsList.innerHTML = `
             <div class="empty-comments">
-                <div class="empty-icon">💬</div>
+                <div class="empty-icon"></div>
                 <p>暂时还没有评论，快来抢占一楼沙发！</p>
             </div>
         `;
@@ -465,13 +614,23 @@ async function submitComment() {
     }
     
     try {
-        // 向 Appwrite 云端投递数据
-        await databases.createDocument(DATABASE_ID, COLLECTION_COMMENTS, 'unique()', {
-            postId: postId,
-            content: content,
-            authorId: currentUser.studentId,
-            authorName: `同学${currentUser.studentId.slice(-4)}`
+        const response = await fetch('/api/create-comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                postId,
+                content,
+                userId: currentUser.studentId,
+                sessionSecret: currentUser.token,
+                appToken: currentUser.appToken
+            })
         });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '回复提交失败');
+        }
         
         // 只有成功发送后，才清空文本框
         commentContent.value = '';
@@ -480,7 +639,7 @@ async function submitComment() {
         await loadComments();
     } catch (error) {
         console.error('回复投递异常失败:', error);
-        alert('回复提交失败，请重试');
+        alert(error.message || '回复提交失败，请重试');
     } finally {
         // 🔓 【解锁】：无论云端是成功还是报错（进入 finally），执行完后必须把锁解开，允许下一次正常发言
         if (submitCommentBtn) {
@@ -494,22 +653,38 @@ async function submitComment() {
 async function deleteComment(commentId) {
     if (!confirm('确定彻底撤销这条评论吗？')) return;
     try {
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_COMMENTS, commentId);
+        const response = await fetch('/api/delete-comment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                commentId,
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
+            })
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (!response.ok || !result.success) {
+            throw new Error(result.error || '删除失败');
+        }
+
         await loadComments();
     } catch (error) {
         console.error('执行删除回复操作失败:', error);
-        alert('删除失败，请稍后重试');
+        alert(error.message || '删除失败，请稍后重试');
     }
 }
 
 // ========== 调出并激活编辑主贴框 ==========
 function openEditModal() {
-    if (currentPost._isCold) return;
     const editTitleEl = document.getElementById('editTitle');
     const editContentEl = document.getElementById('editContent');
     if (editTitleEl) editTitleEl.value = currentPost.title;
     if (editContentEl) editContentEl.value = currentPost.content;
     if (editModal) editModal.style.display = 'flex';
+    resetEditPreviewState();
 }
 
 async function submitEdit() {
@@ -523,14 +698,25 @@ async function submitEdit() {
     
     try {
         const currentPostId = currentPost.$id || currentPost.id;
-        await databases.updateDocument(DATABASE_ID, COLLECTION_POSTS, currentPostId, {
-            title,
-            content,
-            editedAt: new Date().toISOString()
+        
+        const response = await fetch('/api/data', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                collection: 'posts',
+                documentId: currentPostId,
+                data: { title, content },
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
+            })
         });
         
-        if (editModal) editModal.style.display = 'none';
-        await loadPostDetail();
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '保存失败');
+        
+        // Ensure cache bust by reloading the page or fetching latest mod-log
+        location.reload();
     } catch (error) {
         console.error('修改帖子失败:', error);
         alert('编辑提交保存失败');
@@ -539,14 +725,25 @@ async function submitEdit() {
 
 // ========== 主贴删除模块弹窗 ==========
 function openDeleteModal() {
-    if (currentPost._isCold) return;
     if (deleteModal) deleteModal.style.display = 'flex';
 }
 
 async function confirmDelete() {
     try {
         const currentPostId = currentPost.$id || currentPost.id;
-        await databases.deleteDocument(DATABASE_ID, COLLECTION_POSTS, currentPostId);
+        const response = await fetch('/api/data', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                collection: 'posts',
+                documentId: currentPostId,
+                userId: currentUser?.studentId,
+                sessionSecret: currentUser?.token,
+                appToken: currentUser?.appToken
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '删除失败');
         alert('帖子已成功销毁');
         location.href = 'posts.html';
     } catch (error) {
@@ -567,14 +764,110 @@ function bindEvents() {
         });
     }
     
-    document.getElementById('closeEditModalBtn')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
-    document.getElementById('cancelEditBtn')?.addEventListener('click', () => { if (editModal) editModal.style.display = 'none'; });
+    document.getElementById('closeEditModalBtn')?.addEventListener('click', closeEditModal);
+    document.getElementById('cancelEditBtn')?.addEventListener('click', closeEditModal);
     document.getElementById('submitEditBtn')?.addEventListener('click', submitEdit);
+    document.getElementById('editTitle')?.addEventListener('input', updateEditPreview);
+    document.getElementById('editContent')?.addEventListener('input', updateEditPreview);
     
     document.getElementById('cancelDeleteBtn')?.addEventListener('click', () => { if (deleteModal) deleteModal.style.display = 'none'; });
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
     
-    if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) editModal.style.display = 'none'; });
+    if (editModal) editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
     if (deleteModal) deleteModal.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
     
+    document.getElementById('toggleEditPreviewBtn')?.addEventListener('click', toggleEditPreview);
+
+    document.getElementById('editPreviewPane')?.addEventListener('click', (e) => {
+        const backBtn = e.target.closest('[data-preview-back]');
+        if (!backBtn) return;
+        e.preventDefault();
+        closeEditMobilePreview();
+    });
+}
+
+
+function closeEditModal() {
+    closeEditMobilePreview();
+    if (editModal) editModal.style.display = 'none';
+}
+
+function updateEditPreview() {
+    const title = document.getElementById('editTitle')?.value || '';
+    const content = document.getElementById('editContent')?.value || '';
+    const pane = document.getElementById('editPreviewPane');
+    if (!pane) return;
+
+    pane.innerHTML = `
+        <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
+        <article class="preview-document">
+            <h1>${escapeHtml(title || '无标题')}</h1>
+            ${renderMarkdown(content || '*暂无内容*')}
+        </article>
+    `;
+}
+
+function resetEditPreviewState() {
+    const pane = document.getElementById('editPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+
+    pane?.classList.remove('mobile-preview-open', 'preview-hidden');
+    layout?.classList.remove('preview-closed');
+    updateEditPreview();
+}
+
+function closeEditMobilePreview() {
+    document.getElementById('editPreviewPane')?.classList.remove('mobile-preview-open');
+}
+
+function toggleEditPreview() {
+    const pane = document.getElementById('editPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+    if (!pane || !layout) return;
+
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    updateEditPreview();
+
+    if (isMobile) {
+        pane.classList.add('mobile-preview-open');
+    } else {
+        pane.classList.toggle('preview-hidden');
+        layout.classList.toggle('preview-closed');
+    }
+}
+
+async function toggleLike() {
+    const likeBtn = document.getElementById('likeBtn');
+    if (!likeBtn || !currentUser || !currentPost) return;
+    likeBtn.disabled = true;
+    try {
+        const token = currentUser.appToken || '';
+        const session = currentUser.token || '';
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['X-LG-Token'] = token;
+        if (session) headers['X-Appwrite-Session'] = session;
+        const response = await fetch('/api/like', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ postId: currentPost.$id || currentPost.id })
+        });
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || '点赞失败');
+        }
+        const data = await response.json();
+        currentPost.liked = data.liked;
+        currentPost.likes = data.likes;
+        likeBtn.innerHTML = `❤️ <span>${currentPost.likes || 0}</span>`;
+        if (currentPost.liked) {
+            likeBtn.classList.add('liked');
+        } else {
+            likeBtn.classList.remove('liked');
+        }
+    } catch (e) {
+        alert(e.message || '操作失败');
+    } finally {
+        likeBtn.disabled = false;
+    }
 }

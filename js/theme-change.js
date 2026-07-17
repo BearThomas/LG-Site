@@ -47,6 +47,7 @@
         }
 
         syncThemeButton(theme);
+        window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme } }));
     }
 
     function toggleTheme() {

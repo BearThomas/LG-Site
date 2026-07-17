@@ -6,7 +6,7 @@
     'use strict';
 
     // ========== API 配置 ==========
-    const API_BASE = '/.netlify/functions';
+    const API_BASE = '/api';
     
     // ========== DOM 元素 ==========
     const tabs = document.querySelectorAll('.login-tab');
@@ -59,7 +59,7 @@
         verifyModal.innerHTML = `
             <div class="verification-modal">
                 <div class="verification-header">
-                    <span>🏫 校园身份验证</span>
+                    <span>校园身份验证</span>
                     <button class="verification-close">&times;</button>
                 </div>
                 <div class="verification-body">
@@ -126,13 +126,17 @@
                 const response = await fetch(`${API_BASE}/verify-question`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'verify', answers })
+                    body: JSON.stringify({
+                        action: 'verify',
+                        answers,
+                        studentId: pendingRegistration?.studentId || ''
+                    })
                 });
                 const result = await response.json();
                 if (result.passed) {
                     showSuccess('验证通过！');
                     closeModal();
-                    onSubmit();
+                    onSubmit(result.verificationToken);
                 } else {
                     showError(result.message || '验证失败，请重试');
                 }
@@ -166,12 +170,12 @@
     }
 
     // ========== 执行注册 ==========
-    async function doRegister(studentId, password) {
+    async function doRegister(studentId, password, verificationToken) {
         try {
             const response = await fetch(`${API_BASE}/auth-register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentId, password })
+                body: JSON.stringify({ studentId, password, verificationToken })
             });
             const data = await response.json();
             if (response.ok) {
@@ -220,7 +224,7 @@
         loginBtn.textContent = '登录中...';
 
         try {
-            // 📡 【绝对同源通道】：只请求 Netlify 自己的云函数，0% 概率触发 CORS 跨域拦截
+            // 只请求同源 Cloudflare Pages Function，避免跨域登录状态分裂
             const response = await fetch(`${API_BASE}/auth-jwt`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -233,33 +237,21 @@
                 throw new Error(result.error || '登录验证未通过');
             }
 
-            console.log("🎉 [Auth Client] 后端全链路 Session 签发成功！正在锁入本地黑盒...");
+            
 
-            // 🔐 【安全沙箱】：注入解密钥匙
-            if (result.encryptKey) {
-                try {
-                    const keyBytes = new Uint8Array(result.encryptKey.match(/.{2}/g).map(b => parseInt(b, 16)));
-                    const cryptoKey = await crypto.subtle.importKey(
-                        "raw", keyBytes, { name: "AES-CBC" }, false, ["decrypt", "encrypt"]
-                    );
-                    window.secureKeyBlackBox = cryptoKey; 
-                    if (typeof localforage !== 'undefined') {
-                        await localforage.setItem('secure_gate_key', cryptoKey);
-                        console.log("🔒 硬件级不可逆解密钥匙已就位。");
-                    }
-                } catch (cryptoErr) {
-                    console.warn("⚠️ 注入解密沙箱受阻:", cryptoErr.message);
-                }
+            // 旧版曾把备份解密密钥下发到浏览器；D1 版已彻底移除该行为。
+            if (typeof localforage !== 'undefined') {
+                try { await localforage.removeItem('secure_gate_key'); } catch {}
             }
 
-            // 💾 【本地缓存】：将完整的实名快照和核心凭证写入本地，供全局顶栏第一毫秒秒开读取
+            // 本地只缓存公开资料和短期应用令牌；Appwrite 会话密钥保存在 HttpOnly Cookie。
             localStorage.setItem('campus_user', JSON.stringify({
                 userId: result.userId,
                 studentId: result.studentId,
                 name: result.name, 
-                avatar: '',
-                encryptKey: result.encryptKey,
-                token: result.sessionSecret, // 🔑 后端直接给到的核心安全长效钥匙
+                avatar: result.avatar || '',
+                appToken: result.appToken || '',
+                authVersion: 2,
                 loginTime: Date.now()
             }));
 
@@ -296,9 +288,10 @@
         if (password !== confirmPassword) { showError('两次密码不一致'); return; }
 
         const pendingData = { studentId, password };
+        pendingRegistration = pendingData;
         
-        await fetchAndShowVerification(() => {
-            doRegister(pendingData.studentId, pendingData.password);
+        await fetchAndShowVerification((verificationToken) => {
+            doRegister(pendingData.studentId, pendingData.password, verificationToken);
         });
     });
 

@@ -1,8 +1,25 @@
 {
+  "name": "lg-site-cloudflare-d1",
+  "version": "2.0.0",
+  "private": true,
+  "description": "LG-Site migrated from Appwrite Database to Cloudflare D1 while retaining Appwrite Auth.",
   "scripts": {
-    "docs:manifest": "node scripts/generate-docs-manifest.js"
+    "build": "node scripts/build-static.mjs",
+    "dev": "npm run build && node scripts/dev-pages.mjs",
+    "docs:manifest": "node scripts/generate-docs-manifest.js",
+    "d1:prepare": "node scripts/build-d1-import.mjs",
+    "d1:migrate:local": "node scripts/d1-cli.mjs migrate local",
+    "d1:migrate:remote": "node scripts/d1-cli.mjs migrate remote",
+    "d1:import:local": "node scripts/d1-cli.mjs import local",
+    "d1:import:remote": "node scripts/d1-cli.mjs import remote",
+    "d1:verify:remote": "node scripts/d1-cli.mjs verify remote",
+    "check": "node scripts/check-project.mjs && npm run build",
+    "d1:verify:local": "node scripts/d1-cli.mjs verify local"
   },
-  "dependencies": {
-    "node-appwrite": "^11.1.0"
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

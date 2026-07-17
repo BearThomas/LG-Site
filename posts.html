@@ -16,8 +16,12 @@
         </div>
         <div class="modal-body">
             <div class="form-group">
+                <label>板块标识 (英文缩写/拼音)</label>
+                <input type="text" id="boardId" placeholder="如：photo (仅限小写英文、数字和中划线)" maxlength="20">
+            </div>
+            <div class="form-group">
                 <label>板块名称</label>
-                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="30">
+                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="15">
             </div>
             <div class="form-group">
                 <label>板块简介</label>
@@ -30,11 +34,13 @@
                     <option value="custom">其他</option>
                 </select>
             </div>
-            <!-- <div class="form-group">
-                <label>
-                    <input type="checkbox" id="boardPublic" checked> 公开板块（所有人可见）
-                </label>
-            </div> -->
+            <div class="form-group">
+                <label>加入设置</label>
+                <select id="boardJoinType">
+                    <option value="0">🌍 公开（任何人直接加入并可见）</option>
+                    <option value="1">🔒 私密（需要版主审批同意）</option>
+                </select>
+            </div>
             <div class="form-actions">
                 <button class="cancel-btn" id="cancelBoardBtn">取消</button>
                 <button class="submit-btn" id="submitBoardBtn">创建</button>
@@ -43,6 +49,7 @@
     </div>
 </div>
 <body>
+        <div class="meteor-container"><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div></div>
     <!-- 导航栏 -->
     <div class="title-bar">
         <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo">
@@ -65,10 +72,10 @@
             <div class="user-logged-in" id="userLoggedIn" style="display: none;">
                 <span class="user-name" id="userName">同学</span>
                 <div class="user-dropdown">
-                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <button class="user-avatar" id="userAvatar"></button>
                     <div class="dropdown-menu" id="dropdownMenu">
                         <a href="./profile" id="profileLink"> 个人中心 </a>
-                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                        <a href="#" id="logoutBtn">退出登录</a>
                     </div>
                 </div>
             </div>
@@ -78,23 +85,26 @@
     <!-- 主内容区 -->
     <div class="posts-container">
         
-        <!-- 右侧：帖子流 -->
+        <!-- 帖子时间线 -->
         <main class="posts-main">
-            <!-- 当前板块信息 -->
-            <div class="current-board-header">
-                <div class="board-info">
-                    <h2 id="currentBoardName">主板块</h2>
-                    <span class="board-member-count" id="boardMemberCount">42 人</span>
+            <!-- 帖子墙精致卡片头部 -->
+            <div class="posts-wall-header">
+                <div class="wall-title-area">
+                    <h2 class="wall-title">帖子墙</h2>
+                    <p class="wall-subtitle">在这里，分享你的校园生活与心得感受 ✨</p>
                 </div>
-                <div class="board-actions">
-                    <button class="join-board-btn" id="joinBoardBtn" style="display: none;">➕ 加入板块</button>
-                    <button class="new-post-btn" id="newPostBtn">✏️ 发新帖</button>
+                <div class="wall-actions">
+                    <button class="new-post-btn-pill" id="newPostBtn">
+                        <span class="btn-icon">✍️</span>
+                        <span>发表新帖</span>
+                    </button>
                 </div>
             </div>
 
             <!-- 排序/筛选栏 -->
             <div class="posts-toolbar">
                 <div class="filter-options">
+                    <input type="text" id="searchInput" class="search-input" placeholder="搜索帖子..." style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; margin-right: 10px; font-size: 0.9rem;">
                     <select id="timeFilter" class="time-filter">
                         <option value="all">全部时间</option>
                         <option value="today">今天</option>
@@ -106,59 +116,206 @@
 
             <!-- 帖子列表 -->
             <div class="posts-list" id="postsList">
-                <!-- 动态加载帖子 -->
-                <div class="loading-state">加载中...</div>
+                <div class="feed-initial-loader" role="status">
+                    <span class="feed-initial-orbit"></span>
+                    
+                </div>
             </div>
 
-            <!-- 分页器 -->
-            <div class="pagination" id="pagination"></div>
+            <!-- 懒加载侦听器 -->
+            <div id="infiniteScrollAnchor" class="infinite-scroll-anchor" style="height: 20px; display: flex; justify-content: center; align-items: center; margin: 20px 0; color: #868e96;">
+                <!-- 动态显示加载状态 -->
+            </div>
         </main>
     </div>
 
     <!-- 发帖弹窗 -->
     <div class="modal-overlay" id="postModal" style="display: none;">
-        <div class="modal-container">
+        <div class="modal-container editor-modal-container">
             <div class="modal-header">
                 <h3>发新帖</h3>
-                <button class="modal-close" id="closeModalBtn">&times;</button>
+
+                <div class="editor-header-actions">
+                    <button
+                        type="button"
+                        class="preview-toggle-btn"
+                        id="togglePostPreviewBtn">
+                        预览
+                    </button>
+
+                    <button
+                        class="modal-close"
+                        id="closeModalBtn">
+                        &times;
+                    </button>
+                </div>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>标题</label>
-                    <input type="text" id="postTitle" placeholder="输入标题（最多100字）" maxlength="100">
+
+            <div class="modal-body editor-modal-body">
+
+                <div class="editor-layout">
+
+                    <!-- 左侧编辑器 -->
+                    <div class="editor-pane">
+
+                        <div class="form-group">
+                            <label>标题</label>
+                            <input
+                                type="text"
+                                id="postTitle"
+                                placeholder="输入标题（最多100字）"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group editor-content-group">
+                            <label>内容（支持 Markdown）</label>
+
+                            <textarea
+                                id="postContent"
+                                placeholder="# 一级标题
+
+        ## 二级标题
+
+        **加粗**
+        *斜体*
+
+        - 列表1
+        - 列表2
+
+        > 引用内容
+
+        ```js
+        console.log('Hello World');
+        ```"
+                                maxlength="10000"></textarea>
+                        </div>
+
+                    </div>
+
+                    <!-- 右侧预览 -->
+                    <div
+                        class="preview-pane markdown-body"
+                        id="postPreviewPane">
+
+                        <div class="preview-empty">
+
+                            <h2>Markdown 预览</h2>
+
+                            <p>
+                                在左侧输入内容后，
+                                这里会实时显示最终效果。
+                            </p>
+
+                        </div>
+
+                    </div>
+
                 </div>
-                <div class="form-group">
-                    <label>内容</label>
-                    <textarea id="postContent" placeholder="想说点什么..." rows="8" maxlength="10000"></textarea>
+
+                <!-- 发布板块 (已隐藏) -->
+                <div class="form-group" style="display: none;">
+                    <label>发布到板块</label>
+                    <div id="postBoardCheckboxes"></div>
                 </div>
+
+                <!-- 可见范围 -->
                 <div class="form-group">
                     <label>可见范围</label>
+
                     <select id="visibilityType">
-                        <option value="all">🌐 全员可见</option>
-                        <option value="specific">👤 指定学号可见</option>
+                        <option value="all">
+                            🌍 全员可见
+                        </option>
+
+                        <option value="specific">
+                            🔒 指定学号可见
+                        </option>
                     </select>
                 </div>
-                <!-- 指定学号区域（默认隐藏） -->
-                <div id="specificUsersArea" style="display: none;">
+
+                <!-- 指定用户区域 -->
+                <div id="specificUsersArea" style="display:none;">
+
                     <div class="form-group">
+
                         <label>添加可见用户</label>
+
                         <div class="user-search-box">
-                            <input type="text" id="userSearchInput" placeholder="输入学号搜索..." maxlength="12" autocomplete="off">
-                            <button type="button" class="search-btn" id="searchUserBtn">🔍</button>
+
+                            <input
+                                type="text"
+                                id="userSearchInput"
+                                placeholder="输入学号搜索..."
+                                maxlength="12"
+                                autocomplete="off">
+
+                            <button
+                                type="button"
+                                class="search-btn"
+                                id="searchUserBtn">
+
+                                <svg
+                                    fill="#000000"
+                                    width="15px"
+                                    height="15px"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+
+                                    <path d="M21.71,20.29,18,16.61A9,9,0,1,0,16.61,18l3.68,3.68a1,1,0,0,0,1.42,0A1,1,0,0,0,21.71,20.29ZM11,18a7,7,0,1,1,7-7A7,7,0,0,1,11,18Z"/>
+
+                                </svg>
+
+                            </button>
+
                         </div>
-                        <div class="search-results" id="searchResults" style="display: none;"></div>
+
+                        <div
+                            class="search-results"
+                            id="searchResults"
+                            style="display:none;">
+                        </div>
+
                     </div>
+
                     <div class="form-group">
-                        <label>已选用户 (<span id="selectedCount">0</span>人)</label>
-                        <div class="selected-users" id="selectedUsers">
-                            <div class="no-users-hint">尚未添加用户</div>
+
+                        <label>
+                            已选用户
+                            (<span id="selectedCount">0</span>人)
+                        </label>
+
+                        <div
+                            class="selected-users"
+                            id="selectedUsers">
+
+                            <div class="no-users-hint">
+                                尚未添加用户
+                            </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
                 <div class="form-actions">
-                    <button type="button" class="cancel-btn" id="cancelPostBtn">取消</button>
-                    <button type="button" class="submit-btn" id="submitPostBtn">发布</button>
+
+                    <button
+                        type="button"
+                        class="cancel-btn"
+                        id="cancelPostBtn">
+                        取消
+                    </button>
+
+                    <button
+                        type="button"
+                        class="submit-btn"
+                        id="submitPostBtn">
+                        发布
+                    </button>
+
                 </div>
+
             </div>
         </div>
     </div>
@@ -177,6 +334,7 @@
     </div>
 
     <script src="./js/theme-change.js"></script>
+    <script src="./js/dynamic-bg.js"></script>
     <script src="./js/nav-bar.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
     <script type="module" src="./js/posts.js"></script>

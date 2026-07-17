@@ -1,6 +1,8 @@
-// js/home.js
+// js/posts.js
 // Made by BearThomas 2026/5/31
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { markdownToPreview, renderMarkdown } from './markdown.js';
+import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -12,6 +14,7 @@ import {
     formatTime,
     getPostAuthorDisplay,
     loadUserDirectory,
+    normalizeUserId,
     renderAuthorAvatar,
     restoreSecureKey
 } from './shared.js';
@@ -25,8 +28,11 @@ const databases = new Databases(client);
 
 // ========== 全局状态 ==========
 let currentUser = null;
+let secureKeyReady = Promise.resolve(null);
 let currentBoard = { $id: 'main', name: '主板块' };
-let currentTimeFilter = 'all'; // 存储当前选中的时间：all, today, week, month
+let currentTimeFilter = 'all';
+let currentSearchKeyword = '';
+const searchInput = document.getElementById('searchInput'); // 存储当前选中的时间：all, today, week, month
 let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 10;
@@ -35,6 +41,12 @@ const PAGE_SIZE = 10;
 let userCache = {}; 
 let allUsers = null;
 let selectedUserIds = new Set(); 
+let postsSnapshot = [];
+
+
+// Custom Boards cache
+let customBoards = [];
+window.customBoardsCache = {};
 
 // DOM 元素
 const postsList = document.getElementById('postsList');
@@ -49,19 +61,27 @@ const cancelPostBtn = document.getElementById('cancelPostBtn');
 const submitPostBtn = document.getElementById('submitPostBtn');
 const postTitle = document.getElementById('postTitle');
 const postContent = document.getElementById('postContent');
-const postBoardSelect = document.getElementById('postBoardSelect');
+const postBoardCheckboxes = document.getElementById('postBoardCheckboxes');
 
 // ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
 
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     checkLoginStatus();
+    fetchAndApplyCacheVersion().catch(() => {});
     await loadBoards();
-    // 让全量用户快照提前注入内存缓存，确保渲染时有据可查
-    await loadAllUsers(); 
-    await loadPosts(); 
+    // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
+    await Promise.all([loadAllUsers(), loadPosts()]);
+    if (postsSnapshot.length) renderPostsSnapshotPage();
     bindEvents();
     openRequestedPostModal();
+    setupPullToRefresh({
+        onRefresh: async () => {
+            currentPage = 1;
+            await Promise.all([loadAllUsers(), loadPosts({ forceRefresh: true })]);
+            if (postsSnapshot.length) renderPostsSnapshotPage();
+        }
+    });
 });
 // ========== 登录状态 ==========
 function checkLoginStatus() {
@@ -72,6 +92,13 @@ function checkLoginStatus() {
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
+            if (currentUser.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                currentUser = null;
+                if (userNotLogin) userNotLogin.style.display = 'flex';
+                if (userLoggedIn) userLoggedIn.style.display = 'none';
+                return;
+            }
             if (userNotLogin) userNotLogin.style.display = 'none';
             if (userLoggedIn) userLoggedIn.style.display = 'flex';
             
@@ -91,23 +118,7 @@ function checkLoginStatus() {
 // ========== 加载板块基础数据 ==========
 async function loadBoards() {
     try {
-        if (currentBoard.$id === 'main') {
-            if (currentBoardName) currentBoardName.textContent = '主板块';
-            if (boardMemberCount) boardMemberCount.textContent = '42 人';
-        }
-
-        if (currentUser && currentBoard.$id !== 'main') {
-            try {
-                const userDoc = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, currentUser.studentId);
-                const isJoined = userDoc.joinedBoards?.includes(currentBoard.$id);
-                if (joinBoardBtn) joinBoardBtn.style.display = isJoined ? 'none' : 'inline-block';
-            } catch (e) {
-                if (joinBoardBtn) joinBoardBtn.style.display = 'none';
-            }
-        } else {
-            if (joinBoardBtn) joinBoardBtn.style.display = 'none';
-        }
-        
+        updateJoinButtonState();
     } catch (error) {
         console.error('加载板块基础数据失败:', error);
     }
@@ -140,186 +151,352 @@ async function loadAllUsers() {
         const directory = await loadUserDirectory(databases, Query);
         userCache = directory.userCache;
         allUsers = directory.allUsers;
-        console.log("🎯 内存字典当前全量钥匙箱:", userCache);
+        
     } catch (e) {
         console.error('❌ 全局用户身份快照彻底崩塌，原因:', e.message);
     }
 }
 
-// ========== 加载帖子（安全增强版） ==========
-async function loadPosts() {
+async function listAllPostDocuments(baseQueries, onFirstBatch) {
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        if (offset > 0) pageQueries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return documents;
+}
+
+// Fetch cold backup hashes + pending mods from D1
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
+let tombstonedIds = { posts: new Set(), comments: new Set(), confessions: new Set() };
+
+async function fetchAndApplyCacheVersion() {
     try {
-        if (!postsList) return;
+        const res = await fetch('/api/mod-log');
+        if (!res.ok) return;
+        const data = await res.json();
+        serverHashes = data.hashes || {};
+        pendingModifications = data.pendingModifications || [];
         
-        const currentUserId = currentUser?.studentId || 'guest';
-        const cacheKey = `cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`;
-        const localCache = localStorage.getItem(cacheKey);
-
-        let hasRenderedCache = false;
-
-        if (localCache) {
-            try {
-                const parsedCache = JSON.parse(localCache);
-                if (parsedCache && Array.isArray(parsedCache.data)) {
-                    renderPosts(parsedCache.data);
-                    totalPages = parsedCache.totalPages || 1;
-                    renderPagination();
-                    showCacheNotice('⚡ 正在展示本地缓存，正在同步云端最新内容...', 'waiting');
-                    hasRenderedCache = true;
-                }
-            } catch (err) {
-                console.warn('解析本地缓存异常:', err);
-            }
-        }
-
-        if (!hasRenderedCache) {
-            postsList.innerHTML = '<div class="loading-state">正在从云端安全拉取数据...</div>';
-        }
-
-        const queries = [
-            Query.equal('boardId', currentBoard.$id),
-            Query.limit(100),  
-            Query.orderDesc('$createdAt')
-        ];
+        const deletedPosts = pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
+        const deletedComments = pendingModifications.filter(m => m.collection === 'comments' && m.action === 'delete').map(m => m.item_id);
+        const deletedConfessions = pendingModifications.filter(m => m.collection === 'confessions' && m.action === 'delete').map(m => m.item_id);
         
-        if (currentPage > 1) {
-            queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
-        }
-
-        let hotPosts = [];
-        try {
-            const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, queries);
-            hotPosts = response.documents;
-        } catch (e) {
-            console.warn('热数据加载失败，仅显示冷备份:', e.message);
-        }
-
-        let coldPosts = [];
-        try {
-            const url = `./public/data-backups/posts.json`;
-            const backupRes = await fetch(url);
-            if (backupRes.ok) {
-                const backupData = await backupRes.json();
-                let docs = backupData.documents || backupData || [];
-                
-                if (backupData.encrypted) {
-                    docs = await Promise.all(docs.map(async post => {
-                        let targetGroups = [];
-                        if (post.targetGroups !== '已隐藏') {
-                            const decrypted = await decryptText(post.targetGroups);
-                            try {
-                                targetGroups = JSON.parse(decrypted || '[]');
-                            } catch {
-                                targetGroups = [];
-                            }
-                        }
-                        return {
-                            ...post,
-                            content: await decryptText(post.content),
-                            title: await decryptText(post.title),
-                            authorName: await decryptText(post.authorName),
-                            targetGroups: targetGroups
-                        };
-                    }));
-                }
-                coldPosts = docs;
-            }
-        } catch (e) {
-            console.log('无冷备份数据', e);
-        }
-
-        const normalizePost = (post, isCold) => {
-            return {
-                $id: post.$id || post.id,
-                $createdAt: post.$createdAt || post.createdAt,
-                $updatedAt: post.$updatedAt || post.updatedAt,
-                title: post.title,
-                content: post.content,
-                authorId: post.authorId,
-                authorName: post.authorName,
-                boardId: post.boardId,
-                viewPermission: post.viewPermission,
-                targetGroups: post.targetGroups || [],
-                status: post.status || 0,
-                _isCold: isCold
-            };
+        tombstonedIds = {
+            posts:       new Set(deletedPosts),
+            comments:    new Set(deletedComments),
+            confessions: new Set(deletedConfessions)
         };
+    } catch (e) {
+        console.warn('获取缓存版本失败（不影响主流程）:', e.message);
+    }
+}
 
-        const normalizedHot = hotPosts.map(p => normalizePost(p, false));
-        const normalizedCold = coldPosts.map(p => normalizePost(p, true));
-
-        const seen = new Set();
-        const allPosts = [...normalizedHot, ...normalizedCold].filter(post => {
-            if (seen.has(post.$id)) return false;
-            seen.add(post.$id);
-            return true;
-        });
-
-        allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
-
-        let filteredPosts = allPosts;
-        if (currentTimeFilter !== 'all') {
-            const now = new Date();
-            let startTime = new Date();
-
-            if (currentTimeFilter === 'today') {
-                startTime.setHours(0, 0, 0, 0);
-            } else if (currentTimeFilter === 'week') {
-                startTime.setDate(now.getDate() - 7);
-            } else if (currentTimeFilter === 'month') {
-                startTime.setDate(now.getDate() - 30);
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
             }
-
-            filteredPosts = allPosts.filter(post => 
-                new Date(post.$createdAt) >= startTime
-            );
         }
-
-        const visiblePosts = filteredPosts.filter(post => {
-            if (post.title === null || post.content === null) return false;
-            const viewPermission = Number(post.viewPermission) || 1;
-            const isAuthor = currentUser && currentUser.studentId && post.authorId && (post.authorId === currentUserId);
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
             
-            if (viewPermission === 1) return true;  
-            if (viewPermission === 8) return isAuthor; 
-            if (viewPermission === 4) {             
-                if (!currentUserId || currentUserId === 'guest') return false;
-                return (post.targetGroups || []).includes(currentUserId);
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) { }
             }
-            return false;
-        });
+            return data;
+        } catch (e) { continue; }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
 
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const paged = visiblePosts.slice(start, start + PAGE_SIZE);
-        totalPages = Math.ceil(visiblePosts.length / PAGE_SIZE) || 1;
-
-        renderPosts(paged);
-        renderPagination();
-
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: paged,
-            totalPages: totalPages,
-            updateAt: Date.now()
-        }));
-
-        if (hasRenderedCache) {
-            showCacheNotice('✨ 列表已成功同步至云端最新内容', 'success');
+async function fetchChunkWithCache(collection, filename, chunkHash) {
+    const cacheKeyData = `cache_data_${collection}_${filename}`;
+    const cacheKeyHash = `cache_hash_${collection}_${filename}`;
+    
+    if (chunkHash) {
+        if (localStorage.getItem(cacheKeyHash) === chunkHash) {
+            try { return JSON.parse(localStorage.getItem(cacheKeyData)); } catch(e) {}
         }
+    }
+    
+    try {
+        const res = await fetch(`./public/data-backups/${collection}/${filename}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        
+        if (chunkHash) {
+            try {
+                localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                localStorage.setItem(cacheKeyHash, chunkHash);
+            } catch(e) {}
+        }
+        return data;
+    } catch(e) {
+        return [];
+    }
+}
 
-    } catch (error) {
-        console.error('加载最新数据失败:', error);
-        const currentUserId = currentUser?.studentId || 'guest';
-        if (!localStorage.getItem(`cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p${currentPage}`)) {
-            postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
+async function loadChunkedCollection(collection) {
+    try {
+        const index = await fetchWithHashCache(collection, [`./public/data-backups/${collection}/index.json`]);
+        if (!index || !index.chunks) throw new Error('No index');
+        
+        const promises = index.chunks.map(chunk => {
+            return fetchChunkWithCache(collection, chunk.file, chunk.hash);
+        });
+        
+        const arrays = await Promise.all(promises);
+        let docs = arrays.flat();
+        return applyPendingModifications(collection, docs);
+    } catch(e) {
+        try {
+            const old = await fetchWithHashCache(collection, [`./public/data-backups/${collection}.json`, `./public/data-fallback/${collection}.json`]);
+            return applyPendingModifications(collection, old.documents || old || []);
+        } catch(e2) {
+            return [];
         }
     }
 }
 
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
+        }
+    }
+    return modified;
+}
+
+
+// ========== 瀑布流懒加载与按需加载支持 ==========
+let pendingChunks = [];
+let loadedColdPostsMap = new Map();
+let currentPostsPool = [];
+let allHotPosts = [];
+let coldIndex = null;
+let searchIndex = null;
+let infiniteObserver = null;
+let isFetchingChunk = false;
+let noMoreData = false;
+
+// 按需清理缓存的查询状态
+function resetPostsState() {
+    pendingChunks = [];
+    loadedColdPostsMap.clear();
+    currentPostsPool = [];
+    allHotPosts = [];
+    noMoreData = false;
+}
+
+// ========== 加载帖子（安全增强版） ==========
+async function loadPosts({ forceRefresh = false } = {}) {
+    try {
+        if (!postsList) return;
+        
+        if (forceRefresh) {
+            postsList.innerHTML = createListSkeleton('post', 5);
+            resetPostsState();
+        }
+
+        // 初始化元数据
+        if (!coldIndex) {
+            try { coldIndex = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']); } catch(e){}
+        }
+        if (!searchIndex) {
+            try { searchIndex = await fetchWithHashCache('posts_search', ['./public/data-backups/posts/search-index.json']); } catch(e){}
+        }
+
+        // 1. 并发获取最新热数据
+        const queries = [ Query.orderDesc('$createdAt') ];
+        allHotPosts = await listAllPostDocuments(queries, firstBatch => {});
+
+        // 2. 准备懒加载队列（如果冷备存在）
+        if (coldIndex && coldIndex.chunks) {
+            pendingChunks = coldIndex.chunks.map(c => c.file);
+        }
+
+        recomputePostsPool();
+        initInfiniteScroll();
+
+    } catch (error) {
+        console.error('加载最新数据失败:', error);
+        postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
+    }
+}
+
+function recomputePostsPool() {
+    const currentUserId = currentUser?.studentId || 'guest';
+    
+    const normalizePost = (p, isCold) => ({
+        ...p,
+        $id: p.$id || p.id,
+        $createdAt: p.$createdAt || p.created_at || p.createdAt,
+        title: p.title,
+        content: p.content,
+        boardId: p.boardId || p.board_id,
+        authorId: p.authorId || p.author_id,
+        authorName: p.authorName || p.author_name,
+        targetGroups: typeof p.targetGroups === 'string' ? JSON.parse(p.targetGroups) : (p.targetGroups || []),
+        status: p.status || 0,
+        viewPermission: p.viewPermission,
+        _isCold: isCold
+    });
+
+    const filterFn = (post) => {
+        if (tombstonedIds.posts.has(post.$id)) return false;
+        const postBoard = post.boardId || 'main';
+        if (postBoard !== currentBoard.$id) return false;
+        
+        // time filter
+        if (currentTimeFilter !== 'all') {
+            const now = new Date();
+            let startTime = new Date();
+            if (currentTimeFilter === 'today') startTime.setHours(0,0,0,0);
+            else if (currentTimeFilter === 'week') startTime.setDate(now.getDate()-7);
+            else if (currentTimeFilter === 'month') startTime.setDate(now.getDate()-30);
+            if (new Date(post.$createdAt) < startTime) return false;
+        }
+
+        // search filter
+        if (currentSearchKeyword) {
+            const kw = currentSearchKeyword.toLowerCase();
+            const titleMatch = post.title && post.title.toLowerCase().includes(kw);
+            const authorMatch = post.authorName && post.authorName.toLowerCase().includes(kw);
+            const contentMatch = post.content && post.content.toLowerCase().includes(kw);
+            if (!titleMatch && !authorMatch && !contentMatch) return false;
+        }
+
+        // permission filter
+        const viewPermission = Number(post.viewPermission) || 1;
+        if (viewPermission === 8) {
+            const isAuthor = currentUser && normalizeUserId(post.authorId) === normalizeUserId(currentUserId);
+            if (!isAuthor) return false;
+        }
+        if (viewPermission === 4) {
+            if (currentUserId === 'guest') return false;
+            if (!(post.targetGroups || []).includes(currentUserId)) return false;
+        }
+        
+        return true;
+    };
+    
+    let pool = [];
+    pool.push(...allHotPosts.map(p => normalizePost(p, false)).filter(filterFn));
+    
+    // 动态调整 lazy load 的 chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
+    if (currentSearchKeyword && searchIndex && coldIndex && coldIndex.chunks) {
+        const kw = currentSearchKeyword.toLowerCase();
+        const hitChunks = new Set();
+        for (const meta of searchIndex) {
+            if (meta.title && meta.title.toLowerCase().includes(kw) || 
+                meta.authorName && meta.authorName.toLowerCase().includes(kw)) {
+                hitChunks.add('chunk-' + meta.c + '.json');
+            }
+        }
+        // 更新尚未加载的 chunks（剔除没命中的）
+        pendingChunks = pendingChunks.filter(file => hitChunks.has(file));
+    }
+    
+    for (const chunk of loadedColdPostsMap.values()) {
+        pool.push(...chunk.map(p => normalizePost(p, true)).filter(filterFn));
+    }
+    
+    pool = applyPendingModifications('posts', pool);
+    pool.sort((a,b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    
+    currentPostsPool = pool;
+    renderPosts(currentPostsPool);
+}
+
+function initInfiniteScroll() {
+    const anchor = document.getElementById('infiniteScrollAnchor');
+    if (!anchor) return;
+    
+    if (infiniteObserver) infiniteObserver.disconnect();
+    
+    infiniteObserver = new IntersectionObserver(async (entries) => {
+        if (entries[0].isIntersecting && !isFetchingChunk && !noMoreData) {
+            await loadNextChunk();
+        }
+    }, { rootMargin: '400px' }); // 提前 400px 触发
+    
+    infiniteObserver.observe(anchor);
+}
+
+async function loadNextChunk() {
+    const anchor = document.getElementById('infiniteScrollAnchor');
+    
+    if (pendingChunks.length === 0) {
+        noMoreData = true;
+        if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
+        return;
+    }
+    
+    isFetchingChunk = true;
+    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载历史档案...</span>';
+    
+    const chunkFile = pendingChunks.shift();
+    try {
+        const chunkObj = coldIndex && coldIndex.chunks ? coldIndex.chunks.find(c => c.file === chunkFile) : null;
+        let chunkData = await fetchChunkWithCache('posts', chunkFile, chunkObj ? chunkObj.hash : null);
+        loadedColdPostsMap.set(chunkFile, chunkData);
+        recomputePostsPool();
+    } catch(e) {
+        console.warn('获取区块失败', chunkFile, e);
+    }
+    
+    isFetchingChunk = false;
+    if (anchor && !noMoreData) anchor.innerHTML = ''; 
+}
+
+
+
 // ========== 🌟 智能化改写：不信任数据源渲染 ==========
+
 function renderPosts(posts) {
     if (!postsList) return;
     if (!posts.length) {
-        postsList.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><p>暂无帖子...</p></div>`;
+        postsList.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>暂无帖子...</p></div>`;
         return;
     }
     
@@ -351,11 +528,11 @@ function renderPosts(posts) {
                     </div>
                 </div>
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
-                <div class="post-content-preview">${escapeHtml((post.content || '').slice(0, 150))}${post.content?.length > 150 ? '...' : ''}</div>
+                <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content, 150))}</div>
                 <div class="post-footer">
-                    <span class="post-stat">👍 0</span>
-                    <span class="post-stat">💬 0</span>
-                    <span class="post-stat">👁️ 0</span>
+                    <span class="post-stat"> 0</span>
+                    <span class="post-stat"> 0</span>
+                    <span class="post-stat"> 0</span>
                 </div>
             </div>
         `;
@@ -402,7 +579,11 @@ function renderPagination() {
             } else {
                 return;
             }
-            loadPosts();
+            if (postsSnapshot.length) {
+                renderPostsSnapshotPage();
+            } else {
+                loadPosts();
+            }
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -447,6 +628,8 @@ async function submitPost() {
         targetUsers = Array.from(selectedUserIds);
     }
     
+    const boardIds = ['main'];
+    
     // 🔒 通过同步表单校验后，立即将发布按钮锁死，文字替换为加载状态
     if (submitPostBtn) {
         submitPostBtn.disabled = true;
@@ -456,14 +639,16 @@ async function submitPost() {
     const user = JSON.parse(localStorage.getItem('campus_user'));
     
     try {
-        const response = await fetch('/.netlify/functions/create-post', {
+        const response = await fetch('/api/create-post', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 userId: `student_${user.studentId}`,
-                boardId: currentBoard.$id,
+                sessionSecret: user.token || '',
+                appToken: user.appToken || '',
+                boardIds, // Multi-board posting array
                 title,
                 content,
                 viewPermission,
@@ -474,7 +659,7 @@ async function submitPost() {
         if (response.ok) {
             alert('发布成功！');
             const currentUserId = currentUser?.studentId || 'guest';
-            localStorage.removeItem(`cache_posts_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p1`);
+            localStorage.removeItem(`cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p1`);
             
             selectedUserIds.clear();
             renderSelectedUsers();
@@ -505,8 +690,8 @@ function openModal() {
         return;
     }
     
-    if (postBoardSelect) {
-        postBoardSelect.innerHTML = `<option value="main" selected>主板块</option>`;
+    if (postBoardCheckboxes) {
+        renderPostBoardCheckboxes();
     }
     
     if (postModal) postModal.style.display = 'flex';
@@ -521,9 +706,12 @@ function openModal() {
     
     const specificUsersArea = document.getElementById('specificUsersArea');
     if (specificUsersArea) specificUsersArea.style.display = 'none';
+
+    resetPostPreviewState();
 }
 
 function closeModal() {
+    closePostMobilePreview();
     if (postModal) postModal.style.display = 'none';
 }
 
@@ -546,6 +734,13 @@ function bindEvents() {
     if (cancelPostBtn) cancelPostBtn.addEventListener('click', closeModal);
     if (submitPostBtn) submitPostBtn.addEventListener('click', submitPost);
     
+    // Custom Board Events
+    document.getElementById('createBoardBtn')?.addEventListener('click', openCreateBoardModal);
+    document.getElementById('closeBoardModal')?.addEventListener('click', closeCreateBoardModal);
+    document.getElementById('cancelBoardBtn')?.addEventListener('click', closeCreateBoardModal);
+    document.getElementById('submitBoardBtn')?.addEventListener('click', submitCreateBoard);
+    if (joinBoardBtn) joinBoardBtn.addEventListener('click', handleJoinLeaveClick);
+    
     if (postModal) {
         postModal.addEventListener('click', (e) => {
             if (e.target === postModal) closeModal();
@@ -560,7 +755,16 @@ function bindEvents() {
             loadPosts(); 
         });
     }
-    
+    postTitle?.addEventListener('input', updatePostPreview);
+    postContent?.addEventListener('input', updatePostPreview);
+    document.getElementById('togglePostPreviewBtn')?.addEventListener('click', togglePostPreview);
+
+    document.getElementById('postPreviewPane')?.addEventListener('click', (e) => {
+        const backBtn = e.target.closest('[data-preview-back]');
+        if (!backBtn) return;
+        e.preventDefault();
+        closePostMobilePreview();
+    });
 }
 
 // ========== 可见范围管理时间监听 ==========
@@ -668,4 +872,363 @@ function renderSelectedUsers() {
             removeUser(this.dataset.studentId);
         });
     });
+}
+// for update
+
+function updatePostPreview() {
+    const title = postTitle?.value || '';
+    const content = postContent?.value || '';
+    const pane = document.getElementById('postPreviewPane');
+    if (!pane) return;
+
+    pane.innerHTML = `
+        <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
+        <article class="preview-document">
+            <h1>${escapeHtml(title || '无标题')}</h1>
+            ${renderMarkdown(content || '*暂无内容*')}
+        </article>
+    `;
+}
+
+function resetPostPreviewState() {
+    const pane = document.getElementById('postPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+
+    pane?.classList.remove('mobile-preview-open', 'preview-hidden');
+    layout?.classList.remove('preview-closed');
+    updatePostPreview();
+}
+
+function closePostMobilePreview() {
+    document.getElementById('postPreviewPane')?.classList.remove('mobile-preview-open');
+}
+
+function togglePostPreview() {
+    const pane = document.getElementById('postPreviewPane');
+    const layout = pane?.closest('.editor-layout');
+    if (!pane || !layout) return;
+
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+
+    updatePostPreview();
+
+    if (isMobile) {
+        pane.classList.add('mobile-preview-open');
+    } else {
+        pane.classList.toggle('preview-hidden');
+        layout.classList.toggle('preview-closed');
+    }
+}
+
+// ========== Custom Boards Management Logic ==========
+async function fetchCustomBoards() {
+    try {
+        const res = await fetch('/api/board');
+        if (res.ok) {
+            const data = await res.json();
+            customBoards = data.boards || [];
+            window.customBoardsCache = {};
+            for (const b of customBoards) {
+                window.customBoardsCache[b.id] = b;
+            }
+        }
+    } catch (e) {
+        console.warn('获取自定义板块失败:', e);
+    }
+}
+
+function renderBoardsSidebar() {
+    const container = document.getElementById('boardsListContainer');
+    if (!container) return;
+
+    const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
+    joinedSet.add('main');
+
+    const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
+        ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
+        : null;
+    if (classBoardId) joinedSet.add(classBoardId);
+
+    let html = '';
+    
+    // 1. Main Board
+    const mainActive = currentBoard.$id === 'main' ? 'active' : '';
+    html += `
+        <div class="board-item ${mainActive}" data-board-id="main">
+            <span class="board-icon">🏠</span>
+            <span class="board-name">主板块</span>
+        </div>
+    `;
+
+    // 2. Class Board (if any)
+    if (classBoardId) {
+        const classActive = currentBoard.$id === classBoardId ? 'active' : '';
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        html += `
+            <div class="board-item ${classActive}" data-board-id="${classBoardId}">
+                <span class="board-icon">🎓</span>
+                <span class="board-name">${className}</span>
+            </div>
+        `;
+    }
+
+    // 3. Custom Boards
+    for (const b of customBoards) {
+        const isJoined = joinedSet.has(b.id);
+        const active = currentBoard.$id === b.id ? 'active' : '';
+        html += `
+            <div class="board-item ${active}" data-board-id="${b.id}">
+                <span class="board-icon">💬</span>
+                <span class="board-name">${escapeHtml(b.name)}</span>
+                ${isJoined ? '' : '<span style="font-size:10px; color:#94a3b8; margin-left:4px;">未加入</span>'}
+            </div>
+        `;
+    }
+
+    // 4. Mobile Create Board entry at the bottom of the list
+    if (currentUser) {
+        html += `
+            <div class="board-item create-board-trigger-item" style="border: 1px dashed #3b82f6; background: rgba(59, 130, 246, 0.05); margin-top: 10px;">
+                <span class="board-icon" style="color:#3b82f6;">➕</span>
+                <span class="board-name" style="color:#3b82f6; font-weight:600;">新建板块</span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.board-item:not(.create-board-trigger-item)').forEach(el => {
+        el.addEventListener('click', () => {
+            const boardId = el.getAttribute('data-board-id');
+            switchBoard(boardId);
+        });
+    });
+
+    container.querySelector('.create-board-trigger-item')?.addEventListener('click', openCreateBoardModal);
+}
+
+async function switchBoard(boardId) {
+    if (currentBoard.$id === boardId) return;
+
+    if (boardId === 'main') {
+        currentBoard = { $id: 'main', name: '主板块' };
+    } else if (boardId.startsWith('class_')) {
+        const match = boardId.match(/^class_(\d{4})_(\d+)$/);
+        const name = match ? `${match[1]}届${match[2]}班` : boardId;
+        currentBoard = { $id: boardId, name };
+    } else {
+        const b = customBoards.find(x => x.id === boardId);
+        currentBoard = { $id: boardId, name: b ? b.name : boardId, _custom: b };
+    }
+
+    if (currentBoardName) {
+        currentBoardName.textContent = currentBoard.name;
+    }
+    if (boardMemberCount) {
+        if (currentBoard.$id === 'main') {
+            boardMemberCount.textContent = '';
+        } else if (currentBoard._custom) {
+            boardMemberCount.textContent = `${currentBoard._custom.memberCount} 成员`;
+        } else {
+            boardMemberCount.textContent = '';
+        }
+    }
+
+    updateJoinButtonState();
+    currentPage = 1;
+    renderBoardsSidebar();
+    await loadPosts({ forceRefresh: true });
+}
+
+function updateJoinButtonState() {
+    if (!joinBoardBtn) return;
+    
+    if (currentBoard.$id === 'main' || currentBoard.$id.startsWith('class_') || !currentUser) {
+        joinBoardBtn.style.display = 'none';
+        return;
+    }
+
+    const joinedBoards = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+    const isJoined = joinedBoards.includes(currentBoard.$id);
+
+    joinBoardBtn.style.display = 'inline-block';
+    if (isJoined) {
+        joinBoardBtn.textContent = '退出板块';
+    } else {
+        joinBoardBtn.textContent = '加入板块';
+    }
+}
+
+async function handleJoinLeaveClick() {
+    if (!currentUser || !currentBoard._custom) return;
+    const joinedBoards = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+    const isJoined = joinedBoards.includes(currentBoard.$id);
+    const action = isJoined ? 'leave' : 'join';
+
+    try {
+        const res = await fetch('/api/board-membership', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-LG-Token': currentUser.appToken || ''
+            },
+            body: JSON.stringify({ boardId: currentBoard.$id, action })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json();
+            alert(errData.error || '操作失败');
+            return;
+        }
+
+        const data = await res.json();
+        if (action === 'join') {
+            if (data.pending) {
+                alert(data.message || '申请已提交，等待主理人审核');
+                return;
+            }
+            joinedBoards.push(currentBoard.$id);
+            currentBoard._custom.memberCount++;
+        } else {
+            const idx = joinedBoards.indexOf(currentBoard.$id);
+            if (idx > -1) joinedBoards.splice(idx, 1);
+            currentBoard._custom.memberCount = Math.max(0, currentBoard._custom.memberCount - 1);
+        }
+
+        currentUser.joinedBoards = joinedBoards;
+        if (currentUser.profile) currentUser.profile.joinedBoards = joinedBoards;
+        localStorage.setItem('campus_user', JSON.stringify(currentUser));
+
+        updateJoinButtonState();
+        renderBoardsSidebar();
+        
+        if (boardMemberCount) {
+            boardMemberCount.textContent = `${currentBoard._custom.memberCount} 成员`;
+        }
+    } catch (e) {
+        alert('网络请求失败');
+    }
+}
+
+function openCreateBoardModal() {
+    if (!currentUser) {
+        alert('请登录后创建板块');
+        return;
+    }
+    const modal = document.getElementById('createBoardModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeCreateBoardModal() {
+    const modal = document.getElementById('createBoardModal');
+    if (modal) modal.style.display = 'none';
+    const bid = document.getElementById('boardId');
+    if (bid) bid.value = '';
+    const bname = document.getElementById('boardName');
+    if (bname) bname.value = '';
+    const bdesc = document.getElementById('boardDesc');
+    if (bdesc) bdesc.value = '';
+}
+
+async function submitCreateBoard() {
+    const id = document.getElementById('boardId')?.value.trim().toLowerCase();
+    const name = document.getElementById('boardName')?.value.trim();
+    const description = document.getElementById('boardDesc')?.value.trim();
+
+    if (!id || !name) {
+        alert('板块标识和板块名称不能为空');
+        return;
+    }
+
+    try {
+        const joinType = Number(document.getElementById('boardJoinType')?.value || 0);
+
+        const res = await fetch('/api/board', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-LG-Token': currentUser?.appToken || ''
+            },
+            body: JSON.stringify({ id, name, description, joinType })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.error || '创建板块失败');
+            return;
+        }
+
+        customBoards.push(data.board);
+        window.customBoardsCache[data.board.id] = data.board;
+
+        if (currentUser) {
+            const owned = currentUser.ownedBoards || currentUser.profile?.ownedBoards || [];
+            const joined = currentUser.joinedBoards || currentUser.profile?.joinedBoards || [];
+            if (!owned.includes(id)) owned.push(id);
+            if (!joined.includes(id)) joined.push(id);
+            currentUser.ownedBoards = owned;
+            currentUser.joinedBoards = joined;
+            if (currentUser.profile) {
+                currentUser.profile.ownedBoards = owned;
+                currentUser.profile.joinedBoards = joined;
+            }
+            localStorage.setItem('campus_user', JSON.stringify(currentUser));
+        }
+
+        closeCreateBoardModal();
+        renderBoardsSidebar();
+        await switchBoard(id);
+    } catch (e) {
+        alert('网络错误，请稍后重试');
+    }
+}
+
+function renderPostBoardCheckboxes() {
+    const container = document.getElementById('postBoardCheckboxes');
+    if (!container) return;
+
+    const joinedSet = new Set(currentUser ? (currentUser.joinedBoards || currentUser.profile?.joinedBoards || []) : ['main']);
+    joinedSet.add('main');
+
+    const classBoardId = currentUser?.studentId && /^\d{6,12}$/.test(currentUser.studentId)
+        ? `class_${currentUser.studentId.slice(0, 4)}_${currentUser.studentId.slice(4, 6)}`
+        : null;
+    if (classBoardId) joinedSet.add(classBoardId);
+
+    let html = '';
+    
+    const isDefaultChecked = (bId) => bId === currentBoard.$id;
+
+    // 1. Main board checkbox
+    html += `
+        <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+            <input type="checkbox" name="postBoards" value="main" ${isDefaultChecked('main') ? 'checked' : ''}>
+            <span>主板块</span>
+        </label>
+    `;
+
+    // 2. Class board checkbox
+    if (classBoardId) {
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        html += `
+            <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+                <input type="checkbox" name="postBoards" value="${classBoardId}" ${isDefaultChecked(classBoardId) ? 'checked' : ''}>
+                <span>${className}</span>
+            </label>
+        `;
+    }
+
+    // 3. Custom board checkboxes
+    for (const b of customBoards) {
+        if (joinedSet.has(b.id)) {
+            html += `
+                <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
+                    <input type="checkbox" name="postBoards" value="${b.id}" ${isDefaultChecked(b.id) ? 'checked' : ''}>
+                    <span>${escapeHtml(b.name)}</span>
+                </label>
+            `;
+        }
+    }
+
+    container.innerHTML = html;
 }

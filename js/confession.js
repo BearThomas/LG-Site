@@ -1,4 +1,5 @@
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@14.0.0/+esm';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
+import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
@@ -19,10 +20,86 @@ const databases = new Databases(client);
 
 // 全局状态
 let currentUser = null;
+let secureKeyReady = Promise.resolve(null);
 let currentSort = 'latest';
 let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 15;
+let confessionsSnapshot = [];
+
+// Fetch cold backup hashes + pending mods from D1
+let serverHashes = { posts: null, comments: null, confessions: null };
+let pendingModifications = [];
+let tombstonedIds = { confessions: new Set() };
+
+async function loadTombstones() {
+    try {
+        const res = await fetch('/api/mod-log');
+        if (res.ok) {
+            const data = await res.json();
+            serverHashes = data.hashes || {};
+            pendingModifications = data.pendingModifications || [];
+            
+            const deletedConfessions = pendingModifications.filter(m => m.collection === 'confessions' && m.action === 'delete').map(m => m.item_id);
+            tombstonedIds.confessions = new Set(deletedConfessions);
+        }
+    } catch (e) {
+        console.warn('获取 mod-log 失败', e);
+    }
+}
+
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = serverHashes[collection];
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try {
+                    return JSON.parse(cachedData);
+                } catch (e) {}
+            }
+        }
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) { }
+            }
+            return data;
+        } catch (e) { continue; }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    const mods = pendingModifications.filter(m => m.collection === collection);
+    
+    for (const mod of mods) {
+        const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
+        if (idx !== -1) {
+            if (mod.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (mod.action === 'edit' && mod.payload) {
+                modified[idx] = { ...modified[idx], ...mod.payload };
+            }
+        }
+    }
+    return modified;
+}
 
 // DOM 元素
 const confessionContent = document.getElementById('confessionContent');
@@ -32,16 +109,18 @@ const confessionList = document.getElementById('confessionList');
 const pagination = document.getElementById('pagination');
 const loginTip = document.getElementById('loginTip');
 
-// 弹窗
-const reportModal = document.getElementById('reportModal');
-let pendingReportId = null;
-
 // ========== 页面加载初始化 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-    await restoreSecureKey();
+    secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     await loadConfessions(); // ⚡ 开启双源缓存管道
     bindEvents();
+    setupPullToRefresh({
+        onRefresh: async () => {
+            currentPage = 1;
+            await loadConfessions({ forceRefresh: true });
+        }
+    });
 });
 
 // ========== 登录状态 ==========
@@ -51,7 +130,21 @@ function checkLoginStatus() {
     const userLoggedIn = document.getElementById('userLoggedIn');
     
     if (userData) {
-        currentUser = JSON.parse(userData);
+        try {
+            currentUser = JSON.parse(userData);
+        } catch {
+            localStorage.removeItem('campus_user');
+            currentUser = null;
+        }
+        if (!currentUser || currentUser.authVersion !== 2) {
+            localStorage.removeItem('campus_user');
+            currentUser = null;
+            if (userNotLogin) userNotLogin.style.display = 'flex';
+            if (userLoggedIn) userLoggedIn.style.display = 'none';
+            if (loginTip) loginTip.style.display = 'block';
+            if (publishBtn) publishBtn.disabled = true;
+            return;
+        }
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
         
@@ -69,6 +162,7 @@ function checkLoginStatus() {
         if (publishBtn) publishBtn.disabled = true;
     }
 }
+
 // ========== 顶部缓存状态同步条控制 ==========
 function showCacheNotice(message, type = 'waiting') {
     if (!confessionList) return;
@@ -91,15 +185,36 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
+async function listAllConfessionDocuments(baseQueries, onFirstBatch) {
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
+
+    while (true) {
+        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        if (offset > 0) pageQueries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return documents;
+}
+
 // ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
-async function loadConfessions() {
+async function loadConfessions({ forceRefresh = false } = {}) {
     try {
         if (!confessionList) return;
 
         const currentUserId = currentUser?.studentId || 'guest';
         // 🚀 构建隔离防污染的唯一 Cache Key [用户+排序策略+页码]
-        const cacheKey = `cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`;
-        const localCache = localStorage.getItem(cacheKey);
+        const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
+        const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
 
         let hasRenderedCache = false;
 
@@ -108,11 +223,13 @@ async function loadConfessions() {
             try {
                 const parsedCache = JSON.parse(localCache);
                 if (parsedCache && Array.isArray(parsedCache.data)) {
-                    renderConfessions(parsedCache.data);
+                    await loadTombstones();
+                    const filtered = parsedCache.data.filter(c => !tombstonedIds.confessions.has(c.$id || c.id));
+                    renderConfessions(filtered);
                     totalPages = parsedCache.totalPages || 1;
                     renderPagination();
                     
-                    showCacheNotice('⚡ 正在展示本地缓存，正在唤醒最新的心动记忆...', 'waiting');
+                    showCacheNotice(' 正在展示本地缓存，正在唤醒最新的心动记忆...', 'waiting');
                     hasRenderedCache = true;
                 }
             } catch (err) {
@@ -121,13 +238,12 @@ async function loadConfessions() {
         }
 
         // 若无任何缓存，则退回传统骨架加载提示
-        if (!hasRenderedCache) {
-            confessionList.innerHTML = '<div class="loading-state">💗 正在装载心动记忆...</div>';
+        if (!hasRenderedCache && !forceRefresh) {
+            confessionList.innerHTML = createListSkeleton('confession', 5);
         }
 
-        // 【步骤 B】：后台静默并发拉取 Appwrite (热) + 备份 (冷)
+        // 【步骤 B】：后台静默并发拉取 D1 API（实时）+ 脱敏快照（降级）
         const queries = [
-            Query.limit(PAGE_SIZE),
             Query.equal('status', 0)
         ];
         
@@ -137,38 +253,46 @@ async function loadConfessions() {
             queries.push(Query.orderDesc('likes'));
         }
         
-        if (currentPage > 1) {
-            queries.push(Query.offset((currentPage - 1) * PAGE_SIZE));
-        }
-
-        const [appwriteRes, localRes] = await Promise.all([
-            databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, queries).catch(err => {
-                console.warn('⚠️ 实时表白墙读取失败，降级等待冷备份:', err.message);
-                return { documents: [] };
-            }),
-            (async () => {
-                try {
-                    const url = `./public/data-backups/confessions.json`;
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const data = await res.json();
-                        let docs = data.documents || data || [];
-                        
-                        if (data.encrypted) {
-                            docs = await Promise.all(docs.map(async doc => ({
-                                ...doc,
-                                content: await decryptText(doc.content),
-                                authorName: await decryptText(doc.authorName)
-                            })));
-                        }
-                        return docs;
+        let appwriteRes = { documents: [] };
+        let localRes = [];
+        await loadTombstones();
+        try {
+            const [d1Res, coldRes] = await Promise.allSettled([
+                listAllConfessionDocuments(queries, firstBatch => {
+                    if (hasRenderedCache || currentPage !== 1) return;
+                    const quickItems = firstBatch.filter(item =>
+                        item.content != null && Number(item.status || 0) === 0 && !tombstonedIds.confessions.has(item.$id || item.id)
+                    ).slice(0, PAGE_SIZE);
+                    if (quickItems.length) {
+                        renderConfessions(quickItems);
+                        showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
+                        hasRenderedCache = true;
                     }
-                } catch (e) {
-                    console.log('无表白墙冷备份数据');
-                }
-                return [];
-            })()
-        ]);
+                }),
+                (async () => {
+                    let docs = [];
+                    const index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
+                    if (index && index.chunks) {
+                        const promises = index.chunks.map(chunk => {
+                            // Reuse posts.js fetchChunkWithCache logic implicitly or just use fetchWithHashCache for simplicity
+                            return fetchWithHashCache(`confessions_${chunk.file}`, [`./public/data-backups/confessions/${chunk.file}`]);
+                        });
+                        const arrays = await Promise.all(promises);
+                        docs = arrays.flat();
+                    }
+                    return applyPendingModifications('confessions', docs);
+                })()
+            ]);
+            
+            if (d1Res.status === 'fulfilled') {
+                appwriteRes.documents = d1Res.value || [];
+            }
+            if (coldRes.status === 'fulfilled') {
+                localRes = coldRes.value || [];
+            }
+        } catch (error) {
+            console.warn('读取表白墙数据失败:', error.message);
+        }
 
         // 统一格式化归一处理
         const normalizeConfession = (doc) => {
@@ -190,6 +314,7 @@ async function loadConfessions() {
         const seen = new Set();
         const allConfessions = [...normalizedHot, ...normalizedCold].filter(c => {
             if (seen.has(c.$id) || c.status !== 0) return false;
+            if (tombstonedIds.confessions.has(c.$id)) return false;
             seen.add(c.$id);
             return true;
         });
@@ -203,33 +328,41 @@ async function loadConfessions() {
             }
         });
 
-        // 统一计算分页切片
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const paged = allConfessions.slice(start, start + PAGE_SIZE);
-        totalPages = Math.ceil(allConfessions.length / PAGE_SIZE) || 1;
-
-        // 【步骤 C】：将最终清洗过的纯净序列覆盖写入视图，并重刷本地缓存
-        renderConfessions(paged);
-        renderPagination();
-
-        localStorage.setItem(cacheKey, JSON.stringify({
-            data: paged,
-            totalPages: totalPages,
-            updateAt: Date.now()
-        }));
+        confessionsSnapshot = allConfessions;
+        totalPages = Math.ceil(confessionsSnapshot.length / PAGE_SIZE) || 1;
+        currentPage = Math.min(currentPage, totalPages);
+        renderConfessionsSnapshotPage();
 
         // 如果先前加载了本地缓存，弹出优雅的同步完成通告
         if (hasRenderedCache) {
-            showCacheNotice('✨ 表白墙已成功同步至最新内容', 'success');
+            showCacheNotice(' 表白墙已成功同步至最新内容', 'success');
         }
         
     } catch (error) {
         console.error('装载表白墙最新内容挂裂:', error);
         const currentUserId = currentUser?.studentId || 'guest';
-        if (!localStorage.getItem(`cache_confessions_${currentUserId}_${currentSort}_p${currentPage}`)) {
+        if (!localStorage.getItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`)) {
             confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网络</p></div>';
         }
     }
+}
+
+function renderConfessionsSnapshotPage() {
+    confessionsSnapshot.sort((a, b) => currentSort === 'latest'
+        ? new Date(b.$createdAt) - new Date(a.$createdAt)
+        : (b.likes || 0) - (a.likes || 0));
+
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const paged = confessionsSnapshot.slice(start, start + PAGE_SIZE);
+    totalPages = Math.ceil(confessionsSnapshot.length / PAGE_SIZE) || 1;
+    renderConfessions(paged);
+    renderPagination();
+
+    const currentUserId = currentUser?.studentId || 'guest';
+    const cacheKey = `cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`;
+    scheduleAfterPaint(() => {
+        localStorage.setItem(cacheKey, JSON.stringify({ data: paged, totalPages, updateAt: Date.now() }));
+    });
 }
 
 // 视图渲染
@@ -238,22 +371,21 @@ function renderConfessions(confessions) {
     if (!confessions.length) {
         confessionList.innerHTML = `
             <div class="empty-state">
-                <div class="empty-icon">💌</div>
                 <p>还没有表白，快来写下第一封吧！</p>
             </div>
         `;
         return;
     }
     
-    const likedIds = JSON.parse(localStorage.getItem('likedConfessions') || '[]');
-    
+    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
     confessionList.innerHTML = confessions.map(c => {
         const confessionId = c.$id || c.id;
         const confessionCreatedAt = c.$createdAt || c.createdAt;
         
         const createdAt = new Date(confessionCreatedAt);
         const timeStr = formatTime(createdAt);
-        const isLiked = likedIds.includes(confessionId);
+        
+        const deleteHtml = isAdmin ? `<button class="confession-delete-btn" data-id="${confessionId}">🗑️ 删除</button>` : '';
         
         return `
             <div class="confession-card" data-id="${confessionId}">
@@ -262,65 +394,38 @@ function renderConfessions(confessions) {
                     <div class="confession-meta">
                         <span class="confession-time">${timeStr}</span>
                     </div>
-                    <div class="confession-actions">
-                        <button class="confession-action like-btn ${isLiked ? 'liked' : ''}" data-id="${confessionId}">
-                            <span>${isLiked ? '❤️' : '🤍'}</span>
-                            <span class="like-count">${c.likes || 0}</span>
-                        </button>
-                        <button class="confession-action report" data-id="${confessionId}">
-                            <span>🚩</span>
-                            <span>举报</span>
-                        </button>
-                    </div>
+                    ${deleteHtml}
                 </div>
             </div>
         `;
     }).join('');
-    
-    // 点赞与举报绑定保持不变
-    document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleLike(btn.dataset.id);
-        });
-    });
-    
-    document.querySelectorAll('.confession-action.report').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            openReportModal(btn.dataset.id);
-        });
-    });
-}
 
-// ========== 点赞（本地模拟） ==========
-function toggleLike(confessionId) {
-    const likedIds = JSON.parse(localStorage.getItem('likedConfessions') || '[]');
-    const index = likedIds.indexOf(confessionId);
-    
-    if (index > -1) {
-        likedIds.splice(index, 1);
-    } else {
-        likedIds.push(confessionId);
-    }
-    
-    localStorage.setItem('likedConfessions', JSON.stringify(likedIds));
-    
-    const card = document.querySelector(`.confession-card[data-id="${confessionId}"]`);
-    if (!card) return;
-    
-    const likeBtn = card.querySelector('.like-btn');
-    const likeCountSpan = likeBtn.querySelector('.like-count');
-    const currentLikes = parseInt(likeCountSpan.textContent) || 0;
-    
-    if (index > -1) {
-        likeBtn.classList.remove('liked');
-        likeBtn.querySelector('span').textContent = '🤍';
-        likeCountSpan.textContent = Math.max(0, currentLikes - 1);
-    } else {
-        likeBtn.classList.add('liked');
-        likeBtn.querySelector('span').textContent = '❤️';
-        likeCountSpan.textContent = currentLikes + 1;
+    if (isAdmin) {
+        confessionList.querySelectorAll('.confession-delete-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = btn.dataset.id;
+                if (!confirm('确定删除这条表白吗？')) return;
+                try {
+                    const response = await fetch('/api/data', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            collection: 'confessions',
+                            documentId: id,
+                            userId: currentUser?.studentId,
+                            sessionSecret: currentUser?.token,
+                            appToken: currentUser?.appToken
+                        })
+                    });
+                    const res = await response.json().catch(() => ({}));
+                    if (!response.ok || !res.success) throw new Error(res.error || '删除失败');
+                    alert('表白已成功撤销/软删除');
+                    loadConfessions({ forceRefresh: true });
+                } catch (err) {
+                    alert(err.message || '删除失败');
+                }
+            });
+        });
     }
 }
 
@@ -347,21 +452,31 @@ async function publishConfession() {
     publishBtn.textContent = '发布中...';
     
     try {
-        await databases.createDocument(DATABASE_ID, COLLECTION_CONFESSIONS, 'unique()', {
-            content: content,
-            authorId: currentUser.studentId,
-            authorName: '匿名',
-            toName: null,
-            status: 0,
-            likes: 0
+        const response = await fetch('/api/create-confession', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                content,
+                userId: currentUser.studentId,
+                sessionSecret: currentUser.token || '',
+                appToken: currentUser.appToken || ''
+            })
         });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || '发表失败');
+        }
         
         confessionContent.value = '';
         if (charCount) charCount.textContent = '0';
         
         // ⚡ 【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
         const currentUserId = currentUser?.studentId || 'guest';
-        localStorage.removeItem(`cache_confessions_${currentUserId}_${currentSort}_p1`);
+        localStorage.removeItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p1`);
         
         currentPage = 1;
         await loadConfessions();
@@ -374,23 +489,6 @@ async function publishConfession() {
             publishBtn.disabled = false;
             publishBtn.textContent = '匿名发布';
         }
-    }
-}
-
-// ========== 举报 ==========
-function openReportModal(confessionId) {
-    pendingReportId = confessionId;
-    if (reportModal) reportModal.style.display = 'flex';
-}
-
-async function submitReport() {
-    if (!pendingReportId) return;
-    try {
-        alert('举报已提交，管理员会尽快处理');
-        if (reportModal) reportModal.style.display = 'none';
-        pendingReportId = null;
-    } catch (error) {
-        alert('举报失败');
     }
 }
 
@@ -430,7 +528,8 @@ function renderPagination() {
             } else {
                 return;
             }
-            loadConfessions();
+            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
+            else loadConfessions();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
     });
@@ -452,22 +551,8 @@ function bindEvents() {
             btn.classList.add('active');
             currentSort = btn.dataset.sort;
             currentPage = 1;
-            loadConfessions(); // 排序更改，将自动应用对应排序的隔离缓存
+            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
+            else loadConfessions();
         });
     });
-    
-    document.getElementById('closeReportModal')?.addEventListener('click', () => {
-        if (reportModal) reportModal.style.display = 'none';
-    });
-    document.getElementById('cancelReportBtn')?.addEventListener('click', () => {
-        if (reportModal) reportModal.style.display = 'none';
-    });
-    document.getElementById('confirmReportBtn')?.addEventListener('click', submitReport);
-    
-    if (reportModal) {
-        reportModal.addEventListener('click', (e) => {
-            if (e.target === reportModal) reportModal.style.display = 'none';
-        });
-    }
-    
 }

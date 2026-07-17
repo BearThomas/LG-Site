@@ -1,0 +1,9 @@
+{
+  "detectedCollectionIdentifiers": [
+    "comments",
+    "confessions",
+    "posts",
+    "users"
+  ],
+  "note": "把公开内容集合 ID 放入 D1_PUBLIC_READ_COLLECTIONS；用户私密资料不要设为公开。"
+}

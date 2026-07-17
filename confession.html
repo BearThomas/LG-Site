@@ -31,10 +31,10 @@
             <div class="user-logged-in" id="userLoggedIn" style="display: none;">
                 <span class="user-name" id="userName">同学</span>
                 <div class="user-dropdown">
-                    <button class="user-avatar" id="userAvatar">👤</button>
+                    <button class="user-avatar" id="userAvatar"></button>
                     <div class="dropdown-menu" id="dropdownMenu">
                         <a href="./profile" id="profileLink"> 个人中心 </a>
-                        <a href="#" id="logoutBtn">🚪 退出登录</a>
+                        <a href="#" id="logoutBtn"> 退出登录</a>
                     </div>
                 </div>
             </div>
@@ -45,14 +45,14 @@
     <div class="confession-container">
         <!-- 页面头部 -->
         <div class="confession-header">
-            <h1>💗 表白墙</h1>
+            <h1>表白墙</h1>
             <p class="confession-subtitle">勇敢说出来，完全匿名，只有你知道</p>
         </div>
 
         <!-- 发表表白卡片 -->
         <div class="publish-card">
             <div class="publish-header">
-                <span class="publish-icon">✏️</span>
+                <svg fill="#60a5fa" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22,7.24a1,1,0,0,0-.29-.71L17.47,2.29A1,1,0,0,0,16.76,2a1,1,0,0,0-.71.29L13.22,5.12h0L2.29,16.05a1,1,0,0,0-.29.71V21a1,1,0,0,0,1,1H7.24A1,1,0,0,0,8,21.71L18.87,10.78h0L21.71,8a1.19,1.19,0,0,0,.22-.33,1,1,0,0,0,0-.24.7.7,0,0,0,0-.14ZM6.83,20H4V17.17l9.93-9.93,2.83,2.83ZM18.17,8.66,15.34,5.83l1.42-1.41,2.82,2.82Z"/></svg>
                 <span>写下你的心意</span>
             </div>
             <textarea id="confessionContent" class="confession-textarea" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="3"></textarea>
@@ -61,20 +61,22 @@
                 <button id="publishBtn" class="publish-btn">匿名发布</button>
             </div>
             <div class="login-tip" id="loginTip" style="display: none;">
-                <p>💡 请先<a href="login.html">登录</a>后发表表白</p>
+                <p>请先<a href="login.html">登录</a>后发表表白</p>
             </div>
         </div>
 
         <!-- 排序栏 -->
         <div class="sort-bar">
-            <button class="sort-btn active" data-sort="latest">🕐 最新</button>
-            <button class="sort-btn" data-sort="hot">🔥 最热</button>
+            <button class="sort-btn active" data-sort="latest"> 最新</button>
+            <button class="sort-btn" data-sort="hot"> 最旧</button>
         </div>
 
         <!-- 表白列表 -->
         <div class="confession-list" id="confessionList">
-            <!-- 动态加载 -->
-            <div class="loading-state">加载中...</div>
+            <div class="feed-initial-loader" role="status">
+                <span class="feed-initial-orbit"></span>
+                
+            </div>
         </div>
 
         <!-- 分页器 -->

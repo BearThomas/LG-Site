@@ -1,5 +1,6 @@
-export const APPWRITE_ENDPOINT = 'https://sgp.cloud.appwrite.io/v1';
-export const APPWRITE_PROJECT_ID = 'lg';
+// Appwrite is now server-side only; these compatibility constants stay blank.
+export const APPWRITE_ENDPOINT = '';
+export const APPWRITE_PROJECT_ID = '';
 export const DATABASE_ID = 'lg';
 export const COLLECTION_POSTS = 'posts';
 export const COLLECTION_COMMENTS = 'comments';
@@ -7,54 +8,22 @@ export const COLLECTION_CONFESSIONS = 'confessions';
 export const COLLECTION_USERS = 'users';
 
 export async function restoreSecureKey() {
-    try {
-        if (typeof localforage === 'undefined') return null;
-
-        const cryptoKey = await localforage.getItem('secure_gate_key');
-        if (cryptoKey) {
-            window.secureKeyBlackBox = cryptoKey;
-            console.log('Secure key restored from IndexedDB.');
-            return cryptoKey;
-        }
-
-        console.warn('Secure key is missing; encrypted content may not decrypt.');
-        return null;
-    } catch (error) {
-        console.error('Failed to read secure key from IndexedDB:', error);
-        return null;
+    // BACKUP_ENCRYPT_KEY is server/local-migration only. Remove any legacy
+    // browser copy so encrypted private backup fields can never be decrypted
+    // by arbitrary site visitors.
+    delete window.secureKeyBlackBox;
+    if (typeof localforage !== 'undefined') {
+        try { await localforage.removeItem('secure_gate_key'); } catch {}
     }
+    return null;
 }
 
-function hexToBytes(hex) {
-    const pairs = hex.match(/.{2}/g);
-    if (!pairs) return new Uint8Array();
-    return new Uint8Array(pairs.map(byte => parseInt(byte, 16)));
-}
+const ENCRYPTED_BACKUP_VALUE = /^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/;
 
-export async function decryptText(encryptedText) {
-    if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-
-    const cryptoKey = window.secureKeyBlackBox;
-    if (!cryptoKey) {
-        console.warn('Secure key is missing; refusing to decrypt.');
-        return null;
-    }
-
-    try {
-        const [ivHex, ...cipherParts] = encryptedText.split(':');
-        const iv = hexToBytes(ivHex);
-        const ciphertext = hexToBytes(cipherParts.join(':'));
-        const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-CBC', iv },
-            cryptoKey,
-            ciphertext
-        );
-
-        return new TextDecoder().decode(decrypted);
-    } catch (error) {
-        console.warn('Failed to decrypt text.');
-        return null;
-    }
+export async function decryptText(value) {
+    if (value === undefined || value === null) return value;
+    const text = String(value);
+    return ENCRYPTED_BACKUP_VALUE.test(text) ? null : value;
 }
 
 export function formatTime(date) {
@@ -81,6 +50,10 @@ export function formatBoardName(boardId) {
 
     const classMatch = boardId.match(/^class_(\d{4})_(\d+)$/);
     if (classMatch) return `${classMatch[1]}\u5c4a${classMatch[2]}\u73ed`;
+
+    if (window.customBoardsCache && window.customBoardsCache[boardId]) {
+        return window.customBoardsCache[boardId].name || boardId;
+    }
 
     return boardId;
 }
@@ -153,9 +126,21 @@ export function indexUsersById(documents) {
 }
 
 export async function loadUserDirectory(databases, Query) {
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-        Query.limit(100)
-    ]);
+    const documents = [];
+    let offset = 0;
+    const batchSize = 100;
 
-    return indexUsersById(response.documents);
+    while (true) {
+        const queries = [Query.limit(batchSize)];
+        if (offset > 0) queries.push(Query.offset(offset));
+
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, queries);
+        const batch = response.documents || [];
+        documents.push(...batch);
+
+        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
+        offset += batch.length;
+    }
+
+    return indexUsersById(documents);
 }

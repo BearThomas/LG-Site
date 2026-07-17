@@ -1,0 +1,25 @@
+{
+  "d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "lg",
+    "database_id": "31e5fcd9-e15b-492c-90d3-c4119fa7f39a",
+    "migrations_dir": "migrations"
+  }
+],
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "lg-site",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APPWRITE_ENDPOINT": "https://<region>.cloud.appwrite.io/v1",
+    "APPWRITE_PROJECT_ID": "<your-project-id>",
+    "D1_PUBLIC_READ_COLLECTIONS": "<comma-separated-public-collection-ids>",
+    "D1_AUTHENTICATED_READ_COLLECTIONS": "",
+    "D1_ANONYMOUS_WRITE_COLLECTIONS": "",
+    "D1_ADMIN_USER_IDS": "<your-appwrite-user-id>",
+    "D1_EMPTY_PERMISSIONS_PUBLIC": "false",
+    "D1_API_BASE": "/api/d1"
+  },
+  "observability": { "enabled": true }
+}

@@ -600,3 +600,12 @@
     border-radius: 50%;
     overflow: hidden;
 }
+
+.post-detail-content.markdown-body {
+    white-space: normal;
+}
+
+.post-detail-content.markdown-body pre,
+.post-detail-content.markdown-body code {
+    word-break: normal;
+}
