@@ -6,6 +6,42 @@ import { execSync } from 'node:child_process';
 const BACKUP_ROOT = path.resolve('public', 'data-backups');
 const CHUNK_SIZE = 50; // 50 items per chunk
 
+const ENCRYPTED_FIELDS = {
+  users: ['email', 'role', 'permissions', 'joinedBoards', 'ownedBoards', 'class', 'mutedUntil', 'banned'],
+  posts: ['content', 'context', 'title', 'authorName', 'authorId', 'targetGroups'],
+  comments: ['content', 'context', 'authorName', 'authorId'],
+  confessions: ['content', 'context', 'authorName', 'authorId', 'toName']
+};
+
+let encryptKeyBuf = null;
+if (process.env.BACKUP_ENCRYPT_KEY && process.env.BACKUP_ENCRYPT_KEY.length === 64) {
+    encryptKeyBuf = Buffer.from(process.env.BACKUP_ENCRYPT_KEY, 'hex');
+}
+
+function encryptValue(value) {
+    if (value === undefined || value === null || value === '') return value;
+    if (!encryptKeyBuf) return value;
+    const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    if (/^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/.test(text)) return text;
+    
+    const iv = crypto.randomBytes(16);
+    const cipher = crypto.createCipheriv('aes-256-cbc', encryptKeyBuf, iv);
+    const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function encryptDocument(collection, doc) {
+    const cloned = { ...doc };
+    const fields = ENCRYPTED_FIELDS[collection] || [];
+    for (const field of fields) {
+        if (field in cloned) {
+            cloned[field] = encryptValue(cloned[field]);
+        }
+    }
+    return cloned;
+}
+
+
 function computeHash(jsonStr) {
   return crypto.createHash('sha256').update(jsonStr).digest('hex');
 }
@@ -89,7 +125,11 @@ async function processCollection(collection) {
   let searchIndex = [];
 
   for (let i = 0; i < merged.length; i += CHUNK_SIZE) {
-    const chunkData = merged.slice(i, i + CHUNK_SIZE);
+    let chunkData = merged.slice(i, i + CHUNK_SIZE);
+    
+    // Encrypt fields before saving
+    chunkData = chunkData.map(doc => encryptDocument(collection, doc));
+    
     const fileName = `chunk-${chunkIndex}.json`;
     const filePath = path.join(folder, fileName);
     
