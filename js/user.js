@@ -25,7 +25,7 @@ let userDoc = null;
 let userCache = {}; // Minimal cache for the target user
 
 function updateAvatarPreview(name, url) {
-    if (url && (url.startsWith('http') || url.startsWith('/'))) {
+    if (url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:'))) {
         avatarImg.src = url;
         avatarImg.style.display = 'block';
         avatarText.style.display = 'none';
