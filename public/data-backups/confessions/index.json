@@ -1,18 +1,13 @@
 {
   "collection": "confessions",
-  "totalChunks": 2,
+  "totalChunks": 1,
   "totalRecords": 9,
-  "updatedAt": "2026-07-17T14:36:57.329Z",
+  "updatedAt": "2026-07-17T20:12:14.683Z",
   "chunks": [
     {
       "file": "chunk-1.json",
-      "hash": "b8ca2c575dbdfdce01360aa36daad30f6da4d1cacb01d9e255aa4e447498e790",
-      "count": 2
-    },
-    {
-      "file": "chunk-2.json",
-      "hash": "f6f866bec3606957f6afec968b37c8d9b695ee30617d73949fa9d57651a67ab5",
-      "count": 7
+      "hash": "8bea5a0bdab3ef6ac17245368515559598d14b59f5126ac63b32529f19ced53c",
+      "count": 9
     }
   ]
 }
