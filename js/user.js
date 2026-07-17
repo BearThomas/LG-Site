@@ -1,15 +1,12 @@
-import { Client, Databases, Query } from 'https://cdn.jsdelivr.net/npm/appwrite@13.0.1/dist/esm/sdk.js';
-import { renderMarkdown } from './markdown-parser.js';
-import { formatNameWithYear, getPostAuthorDisplay } from './shared.js';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
+import { renderMarkdown } from './markdown.js';
+import { formatNameWithYear, getPostAuthorDisplay, APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, DATABASE_ID, COLLECTION_USERS, COLLECTION_POSTS } from './shared.js';
 
 const client = new Client()
-    .setEndpoint('https://cloud.appwrite.io/v1')
-    .setProject('6751c110000aeb6653df');
+    .setEndpoint(APPWRITE_ENDPOINT)
+    .setProject(APPWRITE_PROJECT_ID);
 
 const databases = new Databases(client);
-const DATABASE_ID = '6751c13c0021c17242d5';
-const COLLECTION_USERS = '675fcd6e003158c3ca27';
-const COLLECTION_POSTS = '6751c1480026e646fa01';
 
 const urlParams = new URLSearchParams(window.location.search);
 const targetUserId = urlParams.get('id');
