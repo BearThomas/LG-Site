@@ -10,7 +10,7 @@
   --bg-gradient: linear-gradient(to bottom, #000000, #0a0f1d, #120e2b);
   
   --glass-bg: rgba(20, 20, 25, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.15);
   --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.8);
   
   --text-primary: #f8fafc;
@@ -38,6 +38,98 @@
   --radius-xl: 4px;
   --text: #f8fafc;
 }
+
+:root[data-theme="light"], .light {
+  --bg-base: #f8f9fa;
+  --bg-gradient: linear-gradient(to bottom, #fdfbfb, #ebedee);
+  
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.12);
+  --glass-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.1);
+  
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --accent-color: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-soft: rgba(59, 130, 246, 0.1);
+  
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --board-bg: rgba(255, 255, 255, 0.95);
+  
+  --surface: rgba(255, 255, 255, 0.9);
+  --border: rgba(0, 0, 0, 0.12);
+  --text: #1e293b;
+}
+
+:root[data-theme="light"] body::before, .light body::before {
+  opacity: 0.05;
+  filter: invert(1);
+}
+
+:root[data-theme="light"] .meteor, .light .meteor {
+  background: linear-gradient(90deg, rgba(0,0,0,0.4), rgba(0,0,0,0));
+}
+
+:root[data-theme="light"] .title-bar .site-title, .light .title-bar .site-title {
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .event-board h2 a, .light .event-board h2 a {
+  color: var(--text-secondary);
+}
+:root[data-theme="light"] .event-board h2 a:hover, .light .event-board h2 a:hover {
+  color: var(--accent-hover);
+}
+:root[data-theme="light"] .event-board, .light .event-board {
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .new-post-btn, .light .new-post-btn {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+:root[data-theme="light"] .new-post-btn:hover, .light .new-post-btn:hover {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+:root[data-theme="light"] .save-btn, .light .save-btn {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+:root[data-theme="light"] .save-btn:hover, .light .save-btn:hover {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+:root[data-theme="light"] .add-confession-btn, .light .add-confession-btn {
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+:root[data-theme="light"] .add-confession-btn:hover, .light .add-confession-btn:hover {
+  background: var(--text-primary);
+  color: #fff;
+}
+
+:root[data-theme="light"] .search-input, .light .search-input {
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .confession-header h2, .light .confession-header h2 {
+  color: var(--text-primary);
+}
+
+:root[data-theme="light"] .view-more-btn, .light .view-more-btn {
+  color: var(--text-secondary);
+  border-bottom-color: var(--text-secondary);
+}
+:root[data-theme="light"] .view-more-btn:hover, .light .view-more-btn:hover {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
