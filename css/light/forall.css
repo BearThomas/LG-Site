@@ -397,7 +397,7 @@ body::before {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-right: 6px;
+  margin: 0 16px;
   transition: all 0.3s var(--ease);
   font-size: 1rem;
 }
@@ -826,7 +826,7 @@ body::before {
   .user-area { margin-left: auto; }
   .user-name { display: none; }
   .login-link { padding: 5px 13px; font-size: 0.75rem; }
-  .theme-toggle { width: 36px; height: 36px; font-size: 0.9rem; }
+  .theme-toggle { width: 36px; height: 36px; font-size: 0.9rem; margin: 0 10px; }
 
   /* Layout */
   body { padding-bottom: 80px; }
