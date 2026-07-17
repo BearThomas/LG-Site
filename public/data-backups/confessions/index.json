@@ -1,13 +1,13 @@
 {
   "collection": "confessions",
   "totalChunks": 2,
-  "totalRecords": 57,
+  "totalRecords": 9,
   "updatedAt": "2026-07-17T14:36:57.329Z",
   "chunks": [
     {
       "file": "chunk-1.json",
       "hash": "b8ca2c575dbdfdce01360aa36daad30f6da4d1cacb01d9e255aa4e447498e790",
-      "count": 50
+      "count": 2
     },
     {
       "file": "chunk-2.json",
