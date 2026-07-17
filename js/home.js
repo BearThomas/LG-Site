@@ -411,13 +411,12 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     let coldConfessions = [];
     if (!hotConfessionsLoaded) {
         try {
-            try {
-                let index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
-                if (index && index.chunks && index.chunks.length > 0) {
-                    let firstChunk = index.chunks[0];
-                    let chunkData = await fetchWithHashCache(`confessions_chunk_1`, [`./public/data-backups/confessions/${firstChunk.file}`]);
-                    coldConfessions = applyPendingModifications('confessions', chunkData);
-                }
+            let index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
+            if (index && index.chunks && index.chunks.length > 0) {
+                let firstChunk = index.chunks[0];
+                let chunkData = await fetchWithHashCache(`confessions_chunk_1`, [`./public/data-backups/confessions/${firstChunk.file}`]);
+                coldConfessions = applyPendingModifications('confessions', chunkData);
+            }
         } catch (e) {
             console.log('未发现表白冷备份数据', e);
         }
