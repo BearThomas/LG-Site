@@ -1,20 +1,6 @@
 /* ========== 帖子页样式 ========== */
 
-/* Bridge variables: posts.css uses --accent / --surface / --border / --text / --muted
-   but forall.css defines --accent-color / --glass-bg / --glass-border / --text-primary / --text-muted.
-   We alias them here so both naming conventions work. */
-:root {
-  --accent: var(--accent-color, #3b82f6);
-  --accent-soft: var(--accent-soft, rgba(59, 130, 246, 0.1));
-  --surface: var(--card-bg, #ffffff);
-  --border: var(--glass-border, #e2e8f0);
-  --text: var(--text-primary, #1e293b);
-  --muted: var(--text-muted, #94a3b8);
-  --shadow-soft: var(--shadow-md, 0 10px 25px -5px rgba(0,0,0,0.1));
-  --radius-xl: 20px;
-  --radius-md: 10px;
-  --warning: #f59e0b;
-}
+
 
 /* 容器布局 */
 .posts-container {
