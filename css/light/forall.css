@@ -239,12 +239,26 @@ h1, h2, h3, h4, .site-title {
 .nav-bar-item.active::after, .nav-bar-item:hover::after { width: 100%; }
 
 .user-area { margin-left: auto; display: flex; align-items: center; }
-.user-not-login { display: flex; gap: 20px; align-items: center; }
-.login-link, .register-link {
-  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--text-secondary); transition: color 0.4s;
+.user-not-login { display: flex; align-items: center; }
+.user-not-login .divider, .user-not-login .register-link { display: none; }
+.login-link {
+  background: var(--accent-color);
+  color: #fff !important;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 8px 20px;
+  border-radius: 24px;
+  transition: all 0.4s var(--transition-smooth);
+  box-shadow: var(--shadow-sm);
+  text-decoration: none;
 }
-.login-link:hover, .register-link:hover { color: #fff; }
+.login-link:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
 
 .user-logged-in { display: flex; align-items: center; gap: 16px; }
 .user-name { font-size: 0.9rem; letter-spacing: 0.05em; font-weight: 500; }
@@ -390,6 +404,7 @@ h1, h2, h3, h4, .site-title {
   .site-title { font-size: 1.4rem; margin-left: 10px; }
   .nav-bar { margin-left: auto; }
   .user-area { display: flex; margin-left: auto; align-items: center; }
+  .user-name { display: none; }
   
   .content-two-columns { flex-direction: column; gap: 40px; }
   .post-section, .confession-section { width: 100%; padding: 0; }
