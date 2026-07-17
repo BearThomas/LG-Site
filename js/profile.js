@@ -1,11 +1,13 @@
 // js/profile.js
 // Made by BearThomas 2026/5/30
-import { Client, Databases } from './d1-appwrite-compat.js';
+import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import {
     APPWRITE_ENDPOINT,
     APPWRITE_PROJECT_ID,
     COLLECTION_USERS,
-    DATABASE_ID
+    DATABASE_ID,
+    COLLECTION_POSTS,
+    COLLECTION_COMMENTS
 } from './shared.js';
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
@@ -333,6 +335,7 @@ async function loadMyActivity(type) {
         
         listElement.setAttribute('data-loaded', 'true');
     } catch(err) {
+        console.error("加载足迹失败:", err);
         listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: #fa5252;">加载失败，请重试</div>';
     }
 }
