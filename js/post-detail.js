@@ -184,7 +184,7 @@ async function loadAllUsers() {
         const directory = await loadUserDirectory(databases, Query);
         userCache = directory.userCache;
         allUsers = directory.allUsers;
-        console.log(`✅ 详情页身份链：已预载 ${allUsers.length} 个用户名片到高速内存字典`);
+        
     } catch (e) {
         console.warn('⚡ 初始化详情页用户身份快照失败，渲染将被迫降级使用内嵌冗余数据:', e.message);
     }
@@ -272,7 +272,7 @@ function isPostVisible(post, userBoards) {
 async function loadPostDetail() {
     try {
         currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId);
-        console.log("🔥 成功获取热数据帖子");
+        
     } catch (error) {
         const status = Number(error.code || 0);
         if (status === 403) {
@@ -296,7 +296,7 @@ async function loadPostDetail() {
             currentPost = raw.find(p => (p.id === postId || p.$id === postId));
             if (!currentPost) throw new Error('帖子实体不存在');
             currentPost._isCold = true;
-            console.log("❄️ 成功激活冷备份归档帖子");
+            
         } catch (localErr) {
             if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
             return;

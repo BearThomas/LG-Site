@@ -151,7 +151,7 @@ async function loadAllUsers() {
         const directory = await loadUserDirectory(databases, Query);
         userCache = directory.userCache;
         allUsers = directory.allUsers;
-        console.log("🎯 内存字典当前全量钥匙箱:", userCache);
+        
     } catch (e) {
         console.error('❌ 全局用户身份快照彻底崩塌，原因:', e.message);
     }
@@ -489,7 +489,7 @@ async function loadNextChunk() {
     if (anchor && !noMoreData) anchor.innerHTML = ''; 
 }
 
-function renderPagination() { /* Deprecated */ }
+
 
 // ========== 🌟 智能化改写：不信任数据源渲染 ==========
 

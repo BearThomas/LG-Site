@@ -86,7 +86,7 @@ function applyPendingModifications(collection, documents) {
 
 // ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
-    console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
+    
 
     // 【步骤 1】：清理旧版本遗留的浏览器端备份密钥
     secureKeyReady = restoreSecureKey();
@@ -103,7 +103,7 @@ function applyPendingModifications(collection, documents) {
                     token: saved.token,
                     name: saved.name || '同学'
                 };
-                console.log(`✅ 欢迎回来，${currentUser.name}！已挂载本地长效会话通道。`);
+                
             } else {
                 localStorage.removeItem('campus_user');
             }
@@ -111,7 +111,7 @@ function applyPendingModifications(collection, documents) {
             console.warn('解析本地用户凭证失败:', e);
         }
     } else {
-        console.log('👻 游客访问模式：跳过身份挂载，直接开启公共只读通道');
+        
     }
 
     // 【步骤 3】：只初始化只读数据库客户端，完全不执行会导致 401/501 的 account 握手
@@ -473,7 +473,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
                 coldConfessions = applyPendingModifications('confessions', chunkData);
             }
         } catch (e) {
-            console.log('未发现表白冷备份数据', e);
+            
         }
     }
 

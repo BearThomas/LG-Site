@@ -233,7 +233,7 @@ async function loadPage(path) {
         window.history.replaceState(null, '', docHash(currentPath));
     }
 
-    articleEl.innerHTML = '<div class="docs-loading">加载中...</div>';
+    articleEl.innerHTML = '<div class="docs-loading"></div>';
 
     try {
         const response = await fetch(`${DOC_ROOT}${page.path}`, { cache: 'no-cache' });

@@ -237,7 +237,7 @@
                 throw new Error(result.error || '登录验证未通过');
             }
 
-            console.log("🎉 [Auth Client] 登录成功，安全会话已写入 HttpOnly Cookie。");
+            
 
             // 旧版曾把备份解密密钥下发到浏览器；D1 版已彻底移除该行为。
             if (typeof localforage !== 'undefined') {
