@@ -56,13 +56,7 @@ async function loadUserInfo() {
         let sid = targetUserId.replace(/^student_/, '').trim();
         
         try {
-            const res = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-                Query.equal('studentId', [targetUserId, `student_${targetUserId}`, sid])
-            ]);
-            if (res.documents.length > 0) userResult = res.documents[0];
-            else {
-                userResult = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, targetUserId);
-            }
+            userResult = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, targetUserId);
         } catch(e) {
             console.log('Direct ID fallback');
         }
