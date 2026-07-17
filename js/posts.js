@@ -765,6 +765,16 @@ function bindEvents() {
             loadPosts(); 
         });
     }
+    
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentSearchKeyword = searchInput.value.trim();
+                currentPage = 1;
+                loadPosts();
+            }
+        });
+    }
     postTitle?.addEventListener('input', updatePostPreview);
     postContent?.addEventListener('input', updatePostPreview);
     document.getElementById('togglePostPreviewBtn')?.addEventListener('click', togglePostPreview);
