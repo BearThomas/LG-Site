@@ -161,7 +161,7 @@
 .strength-strong { background: var(--success); width: 100%; }
 
 /* === BUTTON & LINKS === */
-.form-submit {
+.form-submit, .login-btn {
     width: 100%;
     padding: 14px;
     background: var(--accent);
@@ -177,18 +177,61 @@
     font-family: var(--font-sans);
 }
 
-.form-submit:hover {
+.form-submit:hover, .login-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-2px);
     box-shadow: 0 6px 16px var(--accent-soft);
 }
 
-.form-submit:disabled {
+.form-submit:disabled, .login-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
 }
+
+/* === MISSING HTML CLASSES === */
+.input-with-prefix {
+    display: flex;
+    align-items: center;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    transition: all 0.2s var(--ease);
+}
+.input-with-prefix:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    background: var(--surface);
+}
+.input-with-prefix .prefix {
+    padding: 0 0 0 16px;
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 1rem;
+    font-family: var(--font-sans);
+}
+.input-with-prefix input {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    flex: 1;
+}
+
+.form-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.login-footer {
+    text-align: center;
+    margin-top: 32px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+}
+
 
 .form-footer {
     margin-top: 24px;
