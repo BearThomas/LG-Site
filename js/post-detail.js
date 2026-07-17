@@ -283,25 +283,12 @@ async function loadPostDetail() {
         }
         console.warn('D1 暂时不可用，正在排查 public 备份...');
         try {
-            let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
-            let raw = backupData.documents || backupData || [];
-            
-            if (backupData.encrypted) {
-                await secureKeyReady;
-                raw = await Promise.all(raw.map(async p => {
-                    let targetGroups = [];
-                    if (p.targetGroups !== '已隐藏') {
-                        const decrypted = await decryptText(p.targetGroups);
-                        try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                    }
-                    return {
-                        ...p,
-                        content: await decryptText(p.content),
-                        title: await decryptText(p.title),
-                        authorName: await decryptText(p.authorName),
-                        targetGroups: targetGroups
-                    };
-                }));
+            let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
+            let raw = [];
+            if (index && index.chunks) {
+                const promises = index.chunks.map(chunk => fetchWithHashCache(`posts_${chunk.file}`, [`./public/data-backups/posts/${chunk.file}`]));
+                const arrays = await Promise.all(promises);
+                raw = arrays.flat();
             }
             
             raw = applyPendingModifications('posts', raw);
@@ -460,17 +447,14 @@ async function loadComments() {
         let localRes = [];
         if (cloudComments === null) {
             try {
-                let data = await fetchWithHashCache('comments', ['./public/data-backups/comments.json', './public/data-fallback/comments.json']);
-                let raw = data.documents || data || [];
-                if (data.encrypted) {
-                    await secureKeyReady;
-                    raw = await Promise.all(raw.map(async comment => ({
-                        ...comment,
-                        content: await decryptText(comment.content),
-                        authorName: await decryptText(comment.authorName),
-                        authorId: await decryptText(comment.authorId)
-                    })));
+                let index = await fetchWithHashCache('comments', ['./public/data-backups/comments/index.json']);
+                let raw = [];
+                if (index && index.chunks) {
+                    const promises = index.chunks.map(chunk => fetchWithHashCache(`comments_${chunk.file}`, [`./public/data-backups/comments/${chunk.file}`]));
+                    const arrays = await Promise.all(promises);
+                    raw = arrays.flat();
                 }
+                
                 raw = applyPendingModifications('comments', raw);
                 localRes = raw.filter(comment => comment.postId === postId);
             } catch (error) {

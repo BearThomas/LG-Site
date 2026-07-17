@@ -234,27 +234,13 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
         ]).then(r => r.documents),
         (async () => {
             try {
-                let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
-                let docs = backupData.documents || backupData || [];
-                if (backupData.encrypted) {
-                    await secureKeyReady;
-                    docs = await Promise.all(docs.map(async post => {
-                        let targetGroups = [];
-                        if (post.targetGroups !== '已隐藏') {
-                            const decrypted = await decryptText(post.targetGroups);
-                            try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                        }
-                        return {
-                            ...post,
-                            content: await decryptText(post.content),
-                            title: await decryptText(post.title),
-                            authorName: await decryptText(post.authorName),
-                            targetGroups: targetGroups
-                        };
-                    }));
+                let docs = [];
+                let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
+                if (index && index.chunks && index.chunks.length > 0) {
+                    let firstChunk = index.chunks[0];
+                    let chunkData = await fetchWithHashCache(`posts_chunk_1`, [`./public/data-backups/posts/${firstChunk.file}`]);
+                    docs = applyPendingModifications('posts', chunkData);
                 }
-                
-                docs = applyPendingModifications('posts', docs);
                 return docs;
             } catch (e) {
                 console.warn('获取备用Posts源失败', e);
@@ -426,18 +412,12 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     if (!hotConfessionsLoaded) {
         try {
             try {
-                let backupData = await fetchWithHashCache('confessions', ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']);
-                let raw = backupData.documents || backupData || [];
-                if (backupData.encrypted) {
-                    await secureKeyReady;
-                    raw = await Promise.all(raw.map(async c => ({
-                        ...c,
-                        content: await decryptText(c.content), 
-                        authorName: await decryptText(c.authorName)
-                    })));
+                let index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
+                if (index && index.chunks && index.chunks.length > 0) {
+                    let firstChunk = index.chunks[0];
+                    let chunkData = await fetchWithHashCache(`confessions_chunk_1`, [`./public/data-backups/confessions/${firstChunk.file}`]);
+                    coldConfessions = applyPendingModifications('confessions', chunkData);
                 }
-                raw = applyPendingModifications('confessions', raw);
-                coldConfessions = raw;
         } catch (e) {
             console.log('未发现表白冷备份数据', e);
         }

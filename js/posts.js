@@ -238,6 +238,55 @@ async function fetchWithHashCache(collection, urls) {
     throw new Error(`无法获取 ${collection} 数据`);
 }
 
+async function fetchChunkWithCache(collection, filename, chunkHash) {
+    const cacheKeyData = `cache_data_${collection}_${filename}`;
+    const cacheKeyHash = `cache_hash_${collection}_${filename}`;
+    
+    if (chunkHash) {
+        if (localStorage.getItem(cacheKeyHash) === chunkHash) {
+            try { return JSON.parse(localStorage.getItem(cacheKeyData)); } catch(e) {}
+        }
+    }
+    
+    try {
+        const res = await fetch(`./public/data-backups/${collection}/${filename}`);
+        if (!res.ok) return [];
+        const data = await res.json();
+        
+        if (chunkHash) {
+            try {
+                localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                localStorage.setItem(cacheKeyHash, chunkHash);
+            } catch(e) {}
+        }
+        return data;
+    } catch(e) {
+        return [];
+    }
+}
+
+async function loadChunkedCollection(collection) {
+    try {
+        const index = await fetchWithHashCache(collection, [`./public/data-backups/${collection}/index.json`]);
+        if (!index || !index.chunks) throw new Error('No index');
+        
+        const promises = index.chunks.map(chunk => {
+            return fetchChunkWithCache(collection, chunk.file, chunk.hash);
+        });
+        
+        const arrays = await Promise.all(promises);
+        let docs = arrays.flat();
+        return applyPendingModifications(collection, docs);
+    } catch(e) {
+        try {
+            const old = await fetchWithHashCache(collection, [`./public/data-backups/${collection}.json`, `./public/data-fallback/${collection}.json`]);
+            return applyPendingModifications(collection, old.documents || old || []);
+        } catch(e2) {
+            return [];
+        }
+    }
+}
+
 function applyPendingModifications(collection, documents) {
     if (!documents || !Array.isArray(documents)) return documents;
     let modified = [...documents];
@@ -258,28 +307,9 @@ function applyPendingModifications(collection, documents) {
 
 async function loadColdPostDocuments() {
     try {
-        let backupData = await fetchWithHashCache('posts', ['./public/data-backups/posts.json', './public/data-fallback/posts.json']);
-        let docs = backupData.documents || backupData || [];
+        let docs = await loadChunkedCollection('posts');
         
-        if (backupData.encrypted) {
-            await secureKeyReady;
-            docs = await Promise.all(docs.map(async post => {
-                let targetGroups = [];
-                if (post.targetGroups !== '已隐藏') {
-                    const decrypted = await decryptText(post.targetGroups);
-                    try { targetGroups = JSON.parse(decrypted || '[]'); } catch { targetGroups = []; }
-                }
-                return {
-                    ...post,
-                    content: await decryptText(post.content),
-                    title: await decryptText(post.title),
-                    authorName: await decryptText(post.authorName),
-                    targetGroups
-                };
-            }));
-        }
-        
-        docs = applyPendingModifications('posts', docs);
+        // Disable encryption support for cold chunks as it wasn't used in v2
         return docs;
     } catch (e) {
         console.warn('获取冷备帖子失败', e);

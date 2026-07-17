@@ -1,130 +1,143 @@
-// scripts/sync-backup.mjs
-// Monthly sync script for backup JSON files.
-// Computes the target month (current month - 2), loads backup JSON files for that month,
-// applies pending edits/deletes from the `mod_log` table, updates the JSON files on disk,
-// computes SHA‑256 hashes for each collection, stores them in D1 `data_meta`,
-// and records a new `cold_data_version`.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 
-import { resolve } from 'path';
-import { readFile, writeFile } from 'fs/promises';
-import { createHash } from 'crypto';
+const BACKUP_ROOT = path.resolve('public', 'data-backups');
+const CHUNK_SIZE = 50; // 50 items per chunk
 
-function computeHash(collectionArray) {
-  // Ensure deterministic order by sorting by id
-  const sorted = [...collectionArray].sort((a, b) => {
-    const idA = a.id || a.$id || '';
-    const idB = b.id || b.$id || '';
-    return idA > idB ? 1 : -1;
+function computeHash(jsonStr) {
+  return crypto.createHash('sha256').update(jsonStr).digest('hex');
+}
+
+function runD1Query(query) {
+  console.log(`Running D1 query: ${query}`);
+  const out = execSync(`npx wrangler d1 execute lg --remote --command "${query}" --json`, {
+    encoding: 'utf-8',
+    maxBuffer: 10 * 1024 * 1024
   });
-  const json = JSON.stringify(sorted);
-  return createHash('sha256').update(json).digest('hex');
+  
+  // wrangler might output some non-json logs before the JSON array, so we extract the JSON part.
+  const match = out.match(/\[\s*\{.*\}\s*\]/s);
+  if (!match) return [];
+  const parsed = JSON.parse(match[0]);
+  return parsed[0].results || [];
 }
 
-async function getTargetMonth() {
-  const now = new Date();
-  // Subtract two months (handle year wrap)
-  const month = now.getUTCMonth() + 1 - 2; // 1‑based month
-  const year = now.getUTCFullYear() + (month <= 0 ? -1 : 0);
-  const targetMonth = month <= 0 ? month + 12 : month;
-  // Return as YYYY-MM string
-  return `${year}-${String(targetMonth).padStart(2, '0')}`;
-}
+async function processCollection(collection) {
+  console.log(`\n--- Processing collection: ${collection} ---`);
+  const folder = path.join(BACKUP_ROOT, collection);
+  
+  // 1. Fetch archived data from D1 (older than 1 month)
+  // 'now', '-1 month' gives exactly one month ago
+  const oldData = runD1Query(`SELECT * FROM ${collection} WHERE created_at < datetime('now', '-1 month')`);
+  console.log(`Found ${oldData.length} records in D1 older than 1 month to archive.`);
 
-async function loadJson(filePath) {
-  try {
-    const raw = await readFile(filePath, 'utf8');
-    return JSON.parse(raw);
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
+  // 2. Delete them from D1 to keep it hot
+  if (oldData.length > 0) {
+    const ids = oldData.map(d => `'${d.id}'`).join(',');
+    runD1Query(`DELETE FROM ${collection} WHERE id IN (${ids})`);
+    console.log(`Deleted ${oldData.length} archived records from D1.`);
   }
-}
 
-async function saveJson(filePath, data) {
-  const text = JSON.stringify(data, null, 2);
-  await writeFile(filePath, text, 'utf8');
+  // 3. Load all existing cold data
+  let allColdData = [];
+  
+  // Check if legacy unchunked file exists
+  const legacyFile = path.join(BACKUP_ROOT, `${collection}.json`);
+  if (fs.existsSync(legacyFile)) {
+    console.log(`Found legacy ${legacyFile}. Converting to chunks...`);
+    const data = JSON.parse(fs.readFileSync(legacyFile, 'utf8'));
+    allColdData.push(...(data.documents || data));
+    fs.rmSync(legacyFile);
+  }
+
+  // Load existing chunks if any
+  if (fs.existsSync(folder)) {
+    const files = fs.readdirSync(folder).filter(f => f.startsWith('chunk-') && f.endsWith('.json'));
+    for (const file of files) {
+      const data = JSON.parse(fs.readFileSync(path.join(folder, file), 'utf8'));
+      allColdData.push(...data);
+    }
+  } else {
+    fs.mkdirSync(folder, { recursive: true });
+  }
+
+  // 4. Merge and deduplicate by id
+  const map = new Map();
+  for (const item of allColdData) {
+    map.set(item.id || item.$id, item);
+  }
+  for (const item of oldData) {
+    map.set(item.id, item);
+  }
+  
+  let merged = Array.from(map.values());
+  // Sort DESC by created_at (newest first)
+  merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  // 5. Chunk and save
+  const chunks = [];
+  let chunkIndex = 1;
+  
+  // Clear existing chunks
+  if (fs.existsSync(folder)) {
+    const files = fs.readdirSync(folder).filter(f => f.startsWith('chunk-') && f.endsWith('.json'));
+    for (const file of files) fs.rmSync(path.join(folder, file));
+  }
+
+  for (let i = 0; i < merged.length; i += CHUNK_SIZE) {
+    const chunkData = merged.slice(i, i + CHUNK_SIZE);
+    const fileName = `chunk-${chunkIndex}.json`;
+    const filePath = path.join(folder, fileName);
+    
+    const jsonStr = JSON.stringify(chunkData, null, 2);
+    fs.writeFileSync(filePath, jsonStr, 'utf8');
+    
+    chunks.push({
+      file: fileName,
+      hash: computeHash(jsonStr),
+      count: chunkData.length,
+      startDate: chunkData[chunkData.length - 1].created_at,
+      endDate: chunkData[0].created_at
+    });
+    
+    chunkIndex++;
+  }
+  
+  const indexData = {
+    collection,
+    totalChunks: chunks.length,
+    totalRecords: merged.length,
+    updatedAt: new Date().toISOString(),
+    chunks
+  };
+  
+  const indexStr = JSON.stringify(indexData, null, 2);
+  fs.writeFileSync(path.join(folder, 'index.json'), indexStr, 'utf8');
+  
+  // 6. Update hash in data_meta
+  const indexHash = computeHash(indexStr);
+  runD1Query(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('hash_${collection}', '${indexHash}')`);
+  console.log(`Saved ${chunks.length} chunks for ${collection}. Index hash: ${indexHash}`);
 }
 
 async function main() {
-  const target = await getTargetMonth();
-  const backupRoot = resolve('public', 'data-backups');
-  const files = {
-    posts: resolve(backupRoot, `posts-${target}.json`),
-    comments: resolve(backupRoot, `comments-${target}.json`),
-    confessions: resolve(backupRoot, `confessions-${target}.json`)
-  };
-
-  // Load current backup data
-  const [postsWrapper, commentsWrapper, confessionsWrapper] = await Promise.all([
-    loadJson(files.posts),
-    loadJson(files.comments),
-    loadJson(files.confessions)
-  ]);
-
-  let posts = Array.isArray(postsWrapper) ? postsWrapper : (postsWrapper.documents || []);
-  let comments = Array.isArray(commentsWrapper) ? commentsWrapper : (commentsWrapper.documents || []);
-  let confessions = Array.isArray(confessionsWrapper) ? confessionsWrapper : (confessionsWrapper.documents || []);
-
-  // Connect to D1 DB – the environment provides DB binding when run as a Worker.
-  const db = (globalThis as any).DB;
-  if (!db) throw new Error('D1 binding DB not found');
-
-  // Fetch pending modifications from mod_log newer than the last backup version.
-  const versionRow = await db.prepare(`SELECT value FROM data_meta WHERE key = 'cold_data_version'`).first();
-  const lastVersion = versionRow?.value ?? '0';
-  const logs = await db.prepare(`SELECT * FROM mod_log WHERE created_at > ? ORDER BY created_at ASC`).bind(lastVersion).all();
-
-  for (const log of logs.results ?? []) {
-    const { collection, item_id, action, payload } = log;
-    let targetArray = null;
-    if (collection === 'posts') targetArray = posts;
-    else if (collection === 'comments') targetArray = comments;
-    else if (collection === 'confessions') targetArray = confessions;
-    
-    if (!targetArray) continue;
-    
-    const idx = targetArray.findIndex(item => item.id === item_id || item.$id === item_id);
-    if (idx !== -1) {
-      if (action === 'delete') {
-        targetArray.splice(idx, 1);
-      } else if (action === 'edit' && payload) {
-        try {
-          const updates = JSON.parse(payload);
-          targetArray[idx] = { ...targetArray[idx], ...updates };
-        } catch(e) {
-          console.warn('Failed to parse payload for item', item_id);
-        }
-      }
-    }
-  }
-
-  // Restore wrapper structure if necessary, though raw array is preferred.
-  // We'll write back raw arrays for simplicity and consistency.
+  await processCollection('posts');
+  await processCollection('comments');
+  await processCollection('confessions');
   
-  await Promise.all([
-    saveJson(files.posts, posts),
-    saveJson(files.comments, comments),
-    saveJson(files.confessions, confessions)
-  ]);
-
-  // Compute SHA‑256 hashes for each collection and store in data_meta.
-  const postsHash = computeHash(posts);
-  const commentsHash = computeHash(comments);
-  const confessionsHash = computeHash(confessions);
-
-  await Promise.all([
-    db.prepare(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('hash_posts', ?)`).bind(postsHash).run(),
-    db.prepare(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('hash_comments', ?)`).bind(commentsHash).run(),
-    db.prepare(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('hash_confessions', ?)`).bind(confessionsHash).run()
-  ]);
-
-  // Update cold_data_version to current timestamp.
+  // Clear mod_log of entries that have been archived.
+  // We can just clear all mod_log entries older than 1 month because they are now baked into the chunks.
+  runD1Query(`DELETE FROM mod_log WHERE created_at < datetime('now', '-1 month')`);
+  
   const newVersion = new Date().toISOString();
-  await db.prepare(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('cold_data_version', ?)`).bind(newVersion).run();
-  console.log('Backup sync completed for', target);
+  runD1Query(`INSERT OR REPLACE INTO data_meta (key, value) VALUES ('cold_data_version', '${newVersion}')`);
+  
+  console.log('Archive and chunk process completed successfully.');
 }
 
 main().catch(err => {
-  console.error('Sync backup failed:', err);
+  console.error('Fatal error:', err);
   process.exit(1);
 });

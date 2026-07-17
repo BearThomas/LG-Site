@@ -257,8 +257,8 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         let localRes = [];
         await loadTombstones();
         try {
-            appwriteRes = {
-                documents: await listAllConfessionDocuments(queries, firstBatch => {
+            const [d1Res, coldRes] = await Promise.allSettled([
+                listAllConfessionDocuments(queries, firstBatch => {
                     if (hasRenderedCache || currentPage !== 1) return;
                     const quickItems = firstBatch.filter(item =>
                         item.content != null && Number(item.status || 0) === 0 && !tombstonedIds.confessions.has(item.$id || item.id)
@@ -268,26 +268,30 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                         showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
                         hasRenderedCache = true;
                     }
-                })
-            };
-        } catch (error) {
-            console.warn('D1 表白墙读取失败，启用 public 备份:', error.message);
-            try {
-                let data = await fetchWithHashCache('confessions', ['./public/data-backups/confessions.json', './public/data-fallback/confessions.json']);
-                let raw = data.documents || data || [];
-                if (data.encrypted) {
-                    await secureKeyReady;
-                    raw = await Promise.all(raw.map(async doc => ({
-                        ...doc,
-                        content: await decryptText(doc.content),
-                        authorName: await decryptText(doc.authorName)
-                    })));
-                }
-                raw = applyPendingModifications('confessions', raw);
-                localRes = raw;
-            } catch (backupError) {
-                console.warn('public 表白墙备份也无法读取:', backupError.message);
+                }),
+                (async () => {
+                    let docs = [];
+                    const index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
+                    if (index && index.chunks) {
+                        const promises = index.chunks.map(chunk => {
+                            // Reuse posts.js fetchChunkWithCache logic implicitly or just use fetchWithHashCache for simplicity
+                            return fetchWithHashCache(`confessions_${chunk.file}`, [`./public/data-backups/confessions/${chunk.file}`]);
+                        });
+                        const arrays = await Promise.all(promises);
+                        docs = arrays.flat();
+                    }
+                    return applyPendingModifications('confessions', docs);
+                })()
+            ]);
+            
+            if (d1Res.status === 'fulfilled') {
+                appwriteRes.documents = d1Res.value || [];
             }
+            if (coldRes.status === 'fulfilled') {
+                localRes = coldRes.value || [];
+            }
+        } catch (error) {
+            console.warn('读取表白墙数据失败:', error.message);
         }
 
         // 统一格式化归一处理
