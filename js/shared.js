@@ -64,10 +64,11 @@ export function formatNameWithYear(name, studentId) {
     if (!rawName) {
         rawName = sid ? `同学${sid.slice(-4)}` : '未知成员';
     }
+    const escapedName = escapeHtml(rawName);
     if (sid.length >= 4) {
-        return `${rawName} · ${sid.substring(0, 4)}届`;
+        return `${escapedName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
     }
-    return rawName;
+    return escapedName;
 }
 
 export function escapeHtml(text) {

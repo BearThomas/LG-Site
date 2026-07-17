@@ -303,9 +303,9 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 authorId: doc.authorId,
                 
                 authorName: (() => {
-                    let n = doc.authorName || '匿名';
+                    let n = escapeHtml(doc.authorName || '匿名');
                     let sid = (doc.authorId || doc.studentId || '').toString().replace(/^student_/, '').trim();
-                    if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+                    if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
                     return n;
                 })(),
 
@@ -398,7 +398,7 @@ function renderConfessions(confessions) {
             <div class="confession-card" data-id="${confessionId}">
                 <div class="confession-content">${escapeHtml(c.content)}</div>
                 <div class="confession-footer">
-                    <div class="confession-meta">
+                    <div class="confession-meta" ${confession.authorName === '匿名' ? '' : `onclick="window.goToUserProfile('${confession.authorId || confession.studentId}', event)" style="cursor: pointer;"`}>
                         <span class="confession-time">${timeStr}</span>
                     </div>
                     ${deleteHtml}

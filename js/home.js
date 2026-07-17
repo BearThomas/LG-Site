@@ -145,10 +145,10 @@ function checkLoginStatus() {
         const userAvatarEl = document.getElementById('userAvatar');
         
         if (userNameEl) {
-            let n = currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`;
+            let n = escapeHtml(currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`);
             const sid = (currentUser.studentId || '').toString().replace(/^student_/, '').trim();
-            if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
-            userNameEl.textContent = n;
+            if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+            userNameEl.innerHTML = n;
         }
 
         if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
@@ -401,9 +401,9 @@ function renderHomePosts(posts) {
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
-                    <div class="post-avatar">${avatarHtml}</div>
+                    <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;">${avatarHtml}</div>
                     <div>
-                        <div class="post-author">${escapeHtml(author.name)}</div>
+                        <div class="post-author" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${author.name}</div>
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
@@ -491,9 +491,9 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         content: c.content,
         
         authorName: (() => {
-            let n = c.authorName || '匿名';
+            let n = escapeHtml(c.authorName || '匿名');
             let sid = (c.authorId || c.studentId || '').toString().replace(/^student_/, '').trim();
-            if (sid.length >= 4) n = `${n} · ${sid.substring(0, 4)}届`;
+            if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
             return n;
         })(),
 

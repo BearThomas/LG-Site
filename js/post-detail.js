@@ -372,9 +372,10 @@ function renderPostDetail() {
         const rawName = currentPost.authorName || '';
         
         finalName = rawName.includes(':') ? `同学${rawAuthorId.slice(-4)}` : (rawName || '匿名同学');
+        finalName = escapeHtml(finalName);
         const __sid = rawAuthorId.replace(/^student_/, '').trim();
         if (__sid.length >= 4) {
-            finalName = `${finalName} · ${__sid.substring(0, 4)}届`;
+            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
         }
 
         avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
@@ -385,11 +386,11 @@ function renderPostDetail() {
             <h1 class="post-detail-title">${escapeHtml(currentPost.title)}</h1>
             <div class="post-detail-meta">
                 <div class="post-author-info">
-                    <div class="post-detail-avatar" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
+                    <div class="post-detail-avatar" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
                     <div class="post-author-detail">
-                        <span class="post-author-name">${escapeHtml(finalName)}</span>
+                        <span class="post-author-name" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${finalName}</span>
                         <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁定</span>' : ''}</span>
                     </div>
                 </div>
@@ -559,21 +560,23 @@ function renderComments(comments) {
             let rawCommentName = comment.authorName || '';
             const __csid = (comment.authorId || '').toString().replace(/^student_/, '').trim();
             if (__csid.length >= 4) {
-                rawCommentName = `${rawCommentName} · ${__csid.substring(0, 4)}届`;
+                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}届</span>`;
+            } else {
+                rawCommentName = escapeHtml(rawCommentName);
             }
 
-            commentName = rawCommentName.includes(':') ? `同学${rawCommentAuthorId.slice(-4)}` : (rawCommentName || '匿名同学');
+            commentName = rawCommentName.includes(':') ? escapeHtml(`同学${rawCommentAuthorId.slice(-4)}`) : (rawCommentName || escapeHtml('匿名同学'));
             commentAvatarHtml = `<span style="line-height: 32px;">${escapeHtml(commentName.trim().charAt(0) || '?')}</span>`;
         }
         
         return `
             <div class="comment-item" data-comment-id="${comment.$id}">
                 <div class="comment-header">
-                    <div class="comment-author-avatar" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e9ecef; flex-shrink: 0; font-size: 0.85rem;">
+                    <div class="comment-author-avatar" onclick="window.goToUserProfile('${rawCommentAuthorId}', event)" style="cursor: pointer;" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e9ecef; flex-shrink: 0; font-size: 0.85rem;">
                         ${commentAvatarHtml}
                     </div>
                     <div class="comment-author-info">
-                        <div class="comment-author-name">${escapeHtml(commentName)}</div>
+                        <div class="comment-author-name" onclick="window.goToUserProfile('${rawCommentAuthorId}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${commentName}</div>
                         <div class="comment-time">${timeStr}</div>
                     </div>
                 </div>

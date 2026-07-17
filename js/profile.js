@@ -63,10 +63,11 @@ async function initProfile() {
     // 1. 瞬间本地回显 (防止白屏)
     document.getElementById('profileUserId').textContent = `ID: ${currentUser.userId}`;
     
-            let __name = currentUser.name || '未设置名称';
+            let __name = window.escapeHtml ? window.escapeHtml(currentUser.name || '未设置名称') : currentUser.name || '未设置名称';
+
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
-            document.getElementById('profileUsername').textContent = __name;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            document.getElementById('profileUsername').innerHTML = __name;
             
     document.getElementById('nameInput').value = currentUser.name || '';
     document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链接
@@ -77,10 +78,11 @@ async function initProfile() {
         const userDoc = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, currentUser.userId);
         if (userDoc) {
             
-            let __name = userDoc.name || '未设置名称';
+            let __name = window.escapeHtml ? window.escapeHtml(userDoc.name || '未设置名称') : userDoc.name || '未设置名称';
+
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
-            document.getElementById('profileUsername').textContent = __name;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            document.getElementById('profileUsername').innerHTML = __name;
             
             document.getElementById('nameInput').value = userDoc.name || '';
             document.getElementById('avatarInput').value = userDoc.avatar || ''; // 刷入云端最新网址
@@ -163,10 +165,11 @@ async function saveProfile() {
 
         // 刷新左侧卡片预览
         
-            let __name = currentUser.name;
+            let __name = window.escapeHtml ? window.escapeHtml(currentUser.name) : currentUser.name;
+
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name} · ${__sid.substring(0, 4)}届`;
-            document.getElementById('profileUsername').textContent = __name;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            document.getElementById('profileUsername').innerHTML = __name;
             
         updateAvatarPreview(currentUser.name, currentUser.avatar);
         

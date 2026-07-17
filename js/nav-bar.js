@@ -18,6 +18,12 @@
         }
     }
 
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
     function authHeaders(user) {
         const headers = {};
         if (user?.appToken) headers['X-LG-Token'] = user.appToken;
@@ -64,10 +70,10 @@
         if (userNotLogin) userNotLogin.style.display = 'none';
         if (userLoggedIn) userLoggedIn.style.display = 'flex';
         
-        let displayName = name || '同学';
+        let displayName = escapeHtml(name || '同学');
         const sid = (studentId || '').toString().replace(/^student_/, '').trim();
-        if (sid.length >= 4) displayName = `${displayName} · ${sid.substring(0, 4)}届`;
-        if (userNameSpan) userNameSpan.textContent = displayName;
+        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+        if (userNameSpan) userNameSpan.innerHTML = displayName;
 
         renderNavbarAvatar(name, avatar);
     }
