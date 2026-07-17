@@ -29,6 +29,61 @@ let currentUser = null;
 let userCache = {};
 let secureKeyReady = Promise.resolve(null);
 
+// ========== 离线缓存支持 ==========
+async function fetchWithHashCache(collection, urls) {
+    const serverHash = window.serverHashes ? window.serverHashes[collection] : undefined;
+    const cacheKeyData = `cache_data_${collection}`;
+    const cacheKeyHash = `cache_hash_${collection}`;
+    
+    if (serverHash) {
+        const localHash = localStorage.getItem(cacheKeyHash);
+        if (localHash === serverHash) {
+            const cachedData = localStorage.getItem(cacheKeyData);
+            if (cachedData) {
+                try { return JSON.parse(cachedData); } catch (e) {}
+            }
+        }
+    }
+    
+    for (const url of urls) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (serverHash) {
+                try {
+                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
+                    localStorage.setItem(cacheKeyHash, serverHash);
+                } catch (e) { }
+            }
+            return data;
+        } catch (e) { continue; }
+    }
+    throw new Error(`无法获取 ${collection} 数据`);
+}
+
+function applyPendingModifications(collection, documents) {
+    if (!documents || !Array.isArray(documents)) return documents;
+    let modified = [...documents];
+    if (!window.pendingModifications) return modified;
+
+    for (const log of window.pendingModifications) {
+        if (log.collection !== collection) continue;
+        const idx = modified.findIndex(d => (d.$id === log.item_id || d.id === log.item_id));
+        if (idx !== -1) {
+            if (log.action === 'delete') {
+                modified.splice(idx, 1);
+            } else if (log.action === 'edit' && log.payload) {
+                try {
+                    const updates = typeof log.payload === 'string' ? JSON.parse(log.payload) : log.payload;
+                    modified[idx] = { ...modified[idx], ...updates };
+                } catch(e) {}
+            }
+        }
+    }
+    return modified;
+}
+
 // ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
     console.log("🚀 [Home Initializer] 正在挂载实名沙箱与内容流...");
