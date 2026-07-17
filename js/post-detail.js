@@ -362,7 +362,7 @@ function renderPostDetail() {
 
     if (cachedUser) {
         finalName = cachedUser.name;
-        const isImgUrl = cachedUser.avatar && (cachedUser.avatar.startsWith('http') || cachedUser.avatar.startsWith('/'));
+        const isImgUrl = cachedUser.avatar && (cachedUser.avatar.startsWith('http') || cachedUser.avatar.startsWith('/') || cachedUser.avatar.startsWith('data:'));
         if (isImgUrl) {
             avatarHtml = `<img src="${escapeHtml(cachedUser.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像">`;
         } else {
@@ -549,7 +549,7 @@ function renderComments(comments) {
 
         if (cachedCommentUser) {
             commentName = cachedCommentUser.name;
-            const isCommentImg = cachedCommentUser.avatar && (cachedCommentUser.avatar.startsWith('http') || cachedCommentUser.avatar.startsWith('/'));
+            const isCommentImg = cachedCommentUser.avatar && (cachedCommentUser.avatar.startsWith('http') || cachedCommentUser.avatar.startsWith('/') || cachedCommentUser.avatar.startsWith('data:'));
             if (isCommentImg) {
                 commentAvatarHtml = `<img src="${escapeHtml(cachedCommentUser.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像">`;
             } else {

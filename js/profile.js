@@ -108,7 +108,7 @@ function updateAvatarPreview(name, avatarUrl) {
     if (!avatarText || !avatarImg) return;
 
     // 盘查是否输入了合法的图片网络链接
-    const hasUrl = avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/'));
+    const hasUrl = avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/') || avatarUrl.startsWith('data:'));
 
     if (hasUrl) {
         // 模式 A：渲染网络图片头像

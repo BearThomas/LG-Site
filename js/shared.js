@@ -99,7 +99,7 @@ export function getPostAuthorDisplay(post, userCache = {}) {
     name = formatNameWithYear(name, cleanAuthorId);
     
     const avatar = cachedUser?.avatar || '';
-    const isImageAvatar = avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/');
+    const isImageAvatar = avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/') || avatar.startsWith('data:');
     const initial = name.trim().charAt(0) || cleanAuthorId.charAt(0) || '?';
 
     return {

@@ -35,7 +35,7 @@
         if (!userAvatar) return;
         const cleanName = String(name || '').trim();
         const cleanUrl = String(avatarUrl || '').trim();
-        const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//'));
+        const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('data:') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//'));
 
         userAvatar.style.overflow = 'hidden';
         userAvatar.style.border = 'none';
