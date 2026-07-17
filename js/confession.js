@@ -398,7 +398,7 @@ function renderConfessions(confessions) {
             <div class="confession-card" data-id="${confessionId}">
                 <div class="confession-content">${escapeHtml(c.content)}</div>
                 <div class="confession-footer">
-                    <div class="confession-meta" ${confession.authorName === '匿名' ? '' : `onclick="window.goToUserProfile('${confession.authorId || confession.studentId}', event)" style="cursor: pointer;"`}>
+                    <div class="confession-meta" ${c.authorName === '匿名' ? '' : `onclick="window.goToUserProfile('${c.authorId || c.studentId}', event)" style="cursor: pointer;"`}>
                         <span class="confession-time">${timeStr}</span>
                     </div>
                     ${deleteHtml}
