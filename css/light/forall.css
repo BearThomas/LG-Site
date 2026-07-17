@@ -271,3 +271,53 @@ h1, h2, h3, h4, .site-title {
 .form-group label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-secondary); margin-bottom: 12px; }
 .form-group input, .form-group textarea { background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 2px; color: #fff; font-family: var(--font-sans); padding: 16px; }
 .form-group input:focus, .form-group textarea:focus { border-color: rgba(255,255,255,0.3); box-shadow: none; }
+
+
+/* ======== THEME TOGGLE ======== */
+.theme-toggle {
+  width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--glass-border);
+  background: transparent; color: var(--text-primary); display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; margin-right: 20px; transition: all 0.4s var(--transition-smooth);
+  font-family: var(--font-serif); font-size: 1.2rem;
+}
+.theme-toggle:hover { background: var(--accent-soft); border-color: rgba(255,255,255,0.2); }
+.theme-toggle-floating { position: fixed; bottom: 90px; right: 24px; z-index: 1000; box-shadow: var(--shadow-lg); background: var(--card-bg); backdrop-filter: blur(var(--blur-amount)); }
+
+/* ======== MOBILE NAVIGATION & LAYOUT ======== */
+@media screen and (max-width: 900px) {
+  .title-bar { padding: 0 5%; height: 70px; }
+  .site-title { font-size: 1.4rem; margin-left: 10px; }
+  .nav-bar { margin-left: auto; }
+  .user-area { display: none; /* Hide user area on mobile if it conflicts, or just let it wrap */ }
+  
+  .content-two-columns { flex-direction: column; gap: 40px; }
+  .post-section, .confession-section { width: 100%; padding: 0; }
+  .home-content { margin: 30px auto; padding: 0 5%; gap: 40px; }
+  .event-board { padding: 30px 20px; }
+  .event-board h2 { font-size: 1.8rem; flex-direction: column; align-items: flex-start; gap: 10px; }
+  
+  body { padding-bottom: 90px; }
+  
+  .nav-bar.mobile-bottom-nav {
+    position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; top: auto !important;
+    height: 75px !important; margin: 0 !important; padding: 0 !important;
+    display: flex !important; flex-direction: row !important; justify-content: space-around !important; align-items: center !important;
+    background: rgba(10, 10, 15, 0.85) !important; backdrop-filter: blur(20px) !important; -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 1px solid var(--glass-border) !important; box-shadow: 0 -10px 30px rgba(0,0,0,0.5) !important;
+    z-index: 9999 !important; border-radius: 20px 20px 0 0 !important;
+  }
+  
+  .nav-bar.mobile-bottom-nav .nav-bar-item {
+    flex: 1 !important; display: flex !important; flex-direction: column !important;
+    align-items: center !important; justify-content: center !important;
+    gap: 4px !important; color: var(--text-secondary) !important; font-size: 0.7rem !important;
+    font-weight: 500 !important; transition: all 0.4s var(--transition-smooth) !important;
+    background: transparent !important; border-radius: 0 !important; padding: 0 !important; height: 100% !important;
+  }
+  
+  .nav-bar.mobile-bottom-nav .nav-bar-item.active { color: #fff !important; transform: translateY(-2px) !important; font-weight: 600 !important; }
+  .nav-bar.mobile-bottom-nav .nav-bar-item::after { display: none !important; }
+  
+  .profile-wrapper { gap: 30px; }
+  .profile-sidebar, .settings-section { padding: 25px; margin-bottom: 30px; }
+}
