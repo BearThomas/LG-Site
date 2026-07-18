@@ -45,7 +45,7 @@ export function getBackupEncryptKey(env) {
 
 export function getRuntimeConfig(env) {
   return {
-    tokenTtlSeconds: clampNumber(env.AUTH_SESSION_TTL_SECONDS, 15 * 60, 24 * 60 * 60, 60 * 60),
+    tokenTtlSeconds: clampNumber(env.AUTH_SESSION_TTL_SECONDS, 15 * 60, 365 * 24 * 60 * 60, 365 * 24 * 60 * 60),
     timezoneOffsetMinutes: clampNumber(env.APP_TIMEZONE_OFFSET_MINUTES, -12 * 60, 14 * 60, 8 * 60),
     postDailyLimit: clampNumber(env.POST_DAILY_LIMIT, 1, 1000, 5),
     commentDailyLimit: clampNumber(env.COMMENT_DAILY_LIMIT, 1, 5000, 100),
