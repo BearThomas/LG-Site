@@ -6,6 +6,19 @@ marked.setOptions({
     breaks: true
 });
 
+const renderer = new marked.Renderer();
+renderer.image = function(token) {
+    const href = token.href || '';
+    const title = token.title || '';
+    const text = token.text || '';
+    const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(href);
+    if (isVideo) {
+        return `<video src="${href}" controls playsinline style="max-width: 100%; max-height: 500px; border-radius: 8px; margin: 10px 0;"></video>`;
+    }
+    return `<img src="${href}" alt="${text}" title="${title}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
+};
+marked.use({ renderer });
+
 const sanitizeConfig = {
     ALLOWED_TAGS: [
         'p', 'br', 'strong', 'em', 'del', 'blockquote',
@@ -14,9 +27,10 @@ const sanitizeConfig = {
         'code', 'pre',
         'a',
         'hr',
-        'table', 'thead', 'tbody', 'tr', 'th', 'td'
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'img', 'video', 'source'
     ],
-    ALLOWED_ATTR: ['href', 'title', 'target', 'rel']
+    ALLOWED_ATTR: ['href', 'title', 'target', 'rel', 'src', 'alt', 'controls', 'playsinline', 'style', 'class']
 };
 
 export function renderMarkdown(markdown = '') {
