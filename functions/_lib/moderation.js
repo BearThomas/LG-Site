@@ -40,7 +40,10 @@ ${text}`;
     });
 
     if (!response.ok) {
-      // 接口调用失败，采用 Fail-open 策略，允许发布并记录日志
+      if (response.status === 401 || response.status === 403) {
+        throw new HttpError(500, '审核系统配置错误（API Key/Password 无效），请管理员检查环境变量');
+      }
+      // 其他错误（如 500 等服务器网络故障），采用 Fail-open 策略，允许发布并记录日志
       console.error(`Moderation API error: ${response.status}`);
       return;
     }
