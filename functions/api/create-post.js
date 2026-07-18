@@ -31,6 +31,9 @@ export async function onRequestPost({ request, env }) {
     if (![1, 2, 4, 8].includes(viewPermission)) throw new HttpError(400, '查看权限设置无效');
     if (viewPermission === 4 && !targetGroups.length) throw new HttpError(400, '请至少选择一个可见用户或群组');
 
+    // 审核内容
+    await import('../_lib/moderation.js').then(m => m.assertContentSafe(env, title + '\n' + content));
+
     // 1. Verify user belongs to all targeted boards
     const joinedBoards = parseJsonArray(profile.joined_boards);
     for (const bId of boardIds) {

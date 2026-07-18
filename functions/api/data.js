@@ -330,6 +330,10 @@ export async function onRequestPatch({ request, env }) {
     if (!title || !content) throw new HttpError(400, '标题和正文不能为空');
     if (title.length > 100) throw new HttpError(400, '标题不能超过 100 个字符');
     if (content.length > 20_000) throw new HttpError(400, '正文不能超过 20000 个字符');
+
+    // 审核内容
+    await import('../_lib/moderation.js').then(m => m.assertContentSafe(env, title + '\n' + content));
+
     const now = new Date().toISOString();
     
     if (!isCold) {

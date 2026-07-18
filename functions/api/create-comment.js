@@ -15,6 +15,9 @@ export async function onRequestPost({ request, env }) {
     if (content.length < 2) throw new HttpError(400, '内容太短，多说两个字吧');
     if (content.length > 500) throw new HttpError(400, '评论不能超过 500 个字符');
 
+    // 审核内容
+    await import('../_lib/moderation.js').then(m => m.assertContentSafe(env, content));
+
     // Skip post existence and permission checks to allow commenting on backup‑only posts.
     // Optionally, you could fetch minimal metadata if needed, but for now we allow any postId.
     const post = null;

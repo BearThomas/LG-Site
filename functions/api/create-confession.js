@@ -13,6 +13,9 @@ export async function onRequestPost({ request, env }) {
     if (content.length < 5) throw new HttpError(400, '表白内容至少需要 5 个字符');
     if (content.length > 2000) throw new HttpError(400, '表白内容不能超过 2000 个字符');
 
+    // 审核内容
+    await import('../_lib/moderation.js').then(m => m.assertContentSafe(env, (toName || '') + '\n' + content));
+
     const runtime = getRuntimeConfig(env);
     const dayStart = localDayStartIso(runtime.timezoneOffsetMinutes);
     const countRow = await requireDb(env).prepare(`
