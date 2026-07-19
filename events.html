@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
+    <script>
+        (function() {
+            const t = localStorage.getItem('theme') || 'auto';
+            const isDark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>龙高北小站 | 大事记</title>

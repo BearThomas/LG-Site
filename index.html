@@ -3,6 +3,15 @@
 <!DOCTYPE html>
 <html>
     <head>
+    <script>
+        (function() {
+            const t = localStorage.getItem('theme') || 'auto';
+            const isDark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
+    </script>
         <title>龙高北小站 | 首页</title>
         <link rel="icon" type="image/png" href="./image/LG.png">
         <link rel="stylesheet" href="./css/light/forall.css">

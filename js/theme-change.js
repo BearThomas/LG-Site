@@ -5,8 +5,6 @@
     const DARK = 'dark';
     const LIGHT = 'light';
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const navMediaQuery = window.matchMedia('(max-width: 900px)');
-    let navRestorePoint = null;
 
     function getPreference() {
         return localStorage.getItem(THEME_KEY) || 'auto';
@@ -84,35 +82,12 @@
         syncThemeButton(resolveTheme(getPreference()));
     }
 
-    function syncResponsiveNav() {
-        const titleBar = document.querySelector('.title-bar');
-        const nav = document.querySelector('.nav-bar');
-        if (!titleBar || !nav) return;
 
-        if (!navRestorePoint && titleBar.contains(nav)) {
-            navRestorePoint = document.createComment('nav-bar-restore-point');
-            titleBar.insertBefore(navRestorePoint, nav);
-        }
-
-        if (navMediaQuery.matches) {
-            nav.classList.add('mobile-bottom-nav');
-            if (nav.parentElement !== document.body) {
-                document.body.appendChild(nav);
-            }
-            return;
-        }
-
-        nav.classList.remove('mobile-bottom-nav');
-        if (navRestorePoint && navRestorePoint.parentNode && nav.parentElement !== titleBar) {
-            navRestorePoint.parentNode.insertBefore(nav, navRestorePoint.nextSibling);
-        }
-    }
 
     applyTheme(getPreference(), false);
 
     document.addEventListener('DOMContentLoaded', () => {
         applyTheme(getPreference(), false);
-        syncResponsiveNav();
         ensureThemeToggle();
     });
 
@@ -126,12 +101,6 @@
         mediaQuery.addEventListener('change', handleSystemThemeChange);
     } else if (typeof mediaQuery.addListener === 'function') {
         mediaQuery.addListener(handleSystemThemeChange);
-    }
-
-    if (typeof navMediaQuery.addEventListener === 'function') {
-        navMediaQuery.addEventListener('change', syncResponsiveNav);
-    } else if (typeof navMediaQuery.addListener === 'function') {
-        navMediaQuery.addListener(syncResponsiveNav);
     }
 
     window.setTheme = function (theme) {
