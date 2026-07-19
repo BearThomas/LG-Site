@@ -303,4 +303,11 @@
         if (e.key === 'Enter') loginForm.dispatchEvent(new Event('submit'));
     });
 
+    // Hiding Download link if loaded inside Android APP WebView container
+    const isAndroidApp = !!(window.AndroidBridge || window.webkit?.messageHandlers?.AndroidBridge);
+    if (isAndroidApp) {
+        const footerLink = document.querySelector('.download-app-link-footer');
+        if (footerLink) footerLink.style.display = 'none';
+    }
+
 })();

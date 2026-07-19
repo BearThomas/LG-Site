@@ -8,13 +8,37 @@
     const dropdownMenu = document.getElementById('dropdownMenu');
     const logoutBtn = document.getElementById('logoutBtn');
 
-    // Dynamically inject Download App link into the dropdown menu
-    if (dropdownMenu && logoutBtn) {
-        const downloadLink = document.createElement('a');
-        downloadLink.href = 'download.html';
-        downloadLink.className = 'download-app-link';
-        downloadLink.textContent = '下载 APP';
-        dropdownMenu.insertBefore(downloadLink, logoutBtn);
+    // Check if we are inside the Android App WebView container
+    const isAndroidApp = !!(window.AndroidBridge || window.webkit?.messageHandlers?.AndroidBridge);
+
+    // Dynamically inject Download App link (only if NOT running inside the Android App WebView container)
+    if (!isAndroidApp) {
+        // 1. Inject into the logged-in dropdown menu
+        if (dropdownMenu && logoutBtn) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = 'download.html';
+            downloadLink.className = 'download-app-link';
+            downloadLink.textContent = '下载 APP';
+            dropdownMenu.insertBefore(downloadLink, logoutBtn);
+        }
+        
+        // 2. Inject into the guest (not logged in) area
+        if (userNotLogin) {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = 'download.html';
+            downloadLink.className = 'login-link download-app-link-guest';
+            downloadLink.style.marginLeft = '8px';
+            downloadLink.textContent = '下载 APP';
+            
+            const divider = document.createElement('span');
+            divider.className = 'divider';
+            divider.style.marginLeft = '6px';
+            divider.style.marginRight = '6px';
+            divider.textContent = '/';
+            
+            userNotLogin.appendChild(divider);
+            userNotLogin.appendChild(downloadLink);
+        }
     }
 
     function readSavedUser() {
