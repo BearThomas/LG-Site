@@ -14,7 +14,6 @@ import {
     escapeHtml,
     formatBoardName,
     formatTime,
-    loadUserDirectory,
     normalizeUserId,
     restoreSecureKey
 } from './shared.js';
@@ -169,26 +168,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存在</p></div>';
         return;
     }
-
-    // 正文和用户资料并行；正文优先显示，用户名片到达后再静默补全作者信息。
-    const userDirectoryTask = loadAllUsers();
+    
     await loadPostDetail();
-    void userDirectoryTask.then(() => {
-        if (currentPost && canRenderCurrentPost) renderPostDetail();
-    });
 });
 
-// ========== 🌟 一键预载全量用户到详情页本地缓存字典 ==========
-async function loadAllUsers() {
-    try {
-        const directory = await loadUserDirectory(databases, Query);
-        userCache = directory.userCache;
-        allUsers = directory.allUsers;
-        
-    } catch (e) {
-        console.warn('⚡ 初始化详情页用户身份快照失败，渲染将被迫降级使用内嵌冗余数据:', e.message);
-    }
-}
+
 // ========== 登录状态恢复 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
@@ -326,6 +310,15 @@ async function loadPostDetail() {
 
     document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
     canRenderCurrentPost = true;
+    
+    // Fetch author before rendering
+    if (currentPost && currentPost.authorId) {
+        try {
+            const { getUsersInfo } = await import('./shared.js');
+            await getUsersInfo(databases, Query, [currentPost.authorId]);
+        } catch(e) {}
+    }
+    
     renderPostDetail();
     await loadComments(); 
 }
@@ -493,6 +486,15 @@ async function loadComments() {
         allComments.sort((a, b) => new Date(a.$createdAt) - new Date(b.$createdAt));
         
         if (commentCount) commentCount.textContent = allComments.length;
+
+        const commenterIds = allComments.map(c => c.authorId || c.author_id).filter(Boolean);
+        if (commenterIds.length > 0) {
+            try {
+                const { getUsersInfo } = await import('./shared.js');
+                await getUsersInfo(databases, Query, commenterIds);
+            } catch(e) {}
+        }
+        
         renderComments(allComments);
     } catch (error) {
         console.error('装载评论流水线挂裂:', error);

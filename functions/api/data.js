@@ -40,6 +40,9 @@ function queryState(queries) {
     } else if (query.method === 'greaterThan' || query.method === 'lessThan') {
       if (!state.comparisons) state.comparisons = [];
       state.comparisons.push({ method: query.method, attribute: String(query.attribute), value: String(query.values?.[0] || '') });
+    } else if (query.method === 'search' || query.method === 'contains') {
+      if (!state.search) state.search = [];
+      state.search.push({ attribute: String(query.attribute), value: String(query.values?.[0] || '') });
     }
   }
   return state;
@@ -62,6 +65,14 @@ async function listUsers(env, state, viewer) {
       const op = comp.method === 'greaterThan' ? '>' : '<';
       conditions.push(`${comp.attribute} ${op} ?`);
       values.push(comp.value);
+    }
+  }
+
+  if (state.search) {
+    for (const s of state.search) {
+      const attr = s.attribute === 'studentId' ? 'id' : s.attribute;
+      conditions.push(`${attr} LIKE ?`);
+      values.push(`%${s.value}%`);
     }
   }
 

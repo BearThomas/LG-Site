@@ -13,7 +13,6 @@ import {
     escapeHtml,
     formatTime,
     getPostAuthorDisplay,
-    loadUserDirectory,
     normalizeUserId,
     renderAuthorAvatar,
     restoreSecureKey
@@ -71,14 +70,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     fetchAndApplyCacheVersion().catch(() => {});
     await loadBoards();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
-    await Promise.all([loadAllUsers(), loadPosts()]);
+    await loadPosts();
     if (postsSnapshot.length) renderPostsSnapshotPage();
     bindEvents();
     openRequestedPostModal();
     setupPullToRefresh({
         onRefresh: async () => {
             currentPage = 1;
-            await Promise.all([loadAllUsers(), loadPosts({ forceRefresh: true })]);
+            await loadPosts({ forceRefresh: true });
             if (postsSnapshot.length) renderPostsSnapshotPage();
         }
     });
@@ -128,17 +127,7 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
-// ========== 1. 全量用户装载（安全合规版） ==========
-async function loadAllUsers() {
-    try {
-        const directory = await loadUserDirectory(databases, Query);
-        userCache = directory.userCache;
-        allUsers = directory.allUsers;
-        
-    } catch (e) {
-        console.error('❌ 全局用户身份快照彻底崩塌，原因:', e.message);
-    }
-}
+
 
 async function listAllPostDocuments(baseQueries, onFirstBatch) {
     let allPosts = [];
@@ -850,23 +839,29 @@ async function searchUsers() {
         return;
     }
 
-    if (!allUsers) {
-        await loadAllUsers();
+    let matched = [];
+    try {
+        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
+            Query.search('studentId', keyword),
+            Query.limit(10)
+        ]);
+        matched = response.documents || [];
+    } catch (e) {
+        console.warn('搜索用户失败:', e);
     }
-
-    const matched = (allUsers || []).filter(u => u.studentId.includes(keyword));
     
     if (matched.length > 0) {
         resultsContainer.innerHTML = matched.map(user => {
-            const isAdded = selectedUserIds.has(user.studentId);
+            const sid = user.studentId || user.id || '';
+            const isAdded = selectedUserIds.has(sid);
             return `
                 <div class="search-result-item">
                     <div class="user-info">
-                        <div class="user-avatar-small">${user.studentId.charAt(0)}</div>
-                        <span class="user-student-id">${user.studentId}</span>
+                        <div class="user-avatar-small">${sid.charAt(0)}</div>
+                        <span class="user-student-id">${sid}</span>
                     </div>
                     <button class="add-user-btn ${isAdded ? 'added' : ''}" 
-                            data-student-id="${user.studentId}"
+                            data-student-id="${sid}"
                             ${isAdded ? 'disabled' : ''}>
                         ${isAdded ? '已添加' : '+ 添加'}
                     </button>
