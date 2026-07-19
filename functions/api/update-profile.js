@@ -17,6 +17,15 @@ export async function onRequestPost({ request, env }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
+    const db = requireDb(env);
+
+    if (body.deviceToken !== undefined) {
+      const deviceToken = String(body.deviceToken || '').trim();
+      const id = normalizeUserId(profile.id);
+      await db.prepare('UPDATE users SET device_token = ? WHERE id = ?').bind(deviceToken || null, id).run();
+      return json({ success: true, deviceToken });
+    }
+
     const name = String(body.name || '').trim();
     const avatar = String(body.avatar || '').trim();
     if (!name) throw new HttpError(400, '名字或昵称不能为空');
@@ -27,7 +36,6 @@ export async function onRequestPost({ request, env }) {
 
     const id = normalizeUserId(profile.id);
     const now = new Date().toISOString();
-    const db = requireDb(env);
     await db.batch([
       db.prepare('UPDATE users SET name = ?, avatar = ?, updated_at = ? WHERE id = ?').bind(name, avatar || null, now, id),
       db.prepare('UPDATE posts SET author_name = ? WHERE author_id = ?').bind(name, id),

@@ -87,6 +87,25 @@
         }
 
         showLoggedIn(user.name || user.studentId, user.avatar || '', user.studentId);
+        
+        // Report device token to backend if running inside Android app
+        if (window.AndroidBridge && typeof window.AndroidBridge.getRegistrationId === 'function') {
+            try {
+                const regId = window.AndroidBridge.getRegistrationId();
+                if (regId && user.deviceToken !== regId) {
+                    await fetch('/api/update-profile', {
+                        method: 'POST',
+                        headers: authHeaders(user),
+                        body: JSON.stringify({ deviceToken: regId })
+                    });
+                    user.deviceToken = regId;
+                    localStorage.setItem('campus_user', JSON.stringify(user));
+                }
+            } catch (e) {
+                console.warn('Failed to upload device token:', e);
+            }
+        }
+
         try {
             const response = await fetch('/api/auth-me', { headers: authHeaders(user) });
             if (response.status === 401) {
