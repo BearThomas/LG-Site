@@ -71,14 +71,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadBoards();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await loadPosts();
-    if (postsSnapshot.length) renderPostsSnapshotPage();
     bindEvents();
     openRequestedPostModal();
     setupPullToRefresh({
         onRefresh: async () => {
             currentPage = 1;
             await loadPosts({ forceRefresh: true });
-            if (postsSnapshot.length) renderPostsSnapshotPage();
+
         }
     });
 });
@@ -129,72 +128,28 @@ function showCacheNotice(message, type = 'waiting') {
 
 
 
-async function listAllPostDocuments(baseQueries, onFirstBatch) {
-    let allPosts = [];
-    let maxCreatedAt = null;
-    
-    // 1. Fetch all from IndexedDB
-    try {
-        const idb = await import('./idb-cache.js');
-        allPosts = await idb.getAllFromCache('posts', 100000, 'desc');
-        if (allPosts.length > 0) {
-            const firstDateStr = allPosts[0].$createdAt || allPosts[0].created_at;
-            if (firstDateStr) {
-                // To avoid timezone/precision issues, subtract 1 second from local max time
-                // or just use greaterThan. We'll use greaterThan.
-                maxCreatedAt = firstDateStr;
-            }
-            if (onFirstBatch) onFirstBatch(allPosts.slice(0, 50));
-        }
-    } catch (e) {
-        console.warn('IDB cache load failed', e);
+let hasMoreHotPosts = true;
+
+async function fetchHotPostsPage(queries, maxCreatedAt, offset = 0, batchSize = 25) {
+    const pageQueries = [...queries];
+    if (maxCreatedAt) {
+        pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
     }
-
-    const documents = [];
-    let offset = 0;
-    const batchSize = 100;
-
-    while (true) {
-        const pageQueries = [...baseQueries];
-        if (maxCreatedAt) {
-            pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
-        }
-        pageQueries.push(Query.limit(batchSize));
-        if (offset > 0) pageQueries.push(Query.offset(offset));
-
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
-        const batch = response.documents || [];
-        documents.push(...batch);
-        
-        if (!maxCreatedAt && offset === 0 && onFirstBatch) onFirstBatch(batch);
-
-        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
-        offset += batch.length;
+    if (offset > 0) {
+        pageQueries.push(Query.offset(offset));
     }
+    pageQueries.push(Query.limit(batchSize));
 
-    if (documents.length > 0) {
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
+    const batch = response.documents || [];
+
+    if (batch.length > 0) {
         try {
             const idb = await import('./idb-cache.js');
-            await idb.putToCache('posts', documents);
+            await idb.putToCache('posts', batch);
         } catch (e) {}
-        allPosts.push(...documents);
     }
-    
-    allPosts.sort((a, b) => {
-        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
-        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
-        return tb - ta;
-    });
-
-    // Remove absolute duplicates just in case
-    const uniqueMap = new Map();
-    allPosts.forEach(p => uniqueMap.set(p.$id || p.id, p));
-    
-    return Array.from(uniqueMap.values()).sort((a, b) => {
-        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
-        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
-        return tb - ta;
-    });
+    return batch;
 }
 
 // Fetch cold backup hashes + pending mods from D1
@@ -365,9 +320,13 @@ async function loadPosts({ forceRefresh = false } = {}) {
             try { searchIndex = await fetchWithHashCache('posts_search', ['./public/data-backups/posts/search-index.json']); } catch(e){}
         }
 
-        // 1. 并发获取最新热数据
+        // 1. 极速从本地获取最新状态并进行增量同步
+        const idb = await import('./idb-cache.js');
+        const latestDoc = await idb.getLatestFromCache('posts');
+        const maxCreatedAt = latestDoc ? (latestDoc.$createdAt || latestDoc.created_at) : null;
+        
         const queries = [ Query.orderDesc('$createdAt') ];
-        allHotPosts = await listAllPostDocuments(queries, firstBatch => {});
+        await fetchHotPostsPage(queries, maxCreatedAt, 0, 50);
 
         // 2. 准备懒加载队列（如果冷备存在）
         if (coldIndex && coldIndex.chunks) {
@@ -440,6 +399,11 @@ async function recomputePostsPool() {
     };
     
     let pool = [];
+    try {
+        const idb = await import('./idb-cache.js');
+        allHotPosts = await idb.getAllFromCache('posts', 100000, 'desc');
+    } catch(e) {}
+    
     pool.push(...allHotPosts.map(p => normalizePost(p, false)).filter(filterFn));
     
     // 动态调整 lazy load 的 chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
@@ -493,13 +457,50 @@ function initInfiniteScroll() {
 async function loadNextChunk() {
     const anchor = document.getElementById('infiniteScrollAnchor');
     
+    isFetchingChunk = true;
+    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载中...</span>';
+    
+    // 1. Try to fetch older hot posts from D1 if we haven't exhausted them
+    if (hasMoreHotPosts) {
+        try {
+            const idb = await import('./idb-cache.js');
+            const oldestDoc = await idb.getAllFromCache('posts', 1, 'asc');
+            let oldestCreatedAt = null;
+            if (oldestDoc && oldestDoc.length > 0) {
+                oldestCreatedAt = oldestDoc[0].$createdAt || oldestDoc[0].created_at;
+            }
+
+            const pageQueries = [ Query.orderDesc('$createdAt') ];
+            if (oldestCreatedAt) {
+                pageQueries.push(Query.lessThan('created_at', oldestCreatedAt));
+            }
+            pageQueries.push(Query.limit(50));
+
+            const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
+            const batch = response.documents || [];
+            
+            if (batch.length > 0) {
+                await idb.putToCache('posts', batch);
+                await recomputePostsPool();
+                isFetchingChunk = false;
+                if (anchor) anchor.innerHTML = ''; 
+                return;
+            } else {
+                hasMoreHotPosts = false;
+            }
+        } catch (e) {
+            console.warn('获取旧帖子失败', e);
+        }
+    }
+
+    // 2. Fallback to cold backup chunks
     if (pendingChunks.length === 0) {
         noMoreData = true;
         if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
+        isFetchingChunk = false;
         return;
     }
     
-    isFetchingChunk = true;
     if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载历史档案...</span>';
     
     const chunkFile = pendingChunks.shift();

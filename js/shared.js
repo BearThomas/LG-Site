@@ -165,7 +165,7 @@ export async function getUsersInfo(databases, Query, userIds) {
             const chunk = missingIds.slice(i, i + 100);
             try {
                 const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
-                    Query.equal('id', chunk),
+                    Query.equal('userId', chunk),
                     Query.limit(100)
                 ]);
                 

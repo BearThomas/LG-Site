@@ -174,58 +174,28 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
-async function listAllConfessionDocuments(baseQueries, onFirstBatch) {
-    let allConfessions = [];
-    let maxCreatedAt = null;
+let hasMoreHotConfessions = true;
 
-    try {
-        const idb = await import('./idb-cache.js');
-        allConfessions = await idb.getAllFromCache('confessions', 100000, 'desc');
-        if (allConfessions.length > 0) {
-            const firstDateStr = allConfessions[0].$createdAt || allConfessions[0].created_at;
-            if (firstDateStr) maxCreatedAt = firstDateStr;
-            if (onFirstBatch) onFirstBatch(allConfessions.slice(0, 50));
-        }
-    } catch (e) {}
-
-    const documents = [];
-    let offset = 0;
-    const batchSize = 100;
-
-    while (true) {
-        const pageQueries = [...baseQueries];
-        if (maxCreatedAt) {
-            pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
-        }
-        pageQueries.push(Query.limit(batchSize));
-        if (offset > 0) pageQueries.push(Query.offset(offset));
-
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
-        const batch = response.documents || [];
-        documents.push(...batch);
-        
-        if (!maxCreatedAt && offset === 0 && onFirstBatch) onFirstBatch(batch);
-
-        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
-        offset += batch.length;
+async function fetchHotConfessionsPage(queries, maxCreatedAt, offset = 0, batchSize = 25) {
+    const pageQueries = [...queries];
+    if (maxCreatedAt) {
+        pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
     }
+    if (offset > 0) {
+        pageQueries.push(Query.offset(offset));
+    }
+    pageQueries.push(Query.limit(batchSize));
 
-    if (documents.length > 0) {
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
+    const batch = response.documents || [];
+
+    if (batch.length > 0) {
         try {
             const idb = await import('./idb-cache.js');
-            await idb.putToCache('confessions', documents);
+            await idb.putToCache('confessions', batch);
         } catch (e) {}
-        allConfessions.push(...documents);
     }
-
-    const uniqueMap = new Map();
-    allConfessions.forEach(c => uniqueMap.set(c.$id || c.id, c));
-
-    return Array.from(uniqueMap.values()).sort((a, b) => {
-        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
-        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
-        return tb - ta;
-    });
+    return batch;
 }
 
 // ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
@@ -264,7 +234,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
             confessionList.innerHTML = createListSkeleton('confession', 5);
         }
 
-        // 【步骤 B】：后台静默并发拉取 D1 API（实时）+ 脱敏快照（降级）
+        // 【步骤 B】：后台静默并发拉取 D1 API（增量实时）+ 脱敏快照（降级）
         const queries = [
             Query.equal('status', 0)
         ];
@@ -279,24 +249,17 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         let localRes = [];
         await loadTombstones();
         try {
+            const idb = await import('./idb-cache.js');
+            const latestDoc = await idb.getLatestFromCache('confessions');
+            const maxCreatedAt = latestDoc ? (latestDoc.$createdAt || latestDoc.created_at) : null;
+            
             const [d1Res, coldRes] = await Promise.allSettled([
-                listAllConfessionDocuments(queries, firstBatch => {
-                    if (hasRenderedCache || currentPage !== 1) return;
-                    const quickItems = firstBatch.filter(item =>
-                        item.content != null && Number(item.status || 0) === 0 && !tombstonedIds.confessions.has(item.$id || item.id)
-                    ).slice(0, PAGE_SIZE);
-                    if (quickItems.length) {
-                        renderConfessions(quickItems);
-                        showCacheNotice('最新内容已显示，正在后台整理完整列表...', 'waiting');
-                        hasRenderedCache = true;
-                    }
-                }),
+                fetchHotConfessionsPage(queries, maxCreatedAt, 0, 50),
                 (async () => {
                     let docs = [];
                     const index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
                     if (index && index.chunks) {
                         const promises = index.chunks.map(chunk => {
-                            // Reuse posts.js fetchChunkWithCache logic implicitly or just use fetchWithHashCache for simplicity
                             return fetchWithHashCache(`confessions_${chunk.file}`, [`./public/data-backups/confessions/${chunk.file}`]);
                         });
                         const arrays = await Promise.all(promises);
@@ -307,7 +270,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
             ]);
             
             if (d1Res.status === 'fulfilled') {
-                appwriteRes.documents = d1Res.value || [];
+                appwriteRes.documents = await idb.getAllFromCache('confessions', 100000, 'desc');
             }
             if (coldRes.status === 'fulfilled') {
                 localRes = coldRes.value || [];

@@ -52,7 +52,7 @@ async function listUsers(env, state, viewer) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
-  const equalId = state.equals.get('userId') || state.equals.get('$id');
+  const equalId = state.equals.get('userId') || state.equals.get('$id') || state.equals.get('id');
   if (equalId?.length) {
     const ids = equalId.map(normalizeUserId).filter(Boolean);
     if (!ids.length) return { total: 0, documents: [] };

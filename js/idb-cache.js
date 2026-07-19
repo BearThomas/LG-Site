@@ -95,7 +95,7 @@ export async function putToCache(storeName, items) {
     }
 }
 
-export async function getAllFromCache(storeName, limit = 50, sortDirection = 'desc') {
+export async function getAllFromCache(storeName, limit = 50, sortDirection = 'desc', offset = 0) {
     try {
         const db = await initDB();
         return new Promise((resolve, reject) => {
@@ -112,9 +112,22 @@ export async function getAllFromCache(storeName, limit = 50, sortDirection = 'de
             }
             
             const results = [];
+            let advanced = false;
+
             request.onsuccess = (e) => {
                 const cursor = e.target.result;
-                if (cursor && results.length < limit) {
+                if (!cursor) {
+                    resolve(results);
+                    return;
+                }
+                
+                if (offset > 0 && !advanced) {
+                    advanced = true;
+                    cursor.advance(offset);
+                    return;
+                }
+
+                if (results.length < limit) {
                     results.push(cursor.value);
                     cursor.continue();
                 } else {
