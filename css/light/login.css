@@ -262,80 +262,159 @@
     margin-bottom: 16px;
 }
 
-/* === VERIFICATION MODAL === */
-.verification-modal {
-    display: none;
+/* === VERIFICATION OVERLAY & MODAL === */
+.verification-overlay {
     position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(4px);
-    z-index: 1000;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    z-index: 10000;
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
+    animation: fadeIn 0.25s var(--ease);
 }
-.verification-modal.show { display: flex; animation: fadeIn 0.2s; }
 
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.modal-content {
+.verification-modal {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 32px;
     width: 100%;
-    max-width: 380px;
-    text-align: center;
+    max-width: 460px;
     box-shadow: var(--shadow-lg);
     animation: slideUp 0.3s var(--ease);
+    overflow: hidden;
 }
 
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-.modal-content h3 { font-size: 1.4rem; color: var(--text); margin-bottom: 12px; font-family: var(--font-serif); }
-.modal-content p { color: var(--text-2); font-size: 0.95rem; margin-bottom: 24px; }
-.modal-email { font-weight: 600; color: var(--accent); }
-
-.verification-code-inputs {
+.verification-header {
     display: flex;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 24px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
 }
 
-.verification-input {
-    width: 48px;
-    height: 56px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 1.5rem;
-    text-align: center;
-    background: var(--surface-2);
+.verification-header span {
+    font-size: 1.2rem;
+    font-weight: 600;
     color: var(--text);
-    transition: all 0.2s;
-    outline: none;
+    font-family: var(--font-serif);
 }
-.verification-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
-.modal-actions { display: flex; flex-direction: column; gap: 12px; }
-.btn-verify {
-    background: var(--accent);
-    color: white;
+.verification-close {
+    background: transparent;
     border: none;
-    padding: 12px;
+    font-size: 1.5rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.verification-close:hover {
+    color: var(--text);
+}
+
+.verification-body {
+    padding: 24px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.verification-tip {
+    font-size: 0.92rem;
+    color: var(--text-2);
+    margin-bottom: 20px;
+}
+
+.verify-question {
+    margin-bottom: 18px;
+}
+
+.verify-question label {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 550;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.verify-hint {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: var(--surface-2);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+    margin-bottom: 8px;
+}
+
+.verify-question input {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 0.95rem;
+    background: var(--surface-2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    outline: none;
+    transition: all 0.2s var(--ease);
+}
+
+.verify-question input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.verification-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.verify-cancel-btn,
+.verify-submit-btn {
+    flex: 1;
+    padding: 11px;
     border-radius: var(--radius-pill);
     font-weight: 600;
+    font-size: 0.92rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s var(--ease);
 }
-.btn-verify:hover { background: var(--accent-hover); }
-.btn-verify:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-resend { background: transparent; color: var(--text-muted); border: none; padding: 10px; cursor: pointer; font-size: 0.9rem; }
-.btn-resend:hover:not(:disabled) { color: var(--accent); }
+
+.verify-cancel-btn {
+    background: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text-2);
+}
+
+.verify-cancel-btn:hover {
+    background: var(--surface-2);
+}
+
+.verify-submit-btn {
+    background: var(--accent);
+    border: none;
+    color: white;
+}
+
+.verify-submit-btn:hover {
+    background: var(--accent-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.verify-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 
 /* === MOBILE === */
 @media (max-width: 480px) {
     .login-card { padding: 32px 24px; border-radius: var(--radius-md); }
     .login-logo h1 { font-size: 1.8rem; }
-    .verification-input { width: 42px; height: 50px; font-size: 1.3rem; }
+    .verification-modal { max-width: 100%; border-radius: var(--radius-md); }
 }
