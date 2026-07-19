@@ -3,7 +3,7 @@ import { getRuntimeConfig } from '../_lib/config.js';
 import { canViewPost, getPostRow, localDayStartIso, normalizeUserId, requireDb } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
 
-export async function onRequestPost({ request, env }) {
+export async function onRequestPost({ request, env, waitUntil }) {
   try {
     const body = await readJsonBody(request);
     const { profile } = await requireAuth(request, env, body);
@@ -44,6 +44,40 @@ export async function onRequestPost({ request, env }) {
       `).bind(id, postId, content, normalizeUserId(profile.id), profile.name, now, now),
       db.prepare('UPDATE posts SET comment_count = comment_count + 1, updated_at = updated_at WHERE id = ?').bind(postId)
     ]);
+
+    // 后台通知逻辑 (不阻塞主响应流程)
+    try {
+      const postRow = await db.prepare('SELECT author_id, title FROM posts WHERE id = ?').bind(postId).first();
+      if (postRow && normalizeUserId(postRow.author_id) !== normalizeUserId(profile.id)) {
+        const recipientId = normalizeUserId(postRow.author_id);
+        const notificationId = crypto.randomUUID();
+        const notificationContent = `${profile.name} 评论了你的帖子《${postRow.title}》`;
+        
+        // 1. 存入数据库通知表
+        await db.prepare(`
+          INSERT INTO notifications (
+            id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
+          ) VALUES (?, ?, ?, ?, 'comment', '新评论提醒', ?, ?, 0, ?)
+        `).bind(notificationId, recipientId, normalizeUserId(profile.id), profile.name, notificationContent, postId, now).run();
+
+        // 2. 发送 JPush 推送
+        const recipientUser = await db.prepare('SELECT device_token FROM users WHERE id = ?').bind(recipientId).first();
+        if (recipientUser && recipientUser.device_token) {
+          const { sendPushNotification } = await import('../_lib/push.js');
+          waitUntil(
+            sendPushNotification(
+              env,
+              [recipientUser.device_token],
+              '新评论提醒',
+              notificationContent,
+              { link: `post.html?id=${postId}` }
+            )
+          );
+        }
+      }
+    } catch (notifError) {
+      console.error('Failed to create/send notification:', notifError);
+    }
 
     return json({ success: true, commentId: id }, 201);
   } catch (error) {

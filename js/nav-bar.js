@@ -109,8 +109,10 @@
             delete user.token;
             localStorage.setItem('campus_user', JSON.stringify(user));
             showLoggedIn(user.name, user.avatar, user.studentId);
+            updateNotificationBadge(user);
         } catch (error) {
             console.warn('顶栏资料同步失败，继续使用本地缓存:', error.message);
+            updateNotificationBadge(user);
         }
     }
 
@@ -147,9 +149,47 @@
         location.reload();
     });
 
+    async function updateNotificationBadge(user) {
+        if (!user) return;
+        try {
+            const response = await fetch('/api/list-notifications', { headers: authHeaders(user) });
+            if (!response.ok) return;
+            const result = await response.json();
+            const unreadCount = Number(result.unreadCount || 0);
+
+            const navMessages = document.getElementById('navMessages');
+            if (navMessages) {
+                let badge = navMessages.querySelector('.nav-badge');
+                if (unreadCount > 0) {
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'nav-badge';
+                        badge.style.position = 'absolute';
+                        badge.style.top = '6px';
+                        badge.style.right = '6px';
+                        badge.style.width = '8px';
+                        badge.style.height = '8px';
+                        badge.style.backgroundColor = 'var(--danger, #ff5555)';
+                        badge.style.borderRadius = '50%';
+                        badge.style.boxShadow = '0 0 8px var(--danger, #ff5555)';
+                        navMessages.appendChild(badge);
+                    }
+                } else {
+                    if (badge) badge.remove();
+                }
+            }
+        } catch (e) {
+            console.warn('Failed to load notification count:', e.message);
+        }
+    }
+
     checkLoginStatus();
     window.addEventListener('storage', event => {
         if (event.key === 'campus_user') checkLoginStatus();
     });
     window.refreshNavbar = checkLoginStatus;
+    window.refreshNotificationBadge = () => {
+        const u = readSavedUser();
+        if (u) updateNotificationBadge(u);
+    };
 })();
