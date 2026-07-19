@@ -2,12 +2,23 @@ import { requireAuth } from '../_lib/auth.js';
 import { requireDb, normalizeUserId } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed } from '../_lib/http.js';
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, waitUntil }) {
   try {
     const { profile } = await requireAuth(request, env);
     const userId = normalizeUserId(profile.id);
     
     const db = requireDb(env);
+
+    // Clean up notifications older than 30 days asynchronously to prevent database bloating
+    if (waitUntil) {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      waitUntil(
+        db.prepare('DELETE FROM notifications WHERE created_at < ?')
+          .bind(thirtyDaysAgo)
+          .run()
+          .catch(err => console.error('Failed to auto-clean old notifications:', err))
+      );
+    }
     
     // Get notifications
     const result = await db.prepare(`
