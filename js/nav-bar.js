@@ -211,23 +211,30 @@
 
             const navMessages = document.getElementById('navMessages');
             if (navMessages) {
-                let badge = navMessages.querySelector('.nav-badge');
+                const emptyBell = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/></svg>`;
+                const fullBell = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg>`;
+                
+                const iconWrapper = document.createElement('span');
+                iconWrapper.style.position = 'relative';
+                iconWrapper.style.display = 'inline-block';
+                iconWrapper.innerHTML = unreadCount > 0 ? fullBell : emptyBell;
+                
+                navMessages.innerHTML = '';
+                navMessages.appendChild(iconWrapper);
+                navMessages.appendChild(document.createTextNode('消息'));
+                
                 if (unreadCount > 0) {
-                    if (!badge) {
-                        badge = document.createElement('span');
-                        badge.className = 'nav-badge';
-                        badge.style.position = 'absolute';
-                        badge.style.top = '6px';
-                        badge.style.right = '6px';
-                        badge.style.width = '8px';
-                        badge.style.height = '8px';
-                        badge.style.backgroundColor = 'var(--danger, #ff5555)';
-                        badge.style.borderRadius = '50%';
-                        badge.style.boxShadow = '0 0 8px var(--danger, #ff5555)';
-                        navMessages.appendChild(badge);
-                    }
-                } else {
-                    if (badge) badge.remove();
+                    let badge = document.createElement('span');
+                    badge.className = 'nav-badge';
+                    badge.style.position = 'absolute';
+                    badge.style.top = '-1px';
+                    badge.style.right = '3px';
+                    badge.style.width = '7px';
+                    badge.style.height = '7px';
+                    badge.style.backgroundColor = 'var(--danger, #ff5555)';
+                    badge.style.borderRadius = '50%';
+                    badge.style.boxShadow = '0 0 6px var(--danger, #ff5555)';
+                    iconWrapper.appendChild(badge);
                 }
             }
         } catch (e) {

@@ -913,11 +913,6 @@ body::before {
   box-shadow: 0 1px 16px rgba(37, 99, 235, 0.07);
 }
 
-:root[data-theme="light"] .nav-bar,
-.light .nav-bar {
-  background: rgba(255, 255, 255, 0.97) !important;
-  box-shadow: 0 -4px 20px rgba(37, 99, 235, 0.08) !important;
-}
 
 /* === YEAR BADGE === */
 .year-badge {
