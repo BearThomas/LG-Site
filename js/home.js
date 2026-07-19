@@ -120,11 +120,22 @@ function applyPendingModifications(collection, documents) {
     // 渲染用户状态 UI
     checkLoginStatus();
     bindHomeActions();
-    await Promise.all([loadHomeUsers(), loadHomePosts(), loadHomeConfessions()]);
+    await Promise.all([
+        loadHomePosts({ forceRefresh: true }),
+        loadHomeConfessions({ forceRefresh: true })
+    ]);
+
+    window.addEventListener('userLoginSuccess', async () => {
+        if (currentUser) {
+            await Promise.all([
+                loadHomePosts({ forceRefresh: true }),
+                loadHomeConfessions({ forceRefresh: true })
+            ]);
+        }
+    });
     setupPullToRefresh({
         onRefresh: async () => {
             await Promise.all([
-                loadHomeUsers(),
                 loadHomePosts({ forceRefresh: true }),
                 loadHomeConfessions({ forceRefresh: true })
             ]);
@@ -151,14 +162,7 @@ function bindHomeActions() {
     });
 }
 
-async function loadHomeUsers() {
-    try {
-        const directory = await loadUserDirectory(databases, Query);
-        userCache = directory.userCache;
-    } catch (error) {
-        console.warn('首页用户快照加载失败，帖子作者信息将降级显示:', error.message);
-    }
-}
+// Removed loadHomeUsers since users are fetched on demand
 // ========== 异步优雅获取用户板块权限组 ==========
 async function getUserJoinedBoards() {
     if (!currentUser) return ['main'];
@@ -298,6 +302,11 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
                 .filter(p => !tombstones.posts.has(p.$id || p.id))
                 .slice(0, 5);
             if (quickPosts.length) {
+                const authorIds = quickPosts.map(p => p.authorId || p.author_id).filter(Boolean);
+                try {
+                    const { getUsersInfo } = await import('./shared.js');
+                    await getUsersInfo(databases, Query, authorIds);
+                } catch(e) {}
                 renderHomePosts(quickPosts);
                 showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
                 hasRenderedCache = true;
@@ -345,6 +354,12 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     const userBoards = currentUser ? await getUserJoinedBoards() : ['main'];
     const visiblePosts = allPosts.filter(post => isPostVisible(post, userBoards));
     const finalHomePosts = visiblePosts.slice(0, 5);
+
+    const authorIds = finalHomePosts.map(p => p.authorId || p.author_id).filter(Boolean);
+    try {
+        const { getUsersInfo } = await import('./shared.js');
+        await getUsersInfo(databases, Query, authorIds);
+    } catch(e) {}
 
     // 【步骤 6】复写 DOM 并刷新高速缓存
     renderHomePosts(finalHomePosts);

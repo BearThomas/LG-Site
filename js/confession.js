@@ -175,24 +175,57 @@ function showCacheNotice(message, type = 'waiting') {
 }
 
 async function listAllConfessionDocuments(baseQueries, onFirstBatch) {
+    let allConfessions = [];
+    let maxCreatedAt = null;
+
+    try {
+        const idb = await import('./idb-cache.js');
+        allConfessions = await idb.getAllFromCache('confessions', 100000, 'desc');
+        if (allConfessions.length > 0) {
+            const firstDateStr = allConfessions[0].$createdAt || allConfessions[0].created_at;
+            if (firstDateStr) maxCreatedAt = firstDateStr;
+            if (onFirstBatch) onFirstBatch(allConfessions.slice(0, 50));
+        }
+    } catch (e) {}
+
     const documents = [];
     let offset = 0;
     const batchSize = 100;
 
     while (true) {
-        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        const pageQueries = [...baseQueries];
+        if (maxCreatedAt) {
+            pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
+        }
+        pageQueries.push(Query.limit(batchSize));
         if (offset > 0) pageQueries.push(Query.offset(offset));
 
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, pageQueries);
         const batch = response.documents || [];
         documents.push(...batch);
-        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
+        
+        if (!maxCreatedAt && offset === 0 && onFirstBatch) onFirstBatch(batch);
 
         if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
         offset += batch.length;
     }
 
-    return documents;
+    if (documents.length > 0) {
+        try {
+            const idb = await import('./idb-cache.js');
+            await idb.putToCache('confessions', documents);
+        } catch (e) {}
+        allConfessions.push(...documents);
+    }
+
+    const uniqueMap = new Map();
+    allConfessions.forEach(c => uniqueMap.set(c.$id || c.id, c));
+
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
+        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
+        return tb - ta;
+    });
 }
 
 // ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========

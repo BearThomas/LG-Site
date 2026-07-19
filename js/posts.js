@@ -141,24 +141,71 @@ async function loadAllUsers() {
 }
 
 async function listAllPostDocuments(baseQueries, onFirstBatch) {
+    let allPosts = [];
+    let maxCreatedAt = null;
+    
+    // 1. Fetch all from IndexedDB
+    try {
+        const idb = await import('./idb-cache.js');
+        allPosts = await idb.getAllFromCache('posts', 100000, 'desc');
+        if (allPosts.length > 0) {
+            const firstDateStr = allPosts[0].$createdAt || allPosts[0].created_at;
+            if (firstDateStr) {
+                // To avoid timezone/precision issues, subtract 1 second from local max time
+                // or just use greaterThan. We'll use greaterThan.
+                maxCreatedAt = firstDateStr;
+            }
+            if (onFirstBatch) onFirstBatch(allPosts.slice(0, 50));
+        }
+    } catch (e) {
+        console.warn('IDB cache load failed', e);
+    }
+
     const documents = [];
     let offset = 0;
     const batchSize = 100;
 
     while (true) {
-        const pageQueries = [...baseQueries, Query.limit(batchSize)];
+        const pageQueries = [...baseQueries];
+        if (maxCreatedAt) {
+            pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
+        }
+        pageQueries.push(Query.limit(batchSize));
         if (offset > 0) pageQueries.push(Query.offset(offset));
 
         const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
         const batch = response.documents || [];
         documents.push(...batch);
-        if (offset === 0 && onFirstBatch) onFirstBatch(batch);
+        
+        if (!maxCreatedAt && offset === 0 && onFirstBatch) onFirstBatch(batch);
 
         if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
         offset += batch.length;
     }
 
-    return documents;
+    if (documents.length > 0) {
+        try {
+            const idb = await import('./idb-cache.js');
+            await idb.putToCache('posts', documents);
+        } catch (e) {}
+        allPosts.push(...documents);
+    }
+    
+    allPosts.sort((a, b) => {
+        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
+        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
+        return tb - ta;
+    });
+
+    // Remove absolute duplicates just in case
+    const uniqueMap = new Map();
+    allPosts.forEach(p => uniqueMap.set(p.$id || p.id, p));
+    
+    return Array.from(uniqueMap.values()).sort((a, b) => {
+        const ta = new Date(a.$createdAt || a.created_at || 0).getTime();
+        const tb = new Date(b.$createdAt || b.created_at || 0).getTime();
+        return tb - ta;
+    });
 }
 
 // Fetch cold backup hashes + pending mods from D1
@@ -338,7 +385,7 @@ async function loadPosts({ forceRefresh = false } = {}) {
             pendingChunks = coldIndex.chunks.map(c => c.file);
         }
 
-        recomputePostsPool();
+        await recomputePostsPool();
         initInfiniteScroll();
 
     } catch (error) {
@@ -347,7 +394,7 @@ async function loadPosts({ forceRefresh = false } = {}) {
     }
 }
 
-function recomputePostsPool() {
+async function recomputePostsPool() {
     const currentUserId = currentUser?.studentId || 'guest';
     
     const normalizePost = (p, isCold) => ({
@@ -428,6 +475,14 @@ function recomputePostsPool() {
     pool.sort((a,b) => new Date(b.$createdAt) - new Date(a.$createdAt));
     
     currentPostsPool = pool;
+    
+    // Fetch missing users for these posts
+    const authorIds = currentPostsPool.map(p => p.authorId || p.author_id).filter(Boolean);
+    try {
+        const { getUsersInfo } = await import('./shared.js');
+        await getUsersInfo(databases, Query, authorIds);
+    } catch(e) {}
+    
     renderPosts(currentPostsPool);
 }
 
@@ -463,7 +518,7 @@ async function loadNextChunk() {
         const chunkObj = coldIndex && coldIndex.chunks ? coldIndex.chunks.find(c => c.file === chunkFile) : null;
         let chunkData = await fetchChunkWithCache('posts', chunkFile, chunkObj ? chunkObj.hash : null);
         loadedColdPostsMap.set(chunkFile, chunkData);
-        recomputePostsPool();
+        await recomputePostsPool();
     } catch(e) {
         console.warn('获取区块失败', chunkFile, e);
     }

@@ -140,24 +140,69 @@ export function indexUsersById(documents) {
     return { allUsers, userCache };
 }
 
-export async function loadUserDirectory(databases, Query) {
-    const documents = [];
-    let offset = 0;
-    const batchSize = 100;
-
-    while (true) {
-        const queries = [Query.limit(batchSize)];
-        if (offset > 0) queries.push(Query.offset(offset));
-
-        const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, queries);
-        const batch = response.documents || [];
-        documents.push(...batch);
-
-        if (batch.length < batchSize || documents.length >= Number(response.total || 0)) break;
-        offset += batch.length;
+export async function getUsersInfo(databases, Query, userIds) {
+    if (!userIds || userIds.length === 0) return {};
+    
+    // Normalize IDs
+    const normalizedIds = [...new Set(userIds.map(id => id.toString().replace(/^student_/, '').trim()))].filter(Boolean);
+    if (normalizedIds.length === 0) return {};
+    
+    // Fetch from IndexedDB
+    let cachedUsers = {};
+    try {
+        const idb = await import('./idb-cache.js');
+        cachedUsers = await idb.getMultipleFromCache('users', normalizedIds);
+    } catch (e) {
+        console.warn('IDB failed, falling back to network', e);
     }
-
-    return indexUsersById(documents);
+    
+    const missingIds = normalizedIds.filter(id => !cachedUsers[id]);
+    
+    // Fetch missing from server
+    if (missingIds.length > 0) {
+        // Chunk into max 100 per request
+        for (let i = 0; i < missingIds.length; i += 100) {
+            const chunk = missingIds.slice(i, i + 100);
+            try {
+                const response = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
+                    Query.equal('id', chunk),
+                    Query.limit(100)
+                ]);
+                
+                const docs = response.documents || [];
+                const usersToSave = docs.map(doc => {
+                    const uid = (doc.userId || doc.studentId || doc.$id || '').toString().trim();
+                    const cleanId = uid.replace(/^student_/, '');
+                    return {
+                        $id: cleanId,
+                        studentId: uid,
+                        name: doc.name || `\u540c\u5b66${uid.slice(-4)}`,
+                        avatar: doc.avatar || ''
+                    };
+                });
+                
+                if (usersToSave.length > 0) {
+                    try {
+                        const idb = await import('./idb-cache.js');
+                        await idb.putToCache('users', usersToSave);
+                    } catch (e) {}
+                    usersToSave.forEach(u => cachedUsers[u.$id] = u);
+                }
+            } catch (e) {
+                console.error('Failed to fetch user chunk:', e);
+            }
+        }
+    }
+    
+    // Update window.userCache for legacy compat
+    if (!window.userCache) window.userCache = {};
+    for (const id in cachedUsers) {
+        const u = cachedUsers[id];
+        window.userCache[id] = u;
+        window.userCache[`student_${id}`] = u;
+    }
+    
+    return cachedUsers;
 }
 
 export function goToUserProfile(userId, event) {

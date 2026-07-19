@@ -37,6 +37,9 @@ function queryState(queries) {
       state.offset = Math.max(0, Number(query.values?.[0] || 0));
     } else if (query.method === 'orderDesc' || query.method === 'orderAsc') {
       state.order = { attribute: String(query.attribute || ''), direction: query.method === 'orderAsc' ? 'ASC' : 'DESC' };
+    } else if (query.method === 'greaterThan' || query.method === 'lessThan') {
+      if (!state.comparisons) state.comparisons = [];
+      state.comparisons.push({ method: query.method, attribute: String(query.attribute), value: String(query.values?.[0] || '') });
     }
   }
   return state;
@@ -53,6 +56,15 @@ async function listUsers(env, state, viewer) {
     conditions.push(`id IN (${ids.map(() => '?').join(', ')})`);
     values.push(...ids);
   }
+
+  if (state.comparisons) {
+    for (const comp of state.comparisons) {
+      const op = comp.method === 'greaterThan' ? '>' : '<';
+      conditions.push(`${comp.attribute} ${op} ?`);
+      values.push(comp.value);
+    }
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM users ${where}`).bind(...values);
   const rowsStatement = db.prepare(`
@@ -143,6 +155,15 @@ async function listPosts(env, state, viewer) {
   }
 
   appendPostVisibility(conditions, values, viewer);
+  
+  if (state.comparisons) {
+    for (const comp of state.comparisons) {
+      const op = comp.method === 'greaterThan' ? '>' : '<';
+      conditions.push(`${comp.attribute} ${op} ?`);
+      values.push(comp.value);
+    }
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
   const orderDirection = state.order?.direction || 'DESC';
@@ -187,6 +208,14 @@ async function listComments(env, state, viewer) {
     values.push(...postIdValues.map(String));
   }
 
+  if (state.comparisons) {
+    for (const comp of state.comparisons) {
+      const op = comp.method === 'greaterThan' ? '>' : '<';
+      conditions.push(`${comp.attribute} ${op} ?`);
+      values.push(comp.value);
+    }
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const orderDirection = state.order?.direction || 'DESC';
 
@@ -224,6 +253,15 @@ async function listConfessions(env, state, viewer) {
     conditions.push(`status IN (${statuses.map(() => '?').join(', ')})`);
     values.push(...statuses.map(value => Number(value)));
   }
+
+  if (state.comparisons) {
+    for (const comp of state.comparisons) {
+      const op = comp.method === 'greaterThan' ? '>' : '<';
+      conditions.push(`${comp.attribute} ${op} ?`);
+      values.push(comp.value);
+    }
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const orderColumn = state.order?.attribute === 'likes' ? 'likes' : 'created_at';
   const orderDirection = state.order?.direction || 'DESC';
