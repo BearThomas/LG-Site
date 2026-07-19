@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         setContentView(webView)
         
         // 加载打包部署后的网页端线上地址
-        webView.loadUrl("https://lg-site.pages.dev")
+        webView.loadUrl("https://longgaobei.pages.dev")
     }
 
     private fun requestNotificationPermission() {
