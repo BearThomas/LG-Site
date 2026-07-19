@@ -13,7 +13,6 @@ import {
     formatBoardName,
     formatTime,
     getPostAuthorDisplay,
-    loadUserDirectory,
     normalizeUserId,
     renderAuthorAvatar,
     restoreSecureKey
