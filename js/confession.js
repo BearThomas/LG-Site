@@ -126,38 +126,27 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== 登录状态 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
-    const userNotLogin = document.getElementById('userNotLogin');
-    const userLoggedIn = document.getElementById('userLoggedIn');
-    
+    const loginTip = document.getElementById('loginTip');
+    const publishBtn = document.getElementById('publishBtn');
+
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
-        } catch {
-            localStorage.removeItem('campus_user');
+            if (currentUser.authVersion !== 2) {
+                localStorage.removeItem('campus_user');
+                currentUser = null;
+                if (loginTip) loginTip.style.display = 'block';
+                if (publishBtn) publishBtn.disabled = true;
+                return;
+            }
+            if (loginTip) loginTip.style.display = 'none';
+            if (publishBtn) publishBtn.disabled = false;
+        } catch (e) {
             currentUser = null;
-        }
-        if (!currentUser || currentUser.authVersion !== 2) {
-            localStorage.removeItem('campus_user');
-            currentUser = null;
-            if (userNotLogin) userNotLogin.style.display = 'flex';
-            if (userLoggedIn) userLoggedIn.style.display = 'none';
             if (loginTip) loginTip.style.display = 'block';
             if (publishBtn) publishBtn.disabled = true;
-            return;
         }
-        if (userNotLogin) userNotLogin.style.display = 'none';
-        if (userLoggedIn) userLoggedIn.style.display = 'flex';
-        
-        const userNameEl = document.getElementById('userName');
-        const userAvatarEl = document.getElementById('userAvatar');
-        if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
-        if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
-        
-        if (loginTip) loginTip.style.display = 'none';
-        if (publishBtn) publishBtn.disabled = false;
     } else {
-        if (userNotLogin) userNotLogin.style.display = 'flex';
-        if (userLoggedIn) userLoggedIn.style.display = 'none';
         if (loginTip) loginTip.style.display = 'block';
         if (publishBtn) publishBtn.disabled = true;
     }

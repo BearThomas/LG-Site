@@ -86,40 +86,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ========== 登录状态 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
-    const userNotLogin = document.getElementById('userNotLogin');
-    const userLoggedIn = document.getElementById('userLoggedIn');
-    
     if (userData) {
         try {
             currentUser = JSON.parse(userData);
             if (currentUser.authVersion !== 2) {
                 localStorage.removeItem('campus_user');
                 currentUser = null;
-                if (userNotLogin) userNotLogin.style.display = 'flex';
-                if (userLoggedIn) userLoggedIn.style.display = 'none';
-                return;
             }
-            if (userNotLogin) userNotLogin.style.display = 'none';
-            if (userLoggedIn) userLoggedIn.style.display = 'flex';
-            
-            const userNameEl = document.getElementById('userName');
-            const userAvatarEl = document.getElementById('userAvatar');
-            
-            if (userNameEl) {
-                let n = escapeHtml(currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`);
-                const sid = (currentUser.studentId || '').toString().replace(/^student_/, '').trim();
-                if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
-                userNameEl.innerHTML = n;
-            }
-
-            if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
-            
         } catch (e) {
             currentUser = null;
         }
-    } else {
-        if (userNotLogin) userNotLogin.style.display = 'flex';
-        if (userLoggedIn) userLoggedIn.style.display = 'none';
     }
 }
 // ========== 加载板块基础数据 ==========

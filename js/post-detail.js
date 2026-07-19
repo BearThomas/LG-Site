@@ -192,8 +192,6 @@ async function loadAllUsers() {
 // ========== 登录状态恢复 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
-    const userNotLogin = document.getElementById('userNotLogin');
-    const userLoggedIn = document.getElementById('userLoggedIn');
     
     if (userData) {
         try {
@@ -201,29 +199,34 @@ function checkLoginStatus() {
             if (currentUser.authVersion !== 2) {
                 localStorage.removeItem('campus_user');
                 currentUser = null;
-                if (userNotLogin) userNotLogin.style.display = 'flex';
-                if (userLoggedIn) userLoggedIn.style.display = 'none';
+                if (commentInputBox) commentInputBox.style.display = 'none';
+                if (loginTip) loginTip.style.display = 'block';
                 return;
             }
             applyAppwriteAuth(currentUser);
             
-            if (userNotLogin) userNotLogin.style.display = 'none';
-            if (userLoggedIn) userLoggedIn.style.display = 'flex';
-            
-            const userNameEl = document.getElementById('userName');
-            const userAvatarEl = document.getElementById('userAvatar');
-            if (userNameEl) userNameEl.textContent = `学号尾号 ${currentUser.studentId.slice(-4)}`;
-            if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
-            if (commentAvatar) commentAvatar.textContent = currentUser.studentId.charAt(0);
+            if (commentAvatar) {
+                const cleanUrl = String(currentUser.avatar || '').trim();
+                const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:');
+                if (isImage) {
+                    commentAvatar.replaceChildren();
+                    const img = document.createElement('img');
+                    img.src = cleanUrl;
+                    img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;';
+                    commentAvatar.appendChild(img);
+                } else {
+                    commentAvatar.textContent = (currentUser.name || currentUser.studentId).charAt(0);
+                }
+            }
             
             if (commentInputBox) commentInputBox.style.display = 'flex';
             if (loginTip) loginTip.style.display = 'none';
         } catch (e) {
             currentUser = null;
+            if (commentInputBox) commentInputBox.style.display = 'none';
+            if (loginTip) loginTip.style.display = 'block';
         }
     } else {
-        if (userNotLogin) userNotLogin.style.display = 'flex';
-        if (userLoggedIn) userLoggedIn.style.display = 'none';
         if (commentInputBox) commentInputBox.style.display = 'none';
         if (loginTip) loginTip.style.display = 'block';
     }

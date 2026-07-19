@@ -134,28 +134,7 @@ function applyPendingModifications(collection, documents) {
 
 // ========== 检查并同步登录状态 UI ==========
 function checkLoginStatus() {
-    const userNotLogin = document.getElementById('userNotLogin');
-    const userLoggedIn = document.getElementById('userLoggedIn');
-
-    if (currentUser) {
-        if (userNotLogin) userNotLogin.style.display = 'none';
-        if (userLoggedIn) userLoggedIn.style.display = 'flex';
-        
-        const userNameEl = document.getElementById('userName');
-        const userAvatarEl = document.getElementById('userAvatar');
-        
-        if (userNameEl) {
-            let n = escapeHtml(currentUser.name || `学号尾号 ${currentUser.studentId.slice(-4)}`);
-            const sid = (currentUser.studentId || '').toString().replace(/^student_/, '').trim();
-            if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
-            userNameEl.innerHTML = n;
-        }
-
-        if (userAvatarEl) userAvatarEl.textContent = currentUser.studentId.charAt(0);
-    } else {
-        if (userNotLogin) userNotLogin.style.display = 'flex';
-        if (userLoggedIn) userLoggedIn.style.display = 'none';
-    }
+    // 顶栏登录状态与昵称/头像已全部由全局 js/nav-bar.js 集中异步托管，此处置空以防冲突覆盖
 }
 
 function bindHomeActions() {
