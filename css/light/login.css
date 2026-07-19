@@ -3,15 +3,14 @@
 .login-page {
     min-height: 100vh;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
+    flex-direction: column;
+    padding: 40px 20px;
 }
 
-/* === MAIN CONTAINER === */
 .login-container {
     width: 100%;
     max-width: 420px;
+    margin: auto;
     animation: fadeInUp 0.5s var(--ease);
 }
 
