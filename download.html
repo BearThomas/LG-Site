@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+            if (theme === 'light') {
+                document.documentElement.classList.add('light');
+            } else {
+                document.documentElement.classList.remove('light');
+            }
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>龙高北小站 - 安卓客户端下载</title>
+    <link rel="stylesheet" href="css/light/forall.css">
+    <link rel="icon" href="image/logo.png" type="image/png">
+    <style>
+        .download-page {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .download-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 40px;
+            width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(var(--blur));
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+        .download-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, var(--accent-soft) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .download-content {
+            position: relative;
+            z-index: 1;
+        }
+        .app-icon-wrapper {
+            width: 96px;
+            height: 96px;
+            background: var(--accent-soft);
+            border: 2px solid var(--accent);
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            box-shadow: 0 0 20px var(--accent-soft);
+        }
+        .app-icon-wrapper svg {
+            width: 54px;
+            height: 54px;
+            fill: var(--accent);
+        }
+        .download-title {
+            font-family: var(--font-serif);
+            font-size: 2.2rem;
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+        .download-subtitle {
+            font-size: 1.05rem;
+            color: var(--text-2);
+            margin-bottom: 32px;
+        }
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+            color: #ffffff;
+            padding: 14px 36px;
+            border-radius: var(--radius-pill);
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 20px var(--accent-soft);
+            transition: transform 0.2s var(--ease), box-shadow 0.2s;
+            cursor: pointer;
+            margin-bottom: 16px;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--accent-soft);
+        }
+        .app-meta {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            text-align: left;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s var(--ease);
+        }
+        .feature-card:hover {
+            transform: translateY(-2px);
+        }
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+        .feature-title {
+            font-size: 1.05rem;
+            font-weight: 650;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+        .feature-desc {
+            font-size: 0.88rem;
+            color: var(--text-2);
+            line-height: 1.6;
+        }
+        .guide-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            width: 100%;
+            margin-top: 30px;
+            box-shadow: var(--shadow-sm);
+            text-align: left;
+        }
+        .guide-title {
+            font-size: 1.2rem;
+            font-weight: 650;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .guide-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .guide-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.93rem;
+            color: var(--text-2);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .guide-step {
+            background: var(--accent-soft);
+            color: var(--accent);
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        @media (max-width: 600px) {
+            .download-page {
+                margin: 20px auto;
+            }
+            .download-card {
+                padding: 24px;
+            }
+            .download-title {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="meteor-container">
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+        <div class="meteor"></div>
+    </div>
+
+    <!-- Title Bar -->
+    <div class="title-bar">
+        <img class="logo" src="image/logo.png" alt="Logo" onclick="location.href='/'">
+        <span class="site-title" onclick="location.href='/'">龙高北小站</span>
+        <div class="user-area" id="userArea">
+            <!-- Dynamic navbar items -->
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="download-page">
+        <div class="download-card">
+            <div class="download-content">
+                <div class="app-icon-wrapper">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M16.63 13.91a.75.75 0 0 1-.03 1.06l-4 3.75a.75.75 0 0 1-1.04 0l-4-3.75a.75.75 0 1 1 1.03-1.09l2.76 2.58V7.75a.75.75 0 0 1 1.5 0v10.04l2.71-2.54a.75.75 0 0 1 1.07.03zM4.25 19.25h15.5a.75.75 0 0 1 0 1.5H4.25a.75.75 0 0 1 0-1.5zM12 2a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0V2.75A.75.75 0 0 1 12 2z"/>
+                    </svg>
+                </div>
+                <h1 class="download-title">龙高北小站 安卓客户端</h1>
+                <p class="download-subtitle">专为手机端优化的混合容器客户端，畅享全功能互动</p>
+                <a href="/app-debug.apk" class="download-btn" download="lg-site-app.apk">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.202 12.512c-.22-.382-.22-.853 0-1.235l1.62-2.805A1.002 1.002 0 0 1 4.69 8h14.62c.382 0 .733.217.906.559l1.62 2.805c.22.382.22.853 0 1.235l-1.62 2.805a1.043 1.043 0 0 1-.906.559H4.69a1.043 1.043 0 0 1-.906-.559l-1.62-2.805zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+                    </svg>
+                    <span>立即下载 (APK)</span>
+                </a>
+                <div class="app-meta">版本号: v1.0.0 | 文件大小: 约 13.5 MB | 适配环境: Android 8.0+</div>
+            </div>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🔔</div>
+                <div class="feature-title">实时消息推送</div>
+                <div class="feature-desc">完美接入极光推送 (JPush)，发帖、被评论、被回复瞬间发出系统通知，绝不错过任何一条消息。</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <div class="feature-title">原生运行体验</div>
+                <div class="feature-desc">基于原生 WebView 混合容器，对手机端 UI 排版作了极致优化，更顺滑的过渡，加载更少，省流高效。</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔑</div>
+                <div class="feature-title">记住登录态</div>
+                <div class="feature-desc">支持持久化 Session 绑定，一次登录永久有效，免除在浏览器里频繁需要重新输入账号密码的烦恼。</div>
+            </div>
+        </div>
+
+        <div class="guide-section">
+            <h2 class="guide-title">⚙️ 安卓安装指引</h2>
+            <ul class="guide-list">
+                <li class="guide-item">
+                    <span class="guide-step">1</span>
+                    <div>点击上方“立即下载”按钮获取 APK 安装包文件。</div>
+                </li>
+                <li class="guide-item">
+                    <span class="guide-step">2</span>
+                    <div>下载完成后点击打开，若系统提示“禁止安装未知来源应用”，请点击“设置”允许浏览器/文件管理器安装应用。</div>
+                </li>
+                <li class="guide-item">
+                    <span class="guide-step">3</span>
+                    <div>根据系统引导完成安装，启动后首次运行请点击“允许”授予通知栏推送权限以保证接收消息。</div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Theme change trigger button -->
+    <button class="theme-toggle theme-toggle-floating" id="themeToggleBtn" aria-label="切换主题">🌓</button>
+
+    <script src="js/shared.js" type="module"></script>
+    <script src="js/nav-bar.js" type="module"></script>
+    <script src="js/theme-change.js" type="module"></script>
+</body>
+</html>

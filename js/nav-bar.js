@@ -8,6 +8,15 @@
     const dropdownMenu = document.getElementById('dropdownMenu');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    // Dynamically inject Download App link into the dropdown menu
+    if (dropdownMenu && logoutBtn) {
+        const downloadLink = document.createElement('a');
+        downloadLink.href = 'download.html';
+        downloadLink.className = 'download-app-link';
+        downloadLink.textContent = '下载 APP';
+        dropdownMenu.insertBefore(downloadLink, logoutBtn);
+    }
+
     function readSavedUser() {
         try {
             const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
