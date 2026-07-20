@@ -448,6 +448,7 @@ async function recomputePostsPool() {
     try {
         const { getUsersInfo } = await import('./shared.js');
         await getUsersInfo(databases, Query, authorIds);
+        userCache = window.userCache || {};
     } catch(e) {}
     
     renderPosts(currentPostsPool);

@@ -316,6 +316,7 @@ async function loadPostDetail() {
         try {
             const { getUsersInfo } = await import('./shared.js');
             await getUsersInfo(databases, Query, [currentPost.authorId]);
+            userCache = window.userCache || {};
         } catch(e) {}
     }
     
@@ -492,6 +493,7 @@ async function loadComments() {
             try {
                 const { getUsersInfo } = await import('./shared.js');
                 await getUsersInfo(databases, Query, commenterIds);
+                userCache = window.userCache || {};
             } catch(e) {}
         }
         

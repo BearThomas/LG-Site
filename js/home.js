@@ -305,6 +305,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
                 try {
                     const { getUsersInfo } = await import('./shared.js');
                     await getUsersInfo(databases, Query, authorIds);
+                    userCache = window.userCache || {};
                 } catch(e) {}
                 renderHomePosts(quickPosts);
                 showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
@@ -358,6 +359,8 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     try {
         const { getUsersInfo } = await import('./shared.js');
         await getUsersInfo(databases, Query, authorIds);
+        // 同步回局部缓存，确保渲染时能取到头像
+        userCache = window.userCache || {};
     } catch(e) {}
 
     // 【步骤 6】复写 DOM 并刷新高速缓存
