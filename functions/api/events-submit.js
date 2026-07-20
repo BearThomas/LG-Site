@@ -94,7 +94,7 @@ ${userInput}
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'glm-4-flash',
+        model: 'glm-z1-flash',
         messages: [{ role: 'user', content: aiPrompt }],
         temperature: 0.1,
         response_format: { type: "json_object" }

@@ -7,7 +7,9 @@ import { HttpError } from './http.js';
  */
 export async function assertContentSafe(env, text) {
   if (!text || typeof text !== 'string') return;
-  const apiKey = env.SPARK_API_PASSWORD;
+  
+  // 使用智谱的 API KEY 环境变量
+  const apiKey = env.ZHIPU_API_KEY;
   if (!apiKey) {
     // 如果没有配置 API Key，则跳过审核
     return;
@@ -37,14 +39,15 @@ ${safeText}
   const timeout = setTimeout(() => controller.abort(), 5000); // 5秒超时
 
   try {
-    const response = await fetch('https://spark-api-open.xf-yun.com/v1/chat/completions', {
+    // 替换为智谱 API 地址
+    const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'lite',
+        model: 'glm-4-flash', // 使用指定的 glm-4-flash 模型
         messages: [{ role: 'user', content: prompt }],
         stream: false
       }),
@@ -53,7 +56,7 @@ ${safeText}
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        throw new HttpError(500, '审核系统配置错误（API Key/Password 无效），请管理员检查环境变量');
+        throw new HttpError(500, '审核系统配置错误（API Key 无效），请管理员检查环境变量');
       }
       // 其他错误（如 500 等服务器网络故障），采用 Fail-open 策略，允许发布并记录日志
       console.error(`Moderation API error: ${response.status}`);
