@@ -292,6 +292,39 @@ body::before {
   gap: 10px;
 }
 
+.notification-center-link {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 38px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: pointer;
+  list-style: none;
+  transition: color 0.2s, border-color 0.2s, background 0.2s, transform 0.2s;
+}
+
+.notification-center-link:hover,
+.notification-center-link.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: translateY(-1px);
+}
+
+.notification-center-link > span {
+  margin: 0 !important;
+}
+
+.notification-center-link > span + * {
+  display: none;
+}
+
 .user-not-login { display: flex; align-items: center; }
 .user-not-login .divider,
 .user-not-login .register-link { display: none; }
@@ -825,6 +858,7 @@ body::before {
   .title-bar img { width: 48px !important; height: 48px !important; }
   .site-title { font-size: 1.1rem; margin-left: 10px; }
   .user-area { margin-left: auto; }
+  .notification-center-link { width: 36px; height: 36px; flex-basis: 36px; }
   .user-name { display: none; }
   .login-link { padding: 5px 13px; font-size: 0.75rem; }
   .theme-toggle { width: 36px; height: 36px; font-size: 0.9rem; margin: 0 10px; }

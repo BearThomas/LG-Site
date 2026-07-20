@@ -29,7 +29,7 @@ function applyAppwriteAuth(savedUser) {
     }
 }
 
-// ========== 页面初始化入�?==========
+// ========== 页面初始化入口 ==========
 async function initProfile() {
     const userData = localStorage.getItem('campus_user');
     if (!userData) {
@@ -52,7 +52,7 @@ async function initProfile() {
 
     const validUid = currentUser.studentId || currentUser.userId || currentUser.$id;
     if (!validUid) {
-        alert('登录凭证不完整，请重新登�?);
+        alert('登录凭证不完整，请重新登录');
         location.href = 'login.html';
         return;
     }
@@ -63,14 +63,14 @@ async function initProfile() {
     // 1. 瞬间本地回显 (防止白屏)
     document.getElementById('profileUserId').textContent = `ID: ${currentUser.userId}`;
     
-            let __name = window.escapeHtml ? window.escapeHtml(currentUser.name || '未设置名�?) : currentUser.name || '未设置名�?;
+            let __name = window.escapeHtml ? window.escapeHtml(currentUser.name || '未设置名称') : currentUser.name || '未设置名称';
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}�?/span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
     document.getElementById('nameInput').value = currentUser.name || '';
-    document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链�?
+    document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链接
     updateAvatarPreview(currentUser.name, currentUser.avatar);
 
     // 2. 异步向云端对齐最新个性化资料
@@ -78,16 +78,16 @@ async function initProfile() {
         const userDoc = await databases.getDocument(DATABASE_ID, COLLECTION_USERS, currentUser.userId);
         if (userDoc) {
             
-            let __name = window.escapeHtml ? window.escapeHtml(userDoc.name || '未设置名�?) : userDoc.name || '未设置名�?;
+            let __name = window.escapeHtml ? window.escapeHtml(userDoc.name || '未设置名称') : userDoc.name || '未设置名称';
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}�?/span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
             document.getElementById('nameInput').value = userDoc.name || '';
             document.getElementById('avatarInput').value = userDoc.avatar || ''; // 刷入云端最新网址
             
-            // 实时渲染最新头�?
+            // 实时渲染最新头像
             updateAvatarPreview(userDoc.name, userDoc.avatar);
 
             // 联动重写本地缓存
@@ -96,11 +96,11 @@ async function initProfile() {
             localStorage.setItem('campus_user', JSON.stringify(currentUser));
         }
     } catch (e) {
-        console.warn('静默同步云端资料受阻，保持本地快照渲�?', e.message);
+        console.warn('静默同步云端资料受阻，保持本地快照渲染', e.message);
     }
 }
 
-// ========== 🌟 智能头像全能渲染�?==========
+// ========== 🌟 智能头像全能渲染器 ==========
 function updateAvatarPreview(name, avatarUrl) {
     const avatarText = document.getElementById('avatarText');
     const avatarImg = document.getElementById('avatarImg');
@@ -111,7 +111,7 @@ function updateAvatarPreview(name, avatarUrl) {
     const hasUrl = avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/') || avatarUrl.startsWith('data:'));
 
     if (hasUrl) {
-        // 模式 A：渲染网络图片头�?
+        // 模式 A：渲染网络图片头像
         avatarText.style.display = 'none';
         avatarImg.src = avatarUrl.trim();
         avatarImg.onerror = () => {
@@ -123,7 +123,7 @@ function updateAvatarPreview(name, avatarUrl) {
         };
         avatarImg.style.display = 'block';
     } else {
-        // 模式 B：降级渲染动态首字文本头�?
+        // 模式 B：降级渲染动态首字文本头像
         avatarImg.style.display = 'none';
         avatarImg.src = '';
         const cleanName = name ? name.trim() : '';
@@ -138,7 +138,7 @@ async function saveProfile() {
     const newAvatar = document.getElementById('avatarInput').value.trim();
 
     if (!newName) {
-        alert('名字或昵称不能为�?);
+        alert('名字或昵称不能为空');
         return;
     }
 
@@ -175,7 +175,7 @@ async function saveProfile() {
             let __name = window.escapeHtml ? window.escapeHtml(currentUser.name) : currentUser.name;
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}�?/span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
         updateAvatarPreview(currentUser.name, currentUser.avatar);
@@ -200,7 +200,7 @@ async function updatePassword() {
         return;
     }
     if (newPassword.length < 8) {
-        alert('新密码安全强度不足，长度至少�?8 �?);
+        alert('新密码安全强度不足，长度至少为 8 位');
         return;
     }
 
@@ -227,7 +227,7 @@ async function updatePassword() {
             throw new Error(result.error || '修改失败');
         }
 
-        alert('密码修改成功！为了安全，系统将重新对齐会话，请重新登录�?);
+        alert('密码修改成功！为了安全，系统将重新对齐会话，请重新登录。');
         localStorage.removeItem('campus_user');
         location.href = 'login.html';
     } catch (error) {
@@ -300,65 +300,34 @@ async function loadMyActivity(type) {
     // Check if already loaded
     if (listElement.getAttribute('data-loaded')) return;
     
-    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">正在检�?..</div>';
+    listElement.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--text-secondary);">正在检索...</div>';
 
     try {
-        const rawStudentId = (currentUser.studentId || '').replace(/^student_/, '');
-        const fullAuthorId = 'student_' + rawStudentId;
-        
-        // Load hot data
-        let queries = [ Query.equal('authorId', [rawStudentId, fullAuthorId]), Query.orderDesc('$createdAt'), Query.limit(50) ];
-        const { documents: hotDocs } = await databases.listDocuments(DATABASE_ID, type === 'posts' ? COLLECTION_POSTS : COLLECTION_COMMENTS, queries);
-        
-        // Load cold data using searchIndex
-        let coldDocs = [];
-        let indexName = type === 'posts' ? 'posts_search' : 'comments_search';
-        let indexPath = type === 'posts' ? './public/data-backups/posts/search-index.json' : './public/data-backups/comments/search-index.json';
-        
-        try {
-            const indexHashMeta = window.serverHashes ? window.serverHashes[indexName] : null;
-            const res = await fetch(indexPath);
-            if (res.ok) {
-                const searchIndex = await res.json();
-                // Find chunks where the author is this user
-                const myMeta = searchIndex.filter(m => {
-                    const id = m.authorId || m.author_id;
-                    return id === rawStudentId || id === fullAuthorId;
-                });
-                const chunkFiles = new Set(myMeta.map(m => 'chunk-' + m.c + '.json'));
-                
-                // We fetch those chunks and extract the docs
-                for (const file of chunkFiles) {
-                    try {
-                        const cres = await fetch('./public/data-backups/' + type + '/' + file);
-                        if (cres.ok) {
-                            const chunkData = await cres.json();
-                            coldDocs.push(...chunkData.filter(d => {
-                                const id = d.authorId || d.author_id;
-                                return id === rawStudentId || id === fullAuthorId;
-                            }));
-                        }
-                    } catch(e) {}
-                }
-            }
-        } catch(e) {}
-
-        const allDocs = [...hotDocs, ...coldDocs];
-        allDocs.sort((a,b) => new Date(b.$createdAt || b.createdAt || b.created_at) - new Date(a.$createdAt || a.createdAt || a.created_at));
+        const response = await fetch(`/api/my-activity?type=${encodeURIComponent(type)}`, {
+            headers: currentUser.appToken ? { 'X-LG-Token': currentUser.appToken } : {}
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '加载失败');
+        const allDocs = Array.isArray(result.documents) ? result.documents : [];
 
         if (allDocs.length === 0) {
             listElement.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">暂无足迹</div>';
         } else {
+            const escapeText = value => {
+                const element = document.createElement('div');
+                element.textContent = String(value ?? '');
+                return element.innerHTML;
+            };
             listElement.innerHTML = allDocs.map(doc => {
                 const date = new Date(doc.$createdAt || doc.createdAt || doc.created_at).toLocaleString();
                 if (type === 'posts') {
                     return `<div style="padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="location.href='post?id=${doc.$id || doc.id}'">
-                        <strong style="color: var(--text-primary);">${doc.title || '无标�?}</strong>
+                        <strong style="color: var(--text-primary);">${escapeText(doc.title || '无标题')}</strong>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">${date}</div>
                     </div>`;
                 } else {
                     return `<div style="padding: 10px; border-bottom: 1px solid var(--border); cursor: pointer;" onclick="location.href='post?id=${doc.postId || doc.post_id}'">
-                        <div style="color: var(--text-secondary);">${doc.content || '...'}</div>
+                        <div style="color: var(--text-secondary);">${escapeText(doc.content || '...')}</div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 5px;">${date} - 回复</div>
                     </div>`;
                 }

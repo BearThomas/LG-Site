@@ -8,6 +8,43 @@
     const dropdownMenu = document.getElementById('dropdownMenu');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    function setupPrimaryNavigation() {
+        const navBar = document.querySelector('.nav-bar');
+        const userArea = document.getElementById('userArea');
+        const messagesLink = document.getElementById('navMessages');
+        if (!navBar || !userArea) return;
+
+        if (!navBar.querySelector('[data-nav-events]')) {
+            const eventsItem = document.createElement('li');
+            eventsItem.className = 'nav-bar-item';
+            eventsItem.dataset.navEvents = 'true';
+            eventsItem.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 .5a.5.5 0 0 1 .5.5v.5h7V1a.5.5 0 0 1 1 0v.5h1A1.5 1.5 0 0 1 15 3v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14V3a1.5 1.5 0 0 1 1.5-1.5h1V1a.5.5 0 0 1 .5-.5ZM2 6v8a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V6H2Zm0-1h12V3a.5.5 0 0 0-.5-.5h-1V3a.5.5 0 0 1-1 0v-.5h-7V3a.5.5 0 0 1-1 0v-.5h-1A.5.5 0 0 0 2 3v2Z"/></svg><span>大事记</span>';
+            eventsItem.addEventListener('click', () => { location.href = 'events.html'; });
+            const currentPage = location.pathname.split('/').pop() || 'index.html';
+            if (currentPage === 'events' || currentPage === 'events.html') eventsItem.classList.add('active');
+            const docsItem = [...navBar.children].find(item => /docs(?:\.html)?/.test(item.getAttribute('onclick') || ''));
+            navBar.insertBefore(eventsItem, docsItem || null);
+        }
+
+        if (messagesLink && messagesLink.parentElement === navBar) {
+            messagesLink.classList.remove('nav-bar-item');
+            messagesLink.classList.add('notification-center-link');
+            messagesLink.setAttribute('role', 'link');
+            messagesLink.setAttribute('aria-label', '通知中心');
+            messagesLink.setAttribute('title', '通知中心');
+            messagesLink.setAttribute('tabindex', '0');
+            messagesLink.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    location.href = 'messages.html';
+                }
+            });
+            userArea.insertBefore(messagesLink, userArea.firstChild);
+        }
+    }
+
+    setupPrimaryNavigation();
+
     // Check if we are inside the Android App WebView container
     const isAndroidApp = !!(window.AndroidBridge || window.webkit?.messageHandlers?.AndroidBridge);
 
@@ -105,7 +142,7 @@
         
         let displayName = escapeHtml(name || '同学');
         const sid = (studentId || '').toString().replace(/^student_/, '').trim();
-        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
+        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
         if (userNameSpan) userNameSpan.innerHTML = displayName;
 
         renderNavbarAvatar(name, avatar);
@@ -163,7 +200,7 @@
             showLoggedIn(user.name, user.avatar, user.studentId);
             updateNotificationBadge(user);
         } catch (error) {
-            console.warn('顶栏资料同步失败，继续使用本地缓�?', error.message);
+            console.warn('顶栏资料同步失败，继续使用本地缓存', error.message);
             updateNotificationBadge(user);
         }
     }
@@ -189,7 +226,7 @@
                     })
                 });
             } catch (error) {
-                console.warn('云端退出失败，已清理本地会�?', error.message);
+                console.warn('云端退出失败，已清理本地会话', error.message);
             }
         }
         if (typeof localforage !== 'undefined') {
@@ -224,7 +261,7 @@
                 
                 navMessages.innerHTML = '';
                 navMessages.appendChild(iconWrapper);
-                navMessages.appendChild(document.createTextNode('消息'));
+                navMessages.setAttribute('aria-label', unreadCount > 0 ? `通知中心，${unreadCount} 条未读` : '通知中心');
                 
                 if (unreadCount > 0) {
                     let badge = document.createElement('span');
