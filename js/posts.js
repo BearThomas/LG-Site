@@ -586,7 +586,7 @@ function closeModal() {
 }
 
 function openPostDetail(postId) {
-    location.href = `post.html?id=${postId}`;
+    location.href = 'post.html?id=' + encodeURIComponent(postId);
 }
 
 // ========== 事件绑定 ==========

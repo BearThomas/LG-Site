@@ -11,6 +11,12 @@ const EventsManager = (function() {
         dateRange: 'all'
     };
 
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = String(value ?? '');
+        return element.innerHTML;
+    }
+
     // ========== 日期工具函数 ==========
     function getWeekRange(date) {
         const d = new Date(date);
@@ -135,9 +141,9 @@ const EventsManager = (function() {
 
         container.innerHTML = weekEvents.map(event => `
             <div class="event-card">
-                <span class="event-tag">${event.tag}</span>
-                <div class="event-title">${event.title}</div>
-                <div class="event-desc">${event.desc}</div>
+                <span class="event-tag">${escapeHtml(event.tag)}</span>
+                <div class="event-title">${escapeHtml(event.title)}</div>
+                <div class="event-desc">${escapeHtml(event.desc)}</div>
                 <div class="event-date">${formatDate(event.date)}</div>
             </div>
         `).join('');
@@ -163,11 +169,11 @@ const EventsManager = (function() {
         container.innerHTML = filtered.map(event => `
             <div class="event-list-item">
                 <div class="event-list-tag">
-                    <span class="event-tag">${event.tag}</span>
+                    <span class="event-tag">${escapeHtml(event.tag)}</span>
                 </div>
                 <div class="event-list-content">
-                    <div class="event-title">${event.title}</div>
-                    <div class="event-desc">${event.desc}</div>
+                    <div class="event-title">${escapeHtml(event.title)}</div>
+                    <div class="event-desc">${escapeHtml(event.desc)}</div>
                     <div class="event-date">${formatDate(event.date)}</div>
                 </div>
             </div>
@@ -187,7 +193,7 @@ const EventsManager = (function() {
                     <label>标签</label>
                     <select id="filterTag">
                         <option value="all">全部</option>
-                        ${tags.map(tag => `<option value="${tag}">${tag}</option>`).join('')}
+                        ${tags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`).join('')}
                     </select>
                 </div>
                 <div class="filter-group">
@@ -246,7 +252,74 @@ const EventsManager = (function() {
     const contentInput = document.getElementById('eventSubmitContent');
     const recordsList = document.getElementById('mySubmissionsList');
 
-    if (!submitBtn) return;
+    if (!submitBtn || !mySubmissionsBtn || !submitModal || !recordsModal) return;
+
+    function getSavedUser() {
+        try {
+            const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
+            return user?.authVersion === 2 && user?.studentId ? user : null;
+        } catch {
+            return null;
+        }
+    }
+
+    function authHeaders(user, includeJson = false) {
+        const headers = {};
+        if (includeJson) headers['Content-Type'] = 'application/json';
+        if (user?.appToken) headers['X-LG-Token'] = user.appToken;
+        if (user?.token) headers['X-Appwrite-Session'] = user.token;
+        return headers;
+    }
+
+    function readLocalRecords() {
+        try {
+            const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
+            return Array.isArray(records) ? records.slice(0, 50) : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function writeLocalRecords(records) {
+        localStorage.setItem('my_event_submissions', JSON.stringify(records.slice(0, 50)));
+    }
+
+    function escapeHtml(value) {
+        const element = document.createElement('div');
+        element.textContent = String(value ?? '');
+        return element.innerHTML;
+    }
+
+    const statusLabels = {
+        pending_admin: 'AI 初审已通过 · 等待管理员确认',
+        published: '已发布',
+        rejected: '管理员未通过'
+    };
+
+    function renderSubmissionRecords(records) {
+        if (records.length === 0) {
+            recordsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无记录</div>';
+            return;
+        }
+        recordsList.innerHTML = records.map(record => {
+            const status = statusLabels[record.status] || record.statusLabel || '状态待同步';
+            const statusColor = record.status === 'published'
+                ? 'var(--success, #2f9e44)'
+                : record.status === 'rejected'
+                    ? 'var(--danger, #e03131)'
+                    : 'var(--warning, #f08c00)';
+            return `
+                <div style="border-bottom: 1px solid var(--border); padding: 12px 0;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">${escapeHtml(record.title || '待生成标题')}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 7px;">原内容：${escapeHtml(record.content || '')}</div>
+                    <div style="display: flex; gap: 10px; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                        <span>${new Date(record.date).toLocaleString()}</span>
+                        <span style="color: ${statusColor}; text-align: right;">${escapeHtml(status)}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 
     submitBtn.addEventListener('click', () => {
         submitModal.style.display = 'flex';
@@ -264,9 +337,8 @@ const EventsManager = (function() {
             return;
         }
 
-        let user = null;
-        try { user = JSON.parse(localStorage.getItem('campus_user')); } catch(e) {}
-        if (!user || !user.token) {
+        const user = getSavedUser();
+        if (!user) {
             alert('请先登录后投稿');
             location.href = 'login.html';
             return;
@@ -278,10 +350,11 @@ const EventsManager = (function() {
         try {
             const res = await fetch('/api/events-submit', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: authHeaders(user, true),
                 body: JSON.stringify({
-                    userId: 'student_' + user.studentId,
-                    sessionSecret: user.token,
+                    studentId: user.studentId,
+                    appToken: user.appToken || '',
+                    sessionSecret: user.token || '',
                     content: val
                 })
             });
@@ -291,15 +364,15 @@ const EventsManager = (function() {
                 submitModal.style.display = 'none';
                 
                 // 保存到本地记录
-                const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
+                const records = readLocalRecords();
                 records.unshift({
                     id: data.eventId,
                     content: val,
                     title: data.data?.title || '无标题',
                     date: new Date().toISOString(),
-                    status: '等待审核'
+                    status: data.data?.status || 'pending_admin'
                 });
-                localStorage.setItem('my_event_submissions', JSON.stringify(records));
+                writeLocalRecords(records);
             } else {
                 alert('投稿失败: ' + (data.error || '未知错误'));
             }
@@ -311,22 +384,38 @@ const EventsManager = (function() {
         }
     });
 
-    mySubmissionsBtn.addEventListener('click', () => {
+    mySubmissionsBtn.addEventListener('click', async () => {
         recordsModal.style.display = 'flex';
-        const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
-        if (records.length === 0) {
-            recordsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无记录</div>';
-        } else {
-            recordsList.innerHTML = records.map(r => `
-                <div style="border-bottom: 1px solid var(--border); padding: 10px 0;">
-                    <div style="font-weight: 600; margin-bottom: 5px;">${r.title}</div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">原内容: ${r.content}</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
-                        <span>${new Date(r.date).toLocaleString()}</span>
-                        <span style="color: var(--warning);">${r.status}</span>
-                    </div>
-                </div>
-            `).join('');
+        const records = readLocalRecords();
+        renderSubmissionRecords(records);
+        if (!records.length) return;
+
+        const user = getSavedUser();
+        if (!user) return;
+
+        recordsList.insertAdjacentHTML('afterbegin', '<div id="submissionSyncState" style="font-size: 0.82rem; color: var(--text-muted); padding-bottom: 10px;">正在同步审核状态…</div>');
+        try {
+            const ids = records.map(record => record.id).filter(Boolean).join(',');
+            const response = await fetch(`/api/events-submit?ids=${encodeURIComponent(ids)}`, {
+                headers: authHeaders(user)
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.error || '状态同步失败');
+
+            const serverRecords = new Map((data.submissions || []).map(item => [item.id, item]));
+            const updated = records.map(record => {
+                const serverRecord = serverRecords.get(record.id);
+                if (!serverRecord) return { ...record, statusLabel: '记录暂未查到，请稍后重试' };
+                return {
+                    ...record,
+                    title: serverRecord.title || record.title,
+                    status: serverRecord.status || record.status
+                };
+            });
+            writeLocalRecords(updated);
+            renderSubmissionRecords(updated);
+        } catch (error) {
+            document.getElementById('submissionSyncState').textContent = error.message;
         }
     });
 

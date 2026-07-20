@@ -1,6 +1,33 @@
 import { requireAuth } from '../_lib/auth.js';
 import { requireDb, normalizeUserId } from '../_lib/db.js';
-import { errorResponse, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+
+export async function onRequestGet({ request, env }) {
+  try {
+    const { profile } = await requireAuth(request, env);
+    const userId = normalizeUserId(profile.id);
+    const url = new URL(request.url);
+    const ids = [...new Set(String(url.searchParams.get('ids') || '')
+      .split(',')
+      .map(value => value.trim())
+      .filter(Boolean))]
+      .slice(0, 50);
+
+    if (!ids.length) return json({ submissions: [] });
+
+    const db = requireDb(env);
+    const result = await db.prepare(`
+      SELECT id, title, desc, tag, date, status, created_at
+      FROM events
+      WHERE submitter_id = ? AND id IN (${ids.map(() => '?').join(', ')})
+      ORDER BY created_at DESC
+    `).bind(userId, ...ids).all();
+
+    return json({ submissions: result.results || [] });
+  } catch (error) {
+    return errorResponse(error, '查询投稿记录失败');
+  }
+}
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -10,31 +37,31 @@ export async function onRequestPost({ request, env }) {
 
     const db = requireDb(env);
     
-    // 防刷检测：5分钟内最多1次，每天最多3次
+    // 防刷检测：每小时最多 1 次，24 小时内最多 3 次。
     const now = Date.now();
-    const fiveMinsAgo = now - 5 * 60 * 1000;
+    const oneHourAgo = now - 60 * 60 * 1000;
     const oneDayAgo = now - 24 * 60 * 60 * 1000;
 
     const rateStmt = db.prepare(`SELECT 
-      SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as count_5m,
+      SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as count_1h,
       SUM(CASE WHEN created_at > ? THEN 1 ELSE 0 END) as count_1d
     FROM events WHERE submitter_id = ?`);
     
-    const rateRes = await rateStmt.bind(fiveMinsAgo, oneDayAgo, userId).first();
+    const rateRes = await rateStmt.bind(oneHourAgo, oneDayAgo, userId).first();
     if (rateRes) {
-      if (rateRes.count_5m >= 1) return errorResponse(429, '提交过于频繁，请5分钟后再试');
-      if (rateRes.count_1d >= 3) return errorResponse(429, '您今天提交的事件已达上限(3条)，请明天再来');
+      if (Number(rateRes.count_1h || 0) >= 1) throw new HttpError(429, '每小时最多投稿 1 次，请稍后再试');
+      if (Number(rateRes.count_1d || 0) >= 3) throw new HttpError(429, '24 小时内最多投稿 3 条，请稍后再试');
     }
 
     const userInput = String(body.content || '').trim();
     if (userInput.length < 5 || userInput.length > 500) {
-      return errorResponse(400, '事件内容长度需在 5 到 500 字之间');
+      throw new HttpError(400, '事件内容长度需在 5 到 500 字之间');
     }
 
     // 调用智谱 API
     const zhipuKey = env.ZHIPU_API_KEY;
     if (!zhipuKey) {
-      return errorResponse(500, '服务器未配置 AI 审核密钥');
+      throw new HttpError(500, '服务器未配置 AI 审核密钥');
     }
 
     const aiPrompt = `你是一个严谨的校园大事记审核员。用户提交了一段关于学校事件的描述。
@@ -76,7 +103,7 @@ ${userInput}
 
     if (!aiRes.ok) {
       console.error('AI API Error:', await aiRes.text());
-      return errorResponse(500, 'AI 审核服务暂时不可用，请稍后再试');
+      throw new HttpError(502, 'AI 审核服务暂时不可用，请稍后再试');
     }
 
     const aiData = await aiRes.json();
@@ -84,21 +111,28 @@ ${userInput}
     try {
       aiResult = JSON.parse(aiData.choices[0].message.content);
     } catch(e) {
-      return errorResponse(500, 'AI 审核返回格式错误');
+      throw new HttpError(502, 'AI 审核返回格式错误');
     }
 
     if (!aiResult.approved) {
-      return errorResponse(400, `审核未通过: ${aiResult.reason}`);
+      throw new HttpError(400, `审核未通过：${String(aiResult.reason || '内容不符合校园大事记要求')}`);
     }
+
+    const normalizedTitle = String(aiResult.title || '无标题').trim().slice(0, 30);
+    const normalizedDesc = String(aiResult.desc || userInput).trim().slice(0, 1000);
+    const normalizedTag = String(aiResult.tag || '校园').trim().slice(0, 20);
+    const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(aiResult.date || ''))
+      ? String(aiResult.date)
+      : new Date().toISOString().split('T')[0];
 
     const eventId = crypto.randomUUID();
     const insertStmt = db.prepare(`INSERT INTO events (id, title, desc, tag, date, link, status, submitter_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     await insertStmt.bind(
       eventId,
-      aiResult.title || '无标题',
-      aiResult.desc || userInput,
-      aiResult.tag || '校园',
-      aiResult.date || new Date().toISOString().split('T')[0],
+      normalizedTitle,
+      normalizedDesc,
+      normalizedTag,
+      normalizedDate,
       '',
       'pending_admin',
       userId,
@@ -109,15 +143,19 @@ ${userInput}
       success: true,
       eventId: eventId,
       message: '提交成功，已通过 AI 初审，等待管理员最终确认',
-      data: aiResult
+      data: {
+        title: normalizedTitle,
+        desc: normalizedDesc,
+        tag: normalizedTag,
+        date: normalizedDate,
+        status: 'pending_admin'
+      }
     });
 
   } catch (err) {
-    const status = err.status || 500;
-    return errorResponse(status, err.message);
+    return errorResponse(err, '提交大事记失败');
   }
 }
 
-export function onRequest(context) {
-  return methodNotAllowed();
-}
+export function onRequestPatch() { return methodNotAllowed(['GET', 'POST']); }
+export function onRequestDelete() { return methodNotAllowed(['GET', 'POST']); }

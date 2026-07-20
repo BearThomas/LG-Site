@@ -47,11 +47,23 @@
         (async function() {
             let user = null;
             try { user = JSON.parse(localStorage.getItem('campus_user')); } catch(e) {}
-            if (!user || !user.token) {
+            if (!user || user.authVersion !== 2 || !user.studentId) {
                 alert('请先登录');
                 location.href = 'login.html';
                 return;
             }
+
+            const authHeaders = () => ({
+                'Content-Type': 'application/json',
+                ...(user.appToken ? { 'X-LG-Token': user.appToken } : {}),
+                ...(user.token ? { 'X-Appwrite-Session': user.token } : {})
+            });
+
+            const escapeHtml = value => {
+                const element = document.createElement('div');
+                element.textContent = String(value ?? '');
+                return element.innerHTML;
+            };
 
             const listEl = document.getElementById('pendingList');
 
@@ -59,10 +71,11 @@
                 try {
                     const res = await fetch('/api/events-admin', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: authHeaders(),
                         body: JSON.stringify({
-                            userId: 'student_' + user.studentId,
-                            sessionSecret: user.token,
+                            studentId: user.studentId,
+                            appToken: user.appToken || '',
+                            sessionSecret: user.token || '',
                             action: 'list' // Need to adapt auth for list
                         })
                     });
@@ -77,50 +90,51 @@
                         return;
                     }
 
-                    listEl.innerHTML = data.map(ev => \`
-                        <div class="event-card" id="ev-\${ev.id}">
+                    listEl.innerHTML = data.map(ev => `
+                        <div class="event-card" id="ev-${ev.id}">
                             <div class="form-group">
                                 <label>标题</label>
-                                <input type="text" class="form-control" id="title-\${ev.id}" value="\${ev.title}">
+                                <input type="text" class="form-control" id="title-${ev.id}" value="${escapeHtml(ev.title)}">
                             </div>
                             <div class="form-group">
                                 <label>描述</label>
-                                <textarea class="form-control" id="desc-\${ev.id}" rows="3">\${ev.desc}</textarea>
+                                <textarea class="form-control" id="desc-${ev.id}" rows="3">${escapeHtml(ev.desc)}</textarea>
                             </div>
                             <div style="display: flex; gap: 15px;">
                                 <div class="form-group" style="flex: 1;">
                                     <label>标签</label>
-                                    <input type="text" class="form-control" id="tag-\${ev.id}" value="\${ev.tag}">
+                                    <input type="text" class="form-control" id="tag-${ev.id}" value="${escapeHtml(ev.tag)}">
                                 </div>
                                 <div class="form-group" style="flex: 1;">
                                     <label>日期 (YYYY-MM-DD)</label>
-                                    <input type="text" class="form-control" id="date-\${ev.id}" value="\${ev.date}">
+                                    <input type="text" class="form-control" id="date-${ev.id}" value="${escapeHtml(ev.date)}">
                                 </div>
                             </div>
                             <div class="form-group">
                                 <label>链接 (可选)</label>
-                                <input type="text" class="form-control" id="link-\${ev.id}" value="\${ev.link}">
+                                <input type="text" class="form-control" id="link-${ev.id}" value="${escapeHtml(ev.link || '')}">
                             </div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">提交者: \${ev.submitter_id} | 时间: \${new Date(ev.created_at).toLocaleString()}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">提交者: ${escapeHtml(ev.submitter_id)} | 时间: ${new Date(ev.created_at).toLocaleString()}</div>
                             <div class="actions">
-                                <button class="btn btn-danger" onclick="handleAction('\${ev.id}', 'reject')">拒绝并删除</button>
-                                <button class="btn btn-success" onclick="handleAction('\${ev.id}', 'approve')">通过并发布</button>
+                                <button class="btn btn-danger" onclick="handleAction('${ev.id}', 'reject')">拒绝</button>
+                                <button class="btn btn-success" onclick="handleAction('${ev.id}', 'approve')">通过并发布</button>
                             </div>
                         </div>
-                    \`).join('');
+                    `).join('');
                 } catch(e) {
-                    listEl.innerHTML = \`<div style="text-align: center; color: var(--danger); padding: 20px;">\${e.message}</div>\`;
+                    listEl.innerHTML = `<div style="text-align: center; color: var(--danger); padding: 20px;">${e.message}</div>`;
                 }
             }
 
             window.handleAction = async (id, action) => {
-                if (action === 'reject' && !confirm('确认拒绝并删除吗？')) return;
+                if (action === 'reject' && !confirm('确认拒绝这条投稿吗？')) return;
                 
                 const payload = {
                     id,
                     action,
-                    userId: 'student_' + user.studentId,
-                    sessionSecret: user.token
+                    studentId: user.studentId,
+                    appToken: user.appToken || '',
+                    sessionSecret: user.token || ''
                 };
                 
                 if (action === 'approve') {
@@ -134,7 +148,7 @@
                 try {
                     const res = await fetch('/api/events-admin', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: authHeaders(),
                         body: JSON.stringify(payload)
                     });
                     const data = await res.json();
