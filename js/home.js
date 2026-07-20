@@ -1,3 +1,5 @@
+// js/home.js
+// Enhanced with Hotness Factor Algorithm 2026/05/31
 import { Client, Databases, Query } from './d1-appwrite-compat.js';
 import { markdownToPreview } from './markdown.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
@@ -27,6 +29,30 @@ let databases;
 let currentUser = null;
 let userCache = {};
 let secureKeyReady = Promise.resolve(null);
+
+// ========== ⚡ 热度核心算法机制 ==========
+function calculateHotScore(item) {
+    const likes = Number(item.likes || 0);
+    const comments = Number(item.commentCount || 0);
+    const createdAt = new Date(item.$createdAt || item.createdAt).getTime();
+    
+    // 时间差（换算为小时）
+    const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
+    
+    // 基础新帖曝光分
+    let baseBoost = 10;
+    
+    // 内容激励系数：根据字数微调初始起跑线
+    const contentLength = (item.content || '').length;
+    if (contentLength > 500) {
+        baseBoost *= 1.2; // 超过500字长文激励
+    } else if (contentLength > 100) {
+        baseBoost *= 1.1;
+    }
+
+    // 热度核心公式：(点赞*1 + 评论*3 + 初始曝光分) / (小时数 + 2)^1.5
+    return (likes * 1 + comments * 3 + baseBoost) / Math.pow(ageHours + 2, 1.5);
+}
 
 // ========== 离线缓存支持 ==========
 async function fetchWithHashCache(collection, urls) {
@@ -85,10 +111,8 @@ function applyPendingModifications(collection, documents) {
 
 // ========== 初始化入口 ==========
 (async function init() {
-    // 【步骤 1】：清理旧版本遗留的浏览器端备份密钥
     secureKeyReady = restoreSecureKey();
 
-    // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
     const userData = localStorage.getItem('campus_user');
     if (userData) {
         try {
@@ -108,10 +132,8 @@ function applyPendingModifications(collection, documents) {
         }
     }
 
-    // 【步骤 3】：只初始化只读数据库客户端
     databases = new Databases(client);
     
-    // 渲染用户状态 UI
     checkLoginStatus();
     bindHomeActions();
     await Promise.all([
@@ -281,23 +303,6 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
 
     if (hotResult.status === 'fulfilled') {
         hotPosts = hotResult.value || [];
-        if (!hasRenderedCache && hotPosts.length) {
-            const quickPosts = hotPosts
-                .filter(p => p.title != null && p.content != null && (Number(p.viewPermission) || 1) === 1)
-                .filter(p => !tombstones.posts.has(p.$id || p.id))
-                .slice(0, 5);
-            if (quickPosts.length) {
-                const authorIds = quickPosts.map(p => p.authorId || p.author_id).filter(Boolean);
-                try {
-                    const { getUsersInfo } = await import('./shared.js');
-                    await getUsersInfo(databases, Query, authorIds);
-                    userCache = window.userCache || {};
-                } catch(e) {}
-                renderHomePosts(quickPosts);
-                showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
-                hasRenderedCache = true;
-            }
-        }
     }
     if (coldResult.status === 'fulfilled') {
         coldPosts = coldResult.value || [];
@@ -330,7 +335,13 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
         return true;
     });
 
-    allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    // 🌟 核心算法变更：从旧的纯时间排序改为“置顶权衡 + 热度因子”混合降序排序
+    allPosts.sort((a, b) => {
+        const aPinned = a.status ? (a.status & 1) !== 0 : false;
+        const bPinned = b.status ? (b.status & 1) !== 0 : false;
+        if (aPinned !== bPinned) return bPinned ? 1 : -1; // 置顶贴绝对前置
+        return calculateHotScore(b) - calculateHotScore(a); // 其余帖子跑热度分排序
+    });
 
     const userBoards = currentUser ? await getUserJoinedBoards() : ['main'];
     const visiblePosts = allPosts.filter(post => isPostVisible(post, userBoards));
@@ -373,7 +384,6 @@ function renderHomePosts(posts) {
         const author = getPostAuthorDisplay(post, userCache);
         const avatarHtml = renderAuthorAvatar(author, 44);
         
-        // 🌟 帖子放点赞数 + 评论数，图标替换为标准 SVG
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
@@ -383,7 +393,7 @@ function renderHomePosts(posts) {
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
-                <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标题')}</div>
+                <div class="post-title">${isPinned ? '<span class="post-badge pinned-badge" style="margin-right:6px;">置顶</span>' : ''}${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content">${escapeHtml(markdownToPreview(post.content, 100))}</div>
                 <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
                     <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
@@ -441,16 +451,6 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         ]);
         hotConfessions = response.documents;
         hotConfessionsLoaded = true;
-        if (!hasRenderedCache) {
-            const quickConfessions = hotConfessions.filter(item =>
-                item.content != null && Number(item.status || 0) === 0
-            ).slice(0, 10);
-            if (quickConfessions.length) {
-                renderHomeConfessions(quickConfessions);
-                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
-                hasRenderedCache = true;
-            }
-        }
     } catch (e) {
         console.warn('云端实时表白拉取失败:', e.message);
     }
@@ -493,7 +493,8 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         return true;
     });
 
-    allConfessions.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    // 🌟 核心算法变更：表白墙首页也改用热度因子降序排序，筛选出真正的优质热门互动表白
+    allConfessions.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
     const finalConfessions = allConfessions.slice(0, 10);
 
     renderHomeConfessions(finalConfessions);
@@ -519,7 +520,7 @@ function renderHomeConfessions(confessions) {
         `;
         return;
     }
-    // 🌟 表白墙同样应用统一的 SVG 图标架构
+    
     confessionList.innerHTML = confessions.map(c => `
         <div class="confession-card" onclick="location.href='confession-detail.html?id=${c.$id}'" style="cursor: pointer;">
             <div class="confession-text">${escapeHtml(c.content)}</div>

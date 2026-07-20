@@ -280,12 +280,27 @@ async function fetchNextPostsBatch() {
 
     currentPostsPool.push(...processedBatch);
 
+    // 🌟 已更新：融合新帖曝光分、字数丰富度激励与平滑时间衰减的新算法
     const calculateHotScore = post => {
         const likes = Number(post.likes || 0);
         const comments = Number(post.commentCount || 0);
         const createdAt = new Date(post.$createdAt || post.createdAt || post.created_at).getTime();
         const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
-        return (likes * 2 + comments * 3) / (ageHours + 2);
+        
+        // 计算内容激励系数 (基于正文字数)
+        const contentLen = (post.content || '').length;
+        let contentBonus = 1.0;
+        if (contentLen > 800) {
+            contentBonus = 1.2; // 深度长文奖励
+        } else if (contentLen > 300) {
+            contentBonus = 1.1; // 丰富图文奖励
+        }
+        
+        // 设基础曝光分 G 为 10，并受内容丰富度调节
+        const baseBoost = 10 * contentBonus; 
+        
+        // 核心公式：[点赞*1 + 评论*3 + 初始曝光分] / (小时数 + 2) 的 1.5 次方衰减
+        return (likes * 1 + comments * 3 + baseBoost) / Math.pow(ageHours + 2, 1.5);
     };
 
     if (currentSortFilter === 'hot') {
@@ -486,7 +501,7 @@ async function submitPost() {
                 studentId: currentUser.studentId,
                 appToken: currentUser.appToken || '',
                 sessionSecret: currentUser.token || '',
-                boardIds: ['main'],
+                boardIds: ['main'], // 保持原有硬编码不动
                 title,
                 content,
                 viewPermission,
