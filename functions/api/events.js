@@ -1,4 +1,4 @@
-import { requireDb, HttpError } from './data.js';
+import { requireDb } from '../_lib/db.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
