@@ -18,21 +18,21 @@ import {
     restoreSecureKey
 } from './shared.js';
 
-// 初始化
+// 初始�?
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
 
 const databases = new Databases(client);
 
-// 全局状态
+// 全局状�?
 let currentUser = null;
 let currentPost = null;
 let postId = null;
 let secureKeyReady = Promise.resolve(null);
 let canRenderCurrentPost = false;
 
-// 🌟 核心新增：全局实名用户内存高速缓存字典
+// 🌟 核心新增：全局实名用户内存高速缓存字�?
 let userCache = {};
 let allUsers = null;
 
@@ -119,7 +119,7 @@ async function fetchWithHashCache(collection, urls) {
                     localStorage.setItem(cacheKeyData, JSON.stringify(data));
                     localStorage.setItem(cacheKeyHash, serverHash);
                 } catch (e) {
-                    console.warn('LocalStorage 写入失败，可能配额不足', e);
+                    console.warn('LocalStorage 写入失败，可能配额不�?, e);
                 }
             }
             return data;
@@ -148,14 +148,14 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
-// ========== 页面加载初始化生命周期调整 ==========
+// ========== 页面加载初始化生命周期调�?==========
 document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
     
     if (!postId) {
-        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>帖子 ID 缺失，页面无法加载</p></div>';
+        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>帖子 ID 缺失，页面无法加�?/p></div>';
         return;
     }
 
@@ -165,7 +165,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadTombstones();
     if (tombstonedIds.posts.has(postId)) {
-        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存在</p></div>';
+        if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存�?/p></div>';
         return;
     }
     
@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-// ========== 登录状态恢复 ==========
+// ========== 登录状态恢�?==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
     
@@ -216,7 +216,7 @@ function checkLoginStatus() {
     }
 }
 
-// ========== 异步安全获取用户板块权限组 ==========
+// ========== 异步安全获取用户板块权限�?==========
 async function getUserJoinedBoards() {
     if (!currentUser) return ['main'];
     try {
@@ -232,7 +232,7 @@ async function getUserJoinedBoards() {
     return ['main'];
 }
 
-// ========== 可见性权限拦截判断 ==========
+// ========== 可见性权限拦截判�?==========
 function isPostVisible(post, userBoards) {
     if (post.title === null || post.content === null) {
         return false; 
@@ -281,11 +281,11 @@ async function loadPostDetail() {
             raw = applyPendingModifications('posts', raw);
             
             currentPost = raw.find(p => (p.id === postId || p.$id === postId));
-            if (!currentPost) throw new Error('帖子实体不存在');
+            if (!currentPost) throw new Error('帖子实体不存�?);
             currentPost._isCold = true;
             
         } catch (localErr) {
-            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
+            if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存�?/p></div>';
             return;
         }
     }
@@ -299,7 +299,7 @@ async function loadPostDetail() {
             postDetailCard.innerHTML = `
                 <div class="empty-state">
                     <div class="empty-icon">🔒</div>
-                    <p style="color: #fa5252; font-weight: bold;">访问被拒绝：您没有查看此私密贴或班级专属贴的权限。</p>
+                    <p style="color: #fa5252; font-weight: bold;">访问被拒绝：您没有查看此私密贴或班级专属贴的权限�?/p>
                     <a href="posts.html" style="font-size: 14px; margin-top: 10px; color: #228be6; display: inline-block;">返回帖子大厅</a>
                 </div>`;
         }
@@ -323,7 +323,7 @@ async function loadPostDetail() {
     await loadComments(); 
 }
 
-// ========== 🌟 智能化改写点 1：不信任主贴数据源渲染 ==========
+// ========== 🌟 智能化改写点 1：不信任主贴数据源渲�?==========
 function renderPostDetail() {
     if (!postDetailCard) return;
     const postStatus = currentPost.status || 0;
@@ -340,16 +340,16 @@ function renderPostDetail() {
     if (isAuthor) {
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
-            <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
+            <button class="post-action-btn danger" id="deletePostBtn">🗑�?删除</button>
         `;
     } else if (isAdmin) {
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
-            <button class="post-action-btn danger" id="deletePostBtn">🗑️ 删除</button>
+            <button class="post-action-btn danger" id="deletePostBtn">🗑�?删除</button>
         `;
     }
 
-    // 🛡️ 宁信 ID，不信其名：通过内存缓存快速穿透主贴作者信息
+    // 🛡�?宁信 ID，不信其名：通过内存缓存快速穿透主贴作者信�?
     const rawAuthorId = (currentPost.authorId || '').toString().trim();
     const cachedUser = userCache[rawAuthorId];
     
@@ -371,7 +371,7 @@ function renderPostDetail() {
         finalName = escapeHtml(finalName);
         const __sid = rawAuthorId.replace(/^student_/, '').trim();
         if (__sid.length >= 4) {
-            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}�?/span>`;
         }
 
         avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
@@ -387,7 +387,7 @@ function renderPostDetail() {
                     </div>
                     <div class="post-author-detail">
                         <span class="post-author-name" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${finalName}</span>
-                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁定</span>' : ''}</span>
+                        <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁�?/span>' : ''}</span>
                     </div>
                 </div>
                 <div class="post-actions">
@@ -435,13 +435,13 @@ function renderPostDetail() {
             lockedTip.className = 'login-tip';
             lockedTip.style.backgroundColor = '#fff9db';
             lockedTip.style.borderColor = '#ffe066';
-            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">该帖子已被管理员锁定，当前处于只读模式，无法追加新回复。</p>';
+            lockedTip.innerHTML = '<p style="color: #f59f00; font-weight: bold; margin: 0;">该帖子已被管理员锁定，当前处于只读模式，无法追加新回复�?/p>';
             commentsList?.insertAdjacentElement('beforebegin', lockedTip);
         }
     }
 }
 
-// ========== 加载并关联融合评论 ==========
+// ========== 加载并关联融合评�?==========
 async function loadComments() {
     try {
         if (!commentsList) return;
@@ -461,7 +461,7 @@ async function loadComments() {
                 raw = applyPendingModifications('comments', raw);
                 localRes = raw.filter(comment => comment.postId === postId);
             } catch (error) {
-                console.warn('public 评论备份也无法读取:', error.message);
+                console.warn('public 评论备份也无法读�?', error.message);
             }
         }
 
@@ -497,7 +497,7 @@ async function loadComments() {
         
         renderComments(allComments);
     } catch (error) {
-        console.error('装载评论流水线挂裂:', error);
+        console.error('装载评论流水线挂�?', error);
     }
 }
 
@@ -545,7 +545,7 @@ function renderComments(comments) {
             actionsHtml = `<span class="comment-action danger" data-comment-id="${comment.$id}">删除</span>`;
         }
 
-        // 🛡️ 评论实名制穿透：强制依据 comment.authorId 从字典快照捞数据
+        // 🛡�?评论实名制穿透：强制依据 comment.authorId 从字典快照捞数据
         const rawCommentAuthorId = (comment.authorId || '').toString().trim();
         const cachedCommentUser = userCache[rawCommentAuthorId];
 
@@ -565,7 +565,7 @@ function renderComments(comments) {
             let rawCommentName = comment.authorName || '';
             const __csid = (comment.authorId || '').toString().replace(/^student_/, '').trim();
             if (__csid.length >= 4) {
-                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}届</span>`;
+                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}�?/span>`;
             } else {
                 rawCommentName = escapeHtml(rawCommentName);
             }
@@ -600,8 +600,8 @@ function renderComments(comments) {
 
 // ========== 🚀 绝对防刷防重复提交版：发布新单条评论 ==========
 async function submitComment() {
-    // 🌟 【核心防刷熔断器】：开局立刻盘查。如果按钮已经是禁用状态，说明有上一次发送正在进行，直接无情拦截！
-    // 这能百分之百封死：疯狂连击鼠标、或者疯狂敲击 Ctrl+Enter 快捷键带来的网络重发
+    // 🌟 【核心防刷熔断器】：开局立刻盘查。如果按钮已经是禁用状态，说明有上一次发送正在进行，直接无情拦截�?
+    // 这能百分之百封死：疯狂连击鼠标、或者疯狂敲�?Ctrl+Enter 快捷键带来的网络重发
     if (submitCommentBtn && submitCommentBtn.disabled) {
         console.warn("⚠️ 拦截到重复提交请求，上一次评论仍在同步中...");
         return;
@@ -613,24 +613,24 @@ async function submitComment() {
     }
     
     if (currentPost && (currentPost.status & 2) !== 0) {
-        alert('帖子已被管理员锁定，不再接收任何新提交');
+        alert('帖子已被管理员锁定，不再接收任何新提�?);
         return;
     }
     
     const content = commentContent.value.trim();
     if (!content) {
-        alert('请输入评论内容');
+        alert('请输入评论内�?);
         return;
     }
     if (content.length < 2) {
-        alert('内容太短，多说两个字吧');
+        alert('内容太短，多说两个字�?);
         return;
     }
     
-    // 🔒 【加锁】：通过验证后，在发起网络请求的毫秒瞬间，立刻锁死按钮，切断后续所有点击和快捷键
+    // 🔒 【加锁】：通过验证后，在发起网络请求的毫秒瞬间，立刻锁死按钮，切断后续所有点击和快捷�?
     if (submitCommentBtn) {
         submitCommentBtn.disabled = true;
-        submitCommentBtn.textContent = '发布中...';
+        submitCommentBtn.textContent = '发布�?..';
     }
     
     try {
@@ -652,19 +652,19 @@ async function submitComment() {
             throw new Error(result.error || '回复提交失败');
         }
         
-        // 只有成功发送后，才清空文本框
+        // 只有成功发送后，才清空文本�?
         commentContent.value = '';
         
-        // 重新拉取评论流更新 DOM
+        // 重新拉取评论流更�?DOM
         await loadComments();
     } catch (error) {
-        console.error('回复投递异常失败:', error);
+        console.error('回复投递异常失�?', error);
         alert(error.message || '回复提交失败，请重试');
     } finally {
         // 🔓 【解锁】：无论云端是成功还是报错（进入 finally），执行完后必须把锁解开，允许下一次正常发言
         if (submitCommentBtn) {
             submitCommentBtn.disabled = false;
-            submitCommentBtn.textContent = '发 布';
+            submitCommentBtn.textContent = '�?�?;
         }
     }
 }
@@ -712,7 +712,7 @@ async function submitEdit() {
     const content = document.getElementById('editContent').value.trim();
     
     if (!title || !content) {
-        alert('标题与核心正文区域不能为空');
+        alert('标题与核心正文区域不能为�?);
         return;
     }
     
@@ -764,10 +764,10 @@ async function confirmDelete() {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || '删除失败');
-        alert('帖子已成功销毁');
+        alert('帖子已成功销�?);
         location.href = 'posts.html';
     } catch (error) {
-        console.error('销毁帖子执行失败:', error);
+        console.error('销毁帖子执行失�?', error);
         alert('删除失败');
     }
 }
@@ -821,7 +821,7 @@ function updateEditPreview() {
     pane.innerHTML = `
         <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
         <article class="preview-document">
-            <h1>${escapeHtml(title || '无标题')}</h1>
+            <h1>${escapeHtml(title || '无标�?)}</h1>
             ${renderMarkdown(content || '*暂无内容*')}
         </article>
     `;

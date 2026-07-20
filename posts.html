@@ -111,9 +111,15 @@
 
             <!-- 排序/筛选栏 -->
             <div class="posts-toolbar">
-                <div class="filter-options">
-                    <input type="text" id="searchInput" class="search-input" placeholder="搜索帖子..." style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ced4da; margin-right: 10px; font-size: 0.9rem;">
-                    <select id="timeFilter" class="time-filter">
+                <div class="filter-options" style="display: flex; flex-wrap: wrap; gap: 10px; width: 100%; align-items: center;">
+                    <input type="text" id="searchInput" class="search-input" placeholder="搜索帖子..." style="flex: 1; min-width: 140px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text);">
+                    
+                    <select id="sortFilter" class="time-filter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                        <option value="hot">最热</option>
+                        <option value="new">最新</option>
+                    </select>
+
+                    <select id="timeFilter" class="time-filter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
                         <option value="all">全部时间</option>
                         <option value="today">今天</option>
                         <option value="week">本周</option>

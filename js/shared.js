@@ -66,7 +66,7 @@ export function formatNameWithYear(name, studentId) {
     }
     const escapedName = escapeHtml(rawName);
     if (sid.length >= 4) {
-        return `${escapedName}<span class="year-badge">${sid.substring(0, 4)}å±Š</span>`;
+        return `${escapedName}<span class="year-badge">${sid.substring(0, 4)}å±?/span>`;
     }
     return escapedName;
 }

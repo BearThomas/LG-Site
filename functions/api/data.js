@@ -176,8 +176,15 @@ async function listPosts(env, state, viewer) {
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
-  const orderDirection = state.order?.direction || 'DESC';
+  
+  let orderByClause = '';
+  if (state.order?.attribute === 'hot') {
+    orderByClause = `ORDER BY ((SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) * 2 + (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) * 3) / POW((STRFTIME('%s', 'now') - STRFTIME('%s', created_at))/3600.0 + 2, 1.5) DESC`;
+  } else {
+    const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
+    const orderDirection = state.order?.direction || 'DESC';
+    orderByClause = `ORDER BY ${orderColumn} ${orderDirection}`;
+  }
 
   const countStatement = db.prepare(`SELECT COUNT(*) AS total FROM posts ${where}`).bind(...values);
   const viewerId = viewer ? normalizeUserId(viewer.id) : '';
@@ -187,7 +194,7 @@ async function listPosts(env, state, viewer) {
       (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id AND likes.user_id = ?) AS liked
     FROM posts
     ${where}
-    ORDER BY ${orderColumn} ${orderDirection}
+    ${orderByClause}
     LIMIT ? OFFSET ?
   `).bind(viewerId, ...values, state.limit, state.offset);
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);

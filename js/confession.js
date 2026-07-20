@@ -11,14 +11,14 @@ import {
     restoreSecureKey
 } from './shared.js';
 
-// 初始化
+// 初始�?
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
 
 const databases = new Databases(client);
 
-// 全局状态
+// 全局状�?
 let currentUser = null;
 let secureKeyReady = Promise.resolve(null);
 let currentSort = 'latest';
@@ -109,11 +109,11 @@ const confessionList = document.getElementById('confessionList');
 const pagination = document.getElementById('pagination');
 const loginTip = document.getElementById('loginTip');
 
-// ========== 页面加载初始化 ==========
+// ========== 页面加载初始�?==========
 document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
-    await loadConfessions(); // ⚡ 开启双源缓存管道
+    await loadConfessions(); // �?开启双源缓存管�?
     bindEvents();
     setupPullToRefresh({
         onRefresh: async () => {
@@ -123,7 +123,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 });
 
-// ========== 登录状态 ==========
+// ========== 登录状�?==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
     const loginTip = document.getElementById('loginTip');
@@ -198,7 +198,7 @@ async function fetchHotConfessionsPage(queries, maxCreatedAt, offset = 0, batchS
     return batch;
 }
 
-// ========== 【核心重构】带缓存快照与静默云同步的表白列表 ==========
+// ========== 【核心重构】带缓存快照与静默云同步的表白列�?==========
 async function loadConfessions({ forceRefresh = false } = {}) {
     try {
         if (!confessionList) return;
@@ -210,7 +210,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
 
         let hasRenderedCache = false;
 
-        // 【步骤 A】：优先捞取本地历史缓存，零延迟渲染
+        // 【步�?A】：优先捞取本地历史缓存，零延迟渲染
         if (localCache) {
             try {
                 const parsedCache = JSON.parse(localCache);
@@ -225,16 +225,16 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                     hasRenderedCache = true;
                 }
             } catch (err) {
-                console.warn('解析表白墙本地缓存异常:', err);
+                console.warn('解析表白墙本地缓存异�?', err);
             }
         }
 
-        // 若无任何缓存，则退回传统骨架加载提示
+        // 若无任何缓存，则退回传统骨架加载提�?
         if (!hasRenderedCache && !forceRefresh) {
             confessionList.innerHTML = createListSkeleton('confession', 5);
         }
 
-        // 【步骤 B】：后台静默并发拉取 D1 API（增量实时）+ 脱敏快照（降级）
+        // 【步�?B】：后台静默并发拉取 D1 API（增量实时）+ 脱敏快照（降级）
         const queries = [
             Query.equal('status', 0)
         ];
@@ -276,7 +276,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 localRes = coldRes.value || [];
             }
         } catch (error) {
-            console.warn('读取表白墙数据失败:', error.message);
+            console.warn('读取表白墙数据失�?', error.message);
         }
 
         // 统一格式化归一处理
@@ -290,7 +290,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 authorName: (() => {
                     let n = escapeHtml(doc.authorName || '匿名');
                     let sid = (doc.authorId || doc.studentId || '').toString().replace(/^student_/, '').trim();
-                    if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+                    if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
                     return n;
                 })(),
 
@@ -302,7 +302,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
         const normalizedHot = appwriteRes.documents.map(d => normalizeConfession(d));
         const normalizedCold = localRes.map(d => normalizeConfession(d));
 
-        // 跨源去重 (基于唯一标识符 $id)
+        // 跨源去重 (基于唯一标识�?$id)
         const seen = new Set();
         const allConfessions = [...normalizedHot, ...normalizedCold].filter(c => {
             if (seen.has(c.$id) || c.status !== 0) return false;
@@ -327,14 +327,14 @@ async function loadConfessions({ forceRefresh = false } = {}) {
 
         // 如果先前加载了本地缓存，弹出优雅的同步完成通告
         if (hasRenderedCache) {
-            showCacheNotice(' 表白墙已成功同步至最新内容', 'success');
+            showCacheNotice(' 表白墙已成功同步至最新内�?, 'success');
         }
         
     } catch (error) {
-        console.error('装载表白墙最新内容挂裂:', error);
+        console.error('装载表白墙最新内容挂�?', error);
         const currentUserId = currentUser?.studentId || 'guest';
         if (!localStorage.getItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p${currentPage}`)) {
-            confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网络</p></div>';
+            confessionList.innerHTML = '<div class="empty-state"><p>同步失败，请检查网�?/p></div>';
         }
     }
 }
@@ -363,7 +363,7 @@ function renderConfessions(confessions) {
     if (!confessions.length) {
         confessionList.innerHTML = `
             <div class="empty-state">
-                <p>还没有表白，快来写下第一封吧！</p>
+                <p>还没有表白，快来写下第一封吧�?/p>
             </div>
         `;
         return;
@@ -377,7 +377,7 @@ function renderConfessions(confessions) {
         const createdAt = new Date(confessionCreatedAt);
         const timeStr = formatTime(createdAt);
         
-        const deleteHtml = isAdmin ? `<button class="confession-delete-btn" data-id="${confessionId}">🗑️ 删除</button>` : '';
+        const deleteHtml = isAdmin ? `<button class="confession-delete-btn" data-id="${confessionId}">🗑�?删除</button>` : '';
         
         return `
             <div class="confession-card" data-id="${confessionId}">
@@ -411,7 +411,7 @@ function renderConfessions(confessions) {
                     });
                     const res = await response.json().catch(() => ({}));
                     if (!response.ok || !res.success) throw new Error(res.error || '删除失败');
-                    alert('表白已成功撤销/软删除');
+                    alert('表白已成功撤销/软删�?);
                     loadConfessions({ forceRefresh: true });
                 } catch (err) {
                     alert(err.message || '删除失败');
@@ -432,7 +432,7 @@ async function publishConfession() {
     const content = confessionContent.value.trim();
     
     if (!content) {
-        alert('请输入表白内容');
+        alert('请输入表白内�?);
         return;
     }
     if (content.length < 5) {
@@ -441,7 +441,7 @@ async function publishConfession() {
     }
     
     publishBtn.disabled = true;
-    publishBtn.textContent = '发布中...';
+    publishBtn.textContent = '发布�?..';
     
     try {
         const response = await fetch('/api/create-confession', {
@@ -466,7 +466,7 @@ async function publishConfession() {
         confessionContent.value = '';
         if (charCount) charCount.textContent = '0';
         
-        // ⚡ 【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
+        // �?【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
         const currentUserId = currentUser?.studentId || 'guest';
         localStorage.removeItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p1`);
         
@@ -475,7 +475,7 @@ async function publishConfession() {
         
     } catch (error) {
         console.error('发表失败:', error);
-        alert('发表失败，请刷新页面或重新登录重试');
+        alert('发表失败，请刷新页面或重新登录重�?);
     } finally {
         if (publishBtn) {
             publishBtn.disabled = false;
@@ -493,7 +493,7 @@ function renderPagination() {
     }
     
     let html = '';
-    html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev">←</button>`;
+    html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev">�?/button>`;
     
     for (let i = 1; i <= Math.min(totalPages, 5); i++) {
         html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
@@ -504,7 +504,7 @@ function renderPagination() {
         html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
     }
     
-    html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next">→</button>`;
+    html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next">�?/button>`;
     
     pagination.innerHTML = html;
     

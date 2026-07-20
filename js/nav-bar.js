@@ -105,7 +105,7 @@
         
         let displayName = escapeHtml(name || '同学');
         const sid = (studentId || '').toString().replace(/^student_/, '').trim();
-        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
         if (userNameSpan) userNameSpan.innerHTML = displayName;
 
         renderNavbarAvatar(name, avatar);
@@ -163,7 +163,7 @@
             showLoggedIn(user.name, user.avatar, user.studentId);
             updateNotificationBadge(user);
         } catch (error) {
-            console.warn('顶栏资料同步失败，继续使用本地缓存:', error.message);
+            console.warn('顶栏资料同步失败，继续使用本地缓�?', error.message);
             updateNotificationBadge(user);
         }
     }
@@ -189,7 +189,7 @@
                     })
                 });
             } catch (error) {
-                console.warn('云端退出失败，已清理本地会话:', error.message);
+                console.warn('云端退出失败，已清理本地会�?', error.message);
             }
         }
         if (typeof localforage !== 'undefined') {

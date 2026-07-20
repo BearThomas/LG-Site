@@ -45,7 +45,7 @@ const EventsManager = (function() {
     // ========== 数据加载 ==========
     async function loadEvents() {
         try {
-            const response = await fetch('/data/events.json');
+            const response = await fetch('/api/events');
             if (!response.ok) throw new Error('加载失败');
             allEvents = await response.json();
             // 按日期排序（最近的在前）
@@ -232,4 +232,105 @@ const EventsManager = (function() {
         getCurrentFilters: () => currentFilters
     };
 
+})();
+
+// ========== 投稿与记录逻辑 ==========
+(function() {
+    const submitBtn = document.getElementById('submitEventBtn');
+    const mySubmissionsBtn = document.getElementById('mySubmissionsBtn');
+    const submitModal = document.getElementById('submitEventModal');
+    const recordsModal = document.getElementById('mySubmissionsModal');
+    const cancelSubmitBtn = document.getElementById('cancelSubmitBtn');
+    const confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+    const closeSubmissionsBtn = document.getElementById('closeSubmissionsBtn');
+    const contentInput = document.getElementById('eventSubmitContent');
+    const recordsList = document.getElementById('mySubmissionsList');
+
+    if (!submitBtn) return;
+
+    submitBtn.addEventListener('click', () => {
+        submitModal.style.display = 'flex';
+        contentInput.value = '';
+    });
+
+    cancelSubmitBtn.addEventListener('click', () => {
+        submitModal.style.display = 'none';
+    });
+
+    confirmSubmitBtn.addEventListener('click', async () => {
+        const val = contentInput.value.trim();
+        if (val.length < 5 || val.length > 500) {
+            alert('字数需在 5 到 500 之间');
+            return;
+        }
+
+        let user = null;
+        try { user = JSON.parse(localStorage.getItem('campus_user')); } catch(e) {}
+        if (!user || !user.token) {
+            alert('请先登录后投稿');
+            location.href = 'login.html';
+            return;
+        }
+
+        confirmSubmitBtn.disabled = true;
+        confirmSubmitBtn.textContent = 'AI 审核中...';
+
+        try {
+            const res = await fetch('/api/events-submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: 'student_' + user.studentId,
+                    sessionSecret: user.token,
+                    content: val
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert('投稿成功！已通过初审，请等待管理员复核。');
+                submitModal.style.display = 'none';
+                
+                // 保存到本地记录
+                const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
+                records.unshift({
+                    id: data.eventId,
+                    content: val,
+                    title: data.data?.title || '无标题',
+                    date: new Date().toISOString(),
+                    status: '等待审核'
+                });
+                localStorage.setItem('my_event_submissions', JSON.stringify(records));
+            } else {
+                alert('投稿失败: ' + (data.error || '未知错误'));
+            }
+        } catch(e) {
+            alert('网络错误，请稍后再试');
+        } finally {
+            confirmSubmitBtn.disabled = false;
+            confirmSubmitBtn.textContent = '提交审核';
+        }
+    });
+
+    mySubmissionsBtn.addEventListener('click', () => {
+        recordsModal.style.display = 'flex';
+        const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
+        if (records.length === 0) {
+            recordsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无记录</div>';
+        } else {
+            recordsList.innerHTML = records.map(r => `
+                <div style="border-bottom: 1px solid var(--border); padding: 10px 0;">
+                    <div style="font-weight: 600; margin-bottom: 5px;">${r.title}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">原内容: ${r.content}</div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted);">
+                        <span>${new Date(r.date).toLocaleString()}</span>
+                        <span style="color: var(--warning);">${r.status}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+    });
+
+    closeSubmissionsBtn.addEventListener('click', () => {
+        recordsModal.style.display = 'none';
+    });
 })();

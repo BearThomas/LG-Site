@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <script>
+        (function() {
+            const t = localStorage.getItem('theme') || 'auto';
+            const isDark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>龙高北小站 | 审核大事记</title>
+    <link rel="icon" type="image/png" href="./image/LG.png">
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <style>
+        .admin-container { max-width: 900px; margin: 40px auto; padding: 20px; background: var(--surface); border-radius: 12px; }
+        .event-card { border: 1px solid var(--border); padding: 15px; margin-bottom: 15px; border-radius: 8px; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.9rem; }
+        .form-control { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+        .actions { display: flex; gap: 10px; margin-top: 15px; justify-content: flex-end; }
+        .btn { padding: 6px 12px; border-radius: 6px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text); }
+        .btn-danger { background: var(--danger); color: white; border: none; }
+        .btn-success { background: var(--success); color: white; border: none; }
+    </style>
+</head>
+<body>
+    <div class="title-bar">
+        <h1 class="site-title" style="margin-left: 20px;">后台审核 - 大事记</h1>
+        <ul class="nav-bar">
+            <li class="nav-bar-item" onclick="location.href='./'">返回首页</li>
+            <li class="nav-bar-item" onclick="location.href='events'">返回大事记</li>
+        </ul>
+    </div>
+
+    <div class="admin-container">
+        <h2>待审核投稿</h2>
+        <div id="pendingList" style="margin-top: 20px;">
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">正在加载...</div>
+        </div>
+    </div>
+
+    <script>
+        (async function() {
+            let user = null;
+            try { user = JSON.parse(localStorage.getItem('campus_user')); } catch(e) {}
+            if (!user || !user.token) {
+                alert('请先登录');
+                location.href = 'login.html';
+                return;
+            }
+
+            const listEl = document.getElementById('pendingList');
+
+            async function loadPending() {
+                try {
+                    const res = await fetch('/api/events-admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: 'student_' + user.studentId,
+                            sessionSecret: user.token,
+                            action: 'list' // Need to adapt auth for list
+                        })
+                    });
+                    
+                    if (res.status === 403) throw new Error('无权限');
+                    if (!res.ok) throw new Error('加载失败');
+                    
+                    const data = await res.json();
+                    
+                    if (data.length === 0) {
+                        listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无待审核记录</div>';
+                        return;
+                    }
+
+                    listEl.innerHTML = data.map(ev => \`
+                        <div class="event-card" id="ev-\${ev.id}">
+                            <div class="form-group">
+                                <label>标题</label>
+                                <input type="text" class="form-control" id="title-\${ev.id}" value="\${ev.title}">
+                            </div>
+                            <div class="form-group">
+                                <label>描述</label>
+                                <textarea class="form-control" id="desc-\${ev.id}" rows="3">\${ev.desc}</textarea>
+                            </div>
+                            <div style="display: flex; gap: 15px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>标签</label>
+                                    <input type="text" class="form-control" id="tag-\${ev.id}" value="\${ev.tag}">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>日期 (YYYY-MM-DD)</label>
+                                    <input type="text" class="form-control" id="date-\${ev.id}" value="\${ev.date}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>链接 (可选)</label>
+                                <input type="text" class="form-control" id="link-\${ev.id}" value="\${ev.link}">
+                            </div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">提交者: \${ev.submitter_id} | 时间: \${new Date(ev.created_at).toLocaleString()}</div>
+                            <div class="actions">
+                                <button class="btn btn-danger" onclick="handleAction('\${ev.id}', 'reject')">拒绝并删除</button>
+                                <button class="btn btn-success" onclick="handleAction('\${ev.id}', 'approve')">通过并发布</button>
+                            </div>
+                        </div>
+                    \`).join('');
+                } catch(e) {
+                    listEl.innerHTML = \`<div style="text-align: center; color: var(--danger); padding: 20px;">\${e.message}</div>\`;
+                }
+            }
+
+            window.handleAction = async (id, action) => {
+                if (action === 'reject' && !confirm('确认拒绝并删除吗？')) return;
+                
+                const payload = {
+                    id,
+                    action,
+                    userId: 'student_' + user.studentId,
+                    sessionSecret: user.token
+                };
+                
+                if (action === 'approve') {
+                    payload.title = document.getElementById('title-' + id).value.trim();
+                    payload.desc = document.getElementById('desc-' + id).value.trim();
+                    payload.tag = document.getElementById('tag-' + id).value.trim();
+                    payload.date = document.getElementById('date-' + id).value.trim();
+                    payload.link = document.getElementById('link-' + id).value.trim();
+                }
+
+                try {
+                    const res = await fetch('/api/events-admin', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert(data.message || '操作成功');
+                        loadPending();
+                    } else {
+                        alert('操作失败: ' + (data.error || '未知错误'));
+                    }
+                } catch(e) {
+                    alert('网络错误');
+                }
+            };
+
+            loadPending();
+        })();
+    </script>
+</body>
+</html>

@@ -43,7 +43,7 @@ function updateAvatarPreview(name, url) {
 
 async function loadUserInfo() {
     if (!targetUserId) {
-        profileUsername.textContent = '未指定用户';
+        profileUsername.textContent = '未指定用�?;
         return;
     }
     
@@ -63,8 +63,8 @@ async function loadUserInfo() {
 
         if (userResult) {
             sid = (userResult.studentId || sid).replace(/^student_/, '').trim();
-            finalName = window.escapeHtml ? window.escapeHtml(userResult.name || '未设置名称') : userResult.name || '未设置名称';
-            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+            finalName = window.escapeHtml ? window.escapeHtml(userResult.name || '未设置名�?) : userResult.name || '未设置名�?;
+            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
             
             profileUsername.innerHTML = finalName;
             profileUserId.style.display = 'none'; // Don't show ID
@@ -78,7 +78,7 @@ async function loadUserInfo() {
         } else {
             // User not found in DB, fallback
             finalName = window.escapeHtml ? window.escapeHtml(`同学${sid.slice(-4)}`) : `同学${sid.slice(-4)}`;
-            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
             profileUsername.innerHTML = finalName;
             profileUserId.style.display = 'none';
             updateAvatarPreview(`同学${sid.slice(-4)}`, '');
@@ -108,7 +108,7 @@ async function loadUserPosts(rawId, cleanSid) {
         });
 
         if (posts.length === 0) {
-            userPostsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">该用户暂未发布任何帖子</div>';
+            userPostsList.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 40px 0;">该用户暂未发布任何帖�?/div>';
             return;
         }
 
