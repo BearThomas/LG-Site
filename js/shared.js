@@ -113,7 +113,9 @@ export function getPostAuthorDisplay(post, userCache = {}) {
 
 export function renderAuthorAvatar(author, lineHeight = 40) {
     if (author.isImageAvatar) {
-        return `<img src="${escapeHtml(author.avatar)}" style="width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block;" alt="\u5934\u50cf">`;
+        const fallback = `<span style='line-height:${lineHeight}px'>${escapeHtml(author.initial)}</span>`;
+        return `<img src="${escapeHtml(author.avatar)}" style="width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block;" alt="\u5934\u50cf" onerror="this.outerHTML='${fallback.replace(/'/g, "&#39;")}'">`;
+
     }
 
     return `<span style="line-height: ${lineHeight}px;">${escapeHtml(author.initial)}</span>`;

@@ -646,6 +646,8 @@ body::before {
 }
 
 .post-author { font-weight: 500; font-size: 0.97rem; color: var(--text); }
+button.post-author, button.post-author-link { background: transparent; border: none; padding: 0; margin: 0; font-family: inherit; font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer; text-align: left; }
+button.post-author:hover, button.post-author-link:hover { text-decoration: underline; }
 .post-time { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
 .post-title { font-size: 1.7rem; font-family: var(--font-serif); margin-bottom: 18px; color: var(--text); line-height: 1.32; }
 .post-content { color: var(--text-2); font-size: 0.95rem; line-height: 1.85; margin-bottom: 28px; word-break: break-word; }
