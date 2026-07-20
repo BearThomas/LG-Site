@@ -8,6 +8,45 @@
     const dropdownMenu = document.getElementById('dropdownMenu');
     const logoutBtn = document.getElementById('logoutBtn');
 
+    const bellOutline = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/></svg>';
+    const bellFilled = '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg>';
+    const primaryNavIcons = {
+        home: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146ZM2.5 14V7.707l5.5-5.5 5.5 5.5V14H10v-4a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v4H2.5Z"/></svg>',
+        posts: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/><path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/></svg>',
+        confession: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/></svg>',
+        events: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 .5a.5.5 0 0 1 .5.5v.5h7V1a.5.5 0 0 1 1 0v.5h1A1.5 1.5 0 0 1 15 3v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14V3a1.5 1.5 0 0 1 1.5-1.5h1V1a.5.5 0 0 1 .5-.5ZM2 6v8a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V6H2Zm0-1h12V3a.5.5 0 0 0-.5-.5h-1V3a.5.5 0 0 1-1 0v-.5h-7V3a.5.5 0 0 1-1 0v-.5h-1A.5.5 0 0 0 2 3v2Z"/></svg>',
+        docs: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/></svg>'
+    };
+
+    function normalizePrimaryNavIcons(navBar) {
+        navBar.querySelectorAll('.nav-bar-item').forEach(item => {
+            const target = `${item.getAttribute('onclick') || ''} ${item.dataset.navEvents || ''}`;
+            const key = target.includes('events') || item.dataset.navEvents ? 'events'
+                : target.includes('confession') ? 'confession'
+                    : target.includes('posts') ? 'posts'
+                        : target.includes('docs') ? 'docs'
+                            : target.includes("'./'") ? 'home' : '';
+            if (!key) return;
+            item.querySelector('svg')?.remove();
+            item.insertAdjacentHTML('afterbegin', primaryNavIcons[key]);
+        });
+    }
+
+    function renderNotificationIcon(unreadCount = 0) {
+        const navMessages = document.getElementById('navMessages');
+        if (!navMessages) return;
+        const iconWrapper = document.createElement('span');
+        iconWrapper.className = 'notification-icon-wrap';
+        iconWrapper.innerHTML = unreadCount > 0 ? bellFilled : bellOutline;
+        if (unreadCount > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'nav-badge';
+            iconWrapper.appendChild(badge);
+        }
+        navMessages.replaceChildren(iconWrapper);
+        navMessages.setAttribute('aria-label', unreadCount > 0 ? `通知中心，${unreadCount} 条未读` : '通知中心');
+    }
+
     function setupPrimaryNavigation() {
         const navBar = document.querySelector('.nav-bar');
         const userArea = document.getElementById('userArea');
@@ -18,13 +57,15 @@
             const eventsItem = document.createElement('li');
             eventsItem.className = 'nav-bar-item';
             eventsItem.dataset.navEvents = 'true';
-            eventsItem.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 .5a.5.5 0 0 1 .5.5v.5h7V1a.5.5 0 0 1 1 0v.5h1A1.5 1.5 0 0 1 15 3v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14V3a1.5 1.5 0 0 1 1.5-1.5h1V1a.5.5 0 0 1 .5-.5ZM2 6v8a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V6H2Zm0-1h12V3a.5.5 0 0 0-.5-.5h-1V3a.5.5 0 0 1-1 0v-.5h-7V3a.5.5 0 0 1-1 0v-.5h-1A.5.5 0 0 0 2 3v2Z"/></svg><span>大事记</span>';
+            eventsItem.innerHTML = `${primaryNavIcons.events}<span>大事记</span>`;
             eventsItem.addEventListener('click', () => { location.href = 'events.html'; });
             const currentPage = location.pathname.split('/').pop() || 'index.html';
             if (currentPage === 'events' || currentPage === 'events.html') eventsItem.classList.add('active');
             const docsItem = [...navBar.children].find(item => /docs(?:\.html)?/.test(item.getAttribute('onclick') || ''));
             navBar.insertBefore(eventsItem, docsItem || null);
         }
+
+        normalizePrimaryNavIcons(navBar);
 
         if (messagesLink && messagesLink.parentElement === navBar) {
             messagesLink.classList.remove('nav-bar-item');
@@ -40,6 +81,7 @@
                 }
             });
             userArea.insertBefore(messagesLink, userArea.firstChild);
+            renderNotificationIcon();
         }
     }
 
@@ -246,37 +288,7 @@
             const result = await response.json();
             const unreadCount = Number(result.unreadCount || 0);
 
-            const navMessages = document.getElementById('navMessages');
-            if (navMessages) {
-                const emptyBell = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16" style="vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.797.161A4.002 4.002 0 0 0 4 6c0 .628-.134 2.197-.459 3.742-.16.767-.376 1.566-.663 2.258h10.244c-.287-.692-.502-1.49-.663-2.258C12.134 8.197 12 6.628 12 6a4.002 4.002 0 0 0-3.203-3.92L8 1.917zM14.22 12c.223.447.481.801.78 1H1c.299-.199.557-.553.78-1C2.68 10.2 3 6.88 3 6c0-2.42 1.72-4.44 4.005-4.901a1 1 0 1 1 1.99 0A5.002 5.002 0 0 1 13 6c0 .88.32 4.2 1.22 6z"/></svg>`;
-                const fullBell = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell-fill" viewBox="0 0 16 16" style="vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/></svg>`;
-                
-                const iconWrapper = document.createElement('span');
-                iconWrapper.style.position = 'relative';
-                iconWrapper.style.display = 'inline-block';
-                iconWrapper.style.marginRight = '4px';
-                iconWrapper.style.width = '16px';
-                iconWrapper.style.height = '16px';
-                iconWrapper.innerHTML = unreadCount > 0 ? fullBell : emptyBell;
-                
-                navMessages.innerHTML = '';
-                navMessages.appendChild(iconWrapper);
-                navMessages.setAttribute('aria-label', unreadCount > 0 ? `通知中心，${unreadCount} 条未读` : '通知中心');
-                
-                if (unreadCount > 0) {
-                    let badge = document.createElement('span');
-                    badge.className = 'nav-badge';
-                    badge.style.position = 'absolute';
-                    badge.style.top = '-2px';
-                    badge.style.right = '-2px';
-                    badge.style.width = '7px';
-                    badge.style.height = '7px';
-                    badge.style.backgroundColor = 'var(--danger, #ff5555)';
-                    badge.style.borderRadius = '50%';
-                    badge.style.boxShadow = '0 0 6px var(--danger, #ff5555)';
-                    iconWrapper.appendChild(badge);
-                }
-            }
+            renderNotificationIcon(unreadCount);
         } catch (e) {
             console.warn('Failed to load notification count:', e.message);
         }

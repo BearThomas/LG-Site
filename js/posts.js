@@ -560,7 +560,107 @@ function renderPosts(posts) {
                     <div class="post-avatar" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
-                    <div clas…1612 tokens truncated…kboxes) {
+                    <div class="post-author-info">
+                        <button type="button" class="post-author post-author-link" data-author-id="${escapeHtml(author.cleanAuthorId || author.id || '')}">${author.name || '未知用户'}</button>
+                        <div class="post-meta">
+                            <span>${timeStr}</span>
+                            ${isPinned ? '<span class="post-badge pinned-badge">置顶</span>' : ''}
+                            ${isLocked ? '<span class="post-badge locked-badge">已锁定</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+                <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
+                <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content || '', 150))}</div>
+                <div class="post-footer">
+                    <span class="post-stat" aria-label="点赞数">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                        </svg>
+                        ${Number(post.likes || 0)}
+                    </span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    postsList.querySelectorAll('.post-card').forEach(card => {
+        card.addEventListener('click', () => openPostDetail(card.dataset.postId));
+    });
+    postsList.querySelectorAll('.post-author-link').forEach(link => {
+        link.addEventListener('click', event => {
+            event.stopPropagation();
+            window.goToUserProfile?.(link.dataset.authorId, event);
+        });
+    });
+}
+
+async function submitPost() {
+    if (submitPostBtn?.disabled) return;
+    if (!currentUser) {
+        alert('请先登录');
+        location.href = 'login.html';
+        return;
+    }
+
+    const title = postTitle?.value.trim() || '';
+    const content = postContent?.value.trim() || '';
+    const visibilityType = document.getElementById('visibilityType')?.value || 'all';
+    if (!title) return alert('请输入标题');
+    if (!content) return alert('请输入内容');
+
+    let viewPermission = 1;
+    let targetUsers = [];
+    if (visibilityType === 'specific') {
+        if (selectedUserIds.size === 0) return alert('请至少添加一个可见用户');
+        viewPermission = 4;
+        targetUsers = Array.from(selectedUserIds);
+    }
+
+    submitPostBtn.disabled = true;
+    submitPostBtn.textContent = '正在发布…';
+    try {
+        const response = await fetch('/api/create-post', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(currentUser.appToken ? { 'X-LG-Token': currentUser.appToken } : {}),
+                ...(currentUser.token ? { 'X-Appwrite-Session': currentUser.token } : {})
+            },
+            body: JSON.stringify({
+                studentId: currentUser.studentId,
+                appToken: currentUser.appToken || '',
+                sessionSecret: currentUser.token || '',
+                boardIds: ['main'],
+                title,
+                content,
+                viewPermission,
+                targetUsers
+            })
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || '发布失败');
+
+        alert('发布成功');
+        closeModal();
+        currentPage = 1;
+        await loadPosts({ forceRefresh: true });
+    } catch (error) {
+        console.error('发布帖子失败:', error);
+        alert(error.message || '网络错误，请稍后重试');
+    } finally {
+        submitPostBtn.disabled = false;
+        submitPostBtn.textContent = '发布';
+    }
+}
+
+function openModal() {
+    if (!currentUser) {
+        alert('请先登录');
+        location.href = 'login.html';
+        return;
+    }
+
+    if (postBoardCheckboxes) {
         renderPostBoardCheckboxes();
     }
     

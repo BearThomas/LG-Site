@@ -256,6 +256,9 @@ body::before {
 }
 
 .nav-bar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 0.82rem;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -265,6 +268,16 @@ body::before {
   position: relative;
   padding: 8px 0;
   user-select: none;
+}
+
+.nav-bar-item > svg,
+.nav-bar-item > .nav-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin: 0 !important;
+  vertical-align: middle !important;
 }
 
 .nav-bar-item::after {
@@ -319,6 +332,34 @@ body::before {
 
 .notification-center-link > span {
   margin: 0 !important;
+}
+
+.notification-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+}
+
+.notification-icon-wrap .nav-icon {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.notification-icon-wrap .nav-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger, #ff5555);
+  box-shadow: 0 0 0 2px var(--surface-2);
 }
 
 .notification-center-link > span + * {
@@ -921,6 +962,11 @@ body::before {
     height: 100% !important;
     cursor: pointer !important;
     letter-spacing: 0.04em !important;
+  }
+
+  .nav-bar .nav-bar-item > svg,
+  .nav-bar .nav-bar-item > .nav-icon {
+    margin: 0 !important;
   }
 
   .nav-bar .nav-bar-item.active {

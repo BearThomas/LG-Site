@@ -77,6 +77,9 @@ export const Query = Object.freeze({
   equal(attribute, value) {
     return { method: 'equal', attribute: String(attribute), values: values(value) };
   },
+  search(attribute, value) {
+    return { method: 'search', attribute: String(attribute), values: values(value) };
+  },
   greaterThan(attribute, value) {
     return { method: 'greaterThan', attribute: String(attribute), values: values(value) };
   },
