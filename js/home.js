@@ -83,14 +83,14 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
-// ========== 初始化入口（彻底洗白：移�?account.get 401 �?501 报错�?==========
+// ========== 初始化入口（彻底洗白：移除 account.get 401 及 501 报错） ==========
 (async function init() {
     
 
-    // 【步�?1】：清理旧版本遗留的浏览器端备份密钥
+    // 【步骤 1】：清理旧版本遗留的浏览器端备份密钥
     secureKeyReady = restoreSecureKey();
 
-    // 【步�?2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑�?
+    // 【步骤 2】：完全脱离原厂 SDK 鉴权，直接就地盘查本地中转凭证黑盒
     const userData = localStorage.getItem('campus_user');
     if (userData) {
         try {
@@ -113,10 +113,10 @@ function applyPendingModifications(collection, documents) {
         
     }
 
-    // 【步�?3】：只初始化只读数据库客户端，完全不执行会导�?401/501 �?account 握手
+    // 【步骤 3】：只初始化只读数据库客户端，完全不执行会导致 401/501 的 account 握手
     databases = new Databases(client);
     
-    // 渲染用户状�?UI
+    // 渲染用户状态 UI
     checkLoginStatus();
     bindHomeActions();
     await Promise.all([
@@ -142,9 +142,9 @@ function applyPendingModifications(collection, documents) {
     });
 })();
 
-// ========== 检查并同步登录状�?UI ==========
+// ========== 检查并同步登录状态 UI ==========
 function checkLoginStatus() {
-    // 顶栏登录状态与昵称/头像已全部由全局 js/nav-bar.js 集中异步托管，此处置空以防冲突覆�?
+    // 顶栏登录状态与昵称/头像已全部由全局 js/nav-bar.js 集中异步托管，此处置空以防冲突覆盖
 }
 
 function bindHomeActions() {
@@ -162,7 +162,7 @@ function bindHomeActions() {
 }
 
 // Removed loadHomeUsers since users are fetched on demand
-// ========== 异步优雅获取用户板块权限�?==========
+// ========== 异步优雅获取用户板块权限组 ==========
 async function getUserJoinedBoards() {
     if (!currentUser) return ['main'];
     try {
@@ -173,23 +173,23 @@ async function getUserJoinedBoards() {
             return response.documents[0].joinedBoards || ['main'];
         }
     } catch (e) {
-        console.warn('获取用户板块失败，降级回主板�?', e);
+        console.warn('获取用户板块失败，降级回主板块:', e);
     }
     return ['main'];
 }
 
 // ========== 严格视图可见性权限过滤器 ==========
 function isPostVisible(post, userBoards) {
-    // 🛡�?边界断路器：只要帖子核心字段解密�?null，说明密钥错误，直接人间蒸发
+    // 🛡️ 边界断路器：只要帖子核心字段解密出 null，说明密钥错误，直接人间蒸发
     if (post.title === null || post.content === null) return false;
 
     const viewPermission = Number(post.viewPermission) || 1;
-    // 🛡�?堵死原代码明文下�?undefined === undefined 访客越权伪装作者漏�?
+    // 🛡️ 堵死原代码明文下的 undefined === undefined 访客越权伪装作者漏洞
     const isAuthor = currentUser && currentUser.studentId && post.authorId &&
         normalizeUserId(post.authorId) === normalizeUserId(currentUser.studentId);
     
     if (viewPermission === 1) return true; // 所有人可见
-    if (viewPermission === 8) return isAuthor; // 仅作者可�?
+    if (viewPermission === 8) return isAuthor; // 仅作者可见
     if (viewPermission === 2) { // 板块成员可见
         if (!currentUser) return false;
         return userBoards.includes(post.boardId);
@@ -249,7 +249,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
     let hasRenderedCache = false;
 
-    // 【步�?1】秒开快速捞取本地缓存快�?
+    // 【步骤 1】秒开快速捞取本地缓存快照
     if (localCache) {
         try {
             const parsed = JSON.parse(localCache);
@@ -287,7 +287,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
                 }
                 return docs;
             } catch (e) {
-                console.warn('获取备用Posts源失�?, e);
+                console.warn('获取备用Posts源失败', e);
                 return [];
             }
         })()
@@ -307,18 +307,18 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
                     await getUsersInfo(databases, Query, authorIds);
                 } catch(e) {}
                 renderHomePosts(quickPosts);
-                showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数�?..', 'waiting');
+                showHomeCacheNotice(postList, 'postCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
                 hasRenderedCache = true;
             }
         }
     } else {
-        console.warn('云端热帖子加载失败，仅检索备�?', hotResult.reason?.message);
+        console.warn('云端热帖子加载失败，仅检索备份:', hotResult.reason?.message);
     }
     if (coldResult.status === 'fulfilled') {
         coldPosts = coldResult.value || [];
     }
 
-    // [步骤 3]数据格式归一化映�?
+    // [步骤 3]数据格式归一化映射
     const normalizePost = (post, isCold) => ({
         $id: post.$id || post.id,
         $createdAt: post.$createdAt || post.createdAt,
@@ -339,7 +339,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
     const normalizedHot = hotPosts.map(p => normalizePost(p, false)).filter(p => !tombstones.posts.has(p.$id));
     const normalizedCold = coldPosts.map(p => normalizePost(p, true)).filter(p => !tombstones.posts.has(p.$id));
 
-    // 【步�?4】全局去重合并、依照绝对时序重排列
+    // 【步骤 4】全局去重合并、依照绝对时序重排列
     const seen = new Set();
     const allPosts = [...normalizedHot, ...normalizedCold].filter(p => {
         if (seen.has(p.$id)) return false;
@@ -349,7 +349,7 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
 
     allPosts.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
 
-    // 【步�?5】通过严格的前端鉴权锁，截取最新前5�?
+    // 【步骤 5】通过严格的前端鉴权锁，截取最新前5条
     const userBoards = currentUser ? await getUserJoinedBoards() : ['main'];
     const visiblePosts = allPosts.filter(post => isPostVisible(post, userBoards));
     const finalHomePosts = visiblePosts.slice(0, 5);
@@ -360,14 +360,14 @@ async function loadHomePosts({ forceRefresh = false } = {}) {
         await getUsersInfo(databases, Query, authorIds);
     } catch(e) {}
 
-    // 【步�?6】复�?DOM 并刷新高速缓�?
+    // 【步骤 6】复写 DOM 并刷新高速缓存
     renderHomePosts(finalHomePosts);
     scheduleAfterPaint(() => {
         localStorage.setItem(cacheKey, JSON.stringify({ data: finalHomePosts, ts: Date.now() }));
     });
 
     if (hasRenderedCache) {
-        showHomeCacheNotice(postList, 'postCacheNotice', '动态流已实时同步至最�?, 'success');
+        showHomeCacheNotice(postList, 'postCacheNotice', '动态流已实时同步至最新', 'success');
     }
 }
 
@@ -379,7 +379,7 @@ function renderHomePosts(posts) {
     if (!posts.length) {
         postList.innerHTML = `
             <div class="empty-state">
-                <p>暂无最新帖子，<a href="posts.html">点击去发�?/a></p>
+                <p>暂无最新帖子，<a href="posts.html">点击去发帖</a></p>
             </div>
         `;
         return;
@@ -400,7 +400,7 @@ function renderHomePosts(posts) {
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>
                     </div>
                 </div>
-                <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标�?)}</div>
+                <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content">${escapeHtml(markdownToPreview(post.content, 100))}</div>
                 <div class="post-footer">
                     <span class="post-action"> ${post.commentCount || 0} 评论</span>
@@ -410,7 +410,7 @@ function renderHomePosts(posts) {
     }).join('');
 }
 
-// ========== 【高级缓存重构】加载首页表白墙（最�?0条） ==========
+// ========== 【高级缓存重构】加载首页表白墙（最新10条） ==========
 async function loadHomeConfessions({ forceRefresh = false } = {}) {
     const confessionList = document.getElementById('confessionList');
     if (!confessionList) return;
@@ -420,13 +420,13 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
     const localCache = forceRefresh ? null : localStorage.getItem(cacheKey);
     let hasRenderedCache = false;
 
-    // 【步�?1】捞取本地缓存快�?
+    // 【步骤 1】捞取本地缓存快照
     if (localCache) {
         try {
             const parsed = JSON.parse(localCache);
             if (parsed && Array.isArray(parsed.data)) {
                 renderHomeConfessions(parsed.data);
-                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '已载入历史手札，正在同步最新心�?..', 'waiting');
+                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '已载入历史手札，正在同步最新心动...', 'waiting');
                 hasRenderedCache = true;
             }
         } catch (e) {
@@ -438,7 +438,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         confessionList.innerHTML = createListSkeleton('confession', 3);
     }
 
-    // 【步�?2】并行加载清洗热数据与冷备份
+    // 【步骤 2】并行加载清洗热数据与冷备份
     let hotConfessions = [];
     let hotConfessionsLoaded = false;
     try {
@@ -455,7 +455,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
             ).slice(0, 10);
             if (quickConfessions.length) {
                 renderHomeConfessions(quickConfessions);
-                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '最新内容已显示，正在后台整理历史数�?..', 'waiting');
+                showHomeCacheNotice(confessionList, 'confessionCacheNotice', '最新内容已显示，正在后台整理历史数据...', 'waiting');
                 hasRenderedCache = true;
             }
         }
@@ -477,7 +477,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         }
     }
 
-    // 【步�?3】清洗格式、全局去重并硬性隔离错密脏数据
+    // 【步骤 3】清洗格式、全局去重并硬性隔离错密脏数据
     const normalizeConfession = (c) => ({
         $id: c.$id || c.id,
         $createdAt: c.$createdAt || c.createdAt,
@@ -486,7 +486,7 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         authorName: (() => {
             let n = escapeHtml(c.authorName || '匿名');
             let sid = (c.authorId || c.studentId || '').toString().replace(/^student_/, '').trim();
-            if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}�?/span>`;
+            if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
             return n;
         })(),
 
@@ -498,25 +498,25 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         ...hotConfessions.map(c => normalizeConfession(c)),
         ...coldConfessions.map(c => normalizeConfession(c))
     ].filter(c => {
-        // 🛡�?错密脏数据防御：只要正文�?null 证明解密完全失败，或者是已标记下架状态，直接滤除
+        // 🛡️ 错密脏数据防御：只要正文为 null 证明解密完全失败，或者是已标记下架状态，直接滤除
         if (c.content === null || c.status !== 0) return false;
         if (seenIds.has(c.$id)) return false;
         seenIds.add(c.$id);
         return true;
     });
 
-    // 【步�?4】严格时序重排，切片取前 10 �?
+    // 【步骤 4】严格时序重排，切片取前 10 条
     allConfessions.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
     const finalConfessions = allConfessions.slice(0, 10);
 
-    // 【步�?5】洗版展现并刷新缓存
+    // 【步骤 5】洗版展现并刷新缓存
     renderHomeConfessions(finalConfessions);
     scheduleAfterPaint(() => {
         localStorage.setItem(cacheKey, JSON.stringify({ data: finalConfessions, ts: Date.now() }));
     });
 
     if (hasRenderedCache) {
-        showHomeCacheNotice(confessionList, 'confessionCacheNotice', '表白手札已完成同步更�?, 'success');
+        showHomeCacheNotice(confessionList, 'confessionCacheNotice', '表白手札已完成同步更新', 'success');
     }
 }
 
@@ -527,7 +527,7 @@ function renderHomeConfessions(confessions) {
     if (!confessions.length) {
         confessionList.innerHTML = `
             <div class="empty-state">
-                <p>暂无表白�?a href="confession.html">去写一�?/a></p>
+                <p>暂无表白，<a href="confession.html">去写一张</a></p>
             </div>
         `;
         return;

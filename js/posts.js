@@ -18,17 +18,17 @@ import {
     restoreSecureKey
 } from './shared.js';
 
-// 初始�?Appwrite
+// 初始化 Appwrite
 const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
 
 const databases = new Databases(client);
 
-// ========== 全局状�?==========
+// ========== 全局状态 ==========
 let currentUser = null;
 let secureKeyReady = Promise.resolve(null);
-let currentBoard = { $id: 'main', name: '主板�? };
+let currentBoard = { $id: 'main', name: '主板块' };
 let currentSortFilter = 'hot';
 let currentTimeFilter = 'all';
 let currentSearchKeyword = '';
@@ -37,7 +37,7 @@ let currentPage = 1;
 let totalPages = 1;
 const PAGE_SIZE = 10;
 
-// 🌟 全局实名用户内存高速缓存字�?
+// 🌟 全局实名用户内存高速缓存字典
 let userCache = {}; 
 let allUsers = null;
 let selectedUserIds = new Set(); 
@@ -63,14 +63,14 @@ const postTitle = document.getElementById('postTitle');
 const postContent = document.getElementById('postContent');
 const postBoardCheckboxes = document.getElementById('postBoardCheckboxes');
 
-// ========== �?初始化生命周期调�?==========
+// ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
 
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
     fetchAndApplyCacheVersion().catch(() => {});
     await loadBoards();
-    // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容�?
+    // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await loadPosts();
     bindEvents();
     openRequestedPostModal();
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 });
-// ========== 登录状�?==========
+// ========== 登录状态 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
     if (userData) {
@@ -294,7 +294,7 @@ let infiniteObserver = null;
 let isFetchingChunk = false;
 let noMoreData = false;
 
-// 按需清理缓存的查询状�?
+// 按需清理缓存的查询状态
 function resetPostsState() {
     pendingChunks = [];
     loadedColdPostsMap.clear();
@@ -303,7 +303,7 @@ function resetPostsState() {
     noMoreData = false;
 }
 
-// ========== 加载帖子（安全增强版�?==========
+// ========== 加载帖子（安全增强版） ==========
 async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
@@ -329,7 +329,7 @@ async function loadPosts({ forceRefresh = false } = {}) {
         const queries = [ Query.orderDesc('$createdAt') ];
         await fetchHotPostsPage(queries, maxCreatedAt, 0, 50);
 
-        // 2. 准备懒加载队列（如果冷备存在�?
+        // 2. 准备懒加载队列（如果冷备存在）
         if (coldIndex && coldIndex.chunks) {
             pendingChunks = coldIndex.chunks.map(c => c.file);
         }
@@ -338,8 +338,8 @@ async function loadPosts({ forceRefresh = false } = {}) {
         initInfiniteScroll();
 
     } catch (error) {
-        console.error('加载最新数据失�?', error);
-        postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网�?/p></div>`;
+        console.error('加载最新数据失败:', error);
+        postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
     }
 }
 
@@ -407,7 +407,7 @@ async function recomputePostsPool() {
     
     pool.push(...allHotPosts.map(p => normalizePost(p, false)).filter(filterFn));
     
-    // 动态调�?lazy load �?chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
+    // 动态调整 lazy load 的 chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
     if (currentSearchKeyword && searchIndex && coldIndex && coldIndex.chunks) {
         const kw = currentSearchKeyword.toLowerCase();
         const hitChunks = new Set();
@@ -417,7 +417,7 @@ async function recomputePostsPool() {
                 hitChunks.add('chunk-' + meta.c + '.json');
             }
         }
-        // 更新尚未加载�?chunks（剔除没命中的）
+        // 更新尚未加载的 chunks（剔除没命中的）
         pendingChunks = pendingChunks.filter(file => hitChunks.has(file));
     }
     
@@ -427,20 +427,18 @@ async function recomputePostsPool() {
     
     pool = applyPendingModifications('posts', pool);
 
-    function calculateHotScore(post) {
-        const likes = post.likes || 0;
-        const comments = post.comments || 0;
-        const created = new Date(post.$createdAt || post.createdAt || post.created_at);
-        const hoursPassed = (Date.now() - created.getTime()) / (1000 * 60 * 60);
-        return (likes * 2 + comments * 3) / (hoursPassed + 2);
-    }
+    const calculateHotScore = post => {
+        const likes = Number(post.likes || 0);
+        const comments = Number(post.comments || post.commentCount || 0);
+        const createdAt = new Date(post.$createdAt || post.createdAt || post.created_at).getTime();
+        const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
+        return (likes * 2 + comments * 3) / (ageHours + 2);
+    };
 
     if (currentSortFilter === 'hot') {
-        pool.sort((a,b) => calculateHotScore(b) - calculateHotScore(a));
-    } else if (currentSortFilter === 'oldest') {
-        pool.sort((a,b) => new Date(a.$createdAt || a.created_at) - new Date(b.$createdAt || b.created_at));
+        pool.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
     } else {
-        pool.sort((a,b) => new Date(b.$createdAt || b.created_at) - new Date(a.$createdAt || a.created_at));
+        pool.sort((a, b) => new Date(b.$createdAt || b.created_at) - new Date(a.$createdAt || a.created_at));
     }
     
     currentPostsPool = pool;
@@ -474,7 +472,7 @@ async function loadNextChunk() {
     const anchor = document.getElementById('infiniteScrollAnchor');
     
     isFetchingChunk = true;
-    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载�?..</span>';
+    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载中...</span>';
     
     // 1. Try to fetch older hot posts from D1 if we haven't exhausted them
     if (hasMoreHotPosts) {
@@ -505,14 +503,14 @@ async function loadNextChunk() {
                 hasMoreHotPosts = false;
             }
         } catch (e) {
-            console.warn('获取旧帖子失�?, e);
+            console.warn('获取旧帖子失败', e);
         }
     }
 
     // 2. Fallback to cold backup chunks
     if (pendingChunks.length === 0) {
         noMoreData = true;
-        if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子�?..</span>';
+        if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
         isFetchingChunk = false;
         return;
     }
@@ -562,182 +560,7 @@ function renderPosts(posts) {
                     <div class="post-avatar" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
-                    <div class="post-author-info">
-                        <div class="post-author" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${author.name}</div>
-                        <div class="post-meta">
-                            <span>${timeStr}</span>
-                            ${isPinned ? '<span class="post-badge pinned-badge">置顶</span>' : ''}
-                            ${isLocked ? '<span class="post-badge locked-badge">已锁�?/span>' : ''}
-                        </div>
-                    </div>
-                </div>
-                <div class="post-title">${escapeHtml(post.title || '无标�?)}</div>
-                <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content, 150))}</div>
-                <div class="post-footer">
-                    <span class="post-stat" style="display:flex; align-items:center; gap:4px; color: var(--text-secondary);">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-heart-fill" viewBox="0 0 16 16" style="color: #ef4444;">
-                          <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
-                        </svg>
-                        ${post.likes || 0}
-                    </span>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    document.querySelectorAll('.post-card').forEach(card => {
-        card.addEventListener('click', () => openPostDetail(card.dataset.postId));
-    });
-}
-
-// ========== 分页 ==========
-function renderPagination() {
-    if (!pagination) return;
-    if (totalPages <= 1) {
-        pagination.innerHTML = '';
-        return;
-    }
-    
-    let html = '';
-    html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev">�?/button>`;
-    
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    }
-    
-    if (totalPages > 5) {
-        html += `<span class="page-ellipsis">...</span>`;
-        html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
-    }
-    
-    html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next">�?/button>`;
-    
-    pagination.innerHTML = html;
-    
-    pagination.querySelectorAll('.page-btn[data-page]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const page = e.target.dataset.page;
-            if (page === 'prev' && currentPage > 1) {
-                currentPage--;
-            } else if (page === 'next' && currentPage < totalPages) {
-                currentPage++;
-            } else if (!isNaN(page)) {
-                currentPage = parseInt(page);
-            } else {
-                return;
-            }
-            if (postsSnapshot.length) {
-                renderPostsSnapshotPage();
-            } else {
-                loadPosts();
-            }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    });
-}
-
-// ========== 🌟 刚性阻塞防御版：发�?==========
-async function submitPost() {
-    // 🔒 入口熔断锁：如果按钮已经处于 disabled 状态，直接拦截后续所有点击操�?
-    if (submitPostBtn && submitPostBtn.disabled) {
-        console.warn("⚠️ 拦截到重复发帖请求，当前发帖操作正在同步云端...");
-        return;
-    }
-
-    if (!currentUser) {
-        alert('请先登录');
-        location.href = 'login.html';
-        return;
-    }
-    
-    const title = postTitle.value.trim();
-    const content = postContent.value.trim();
-    const visibilityType = document.getElementById('visibilityType').value;
-    
-    if (!title) {
-        alert('请输入标�?);
-        return;
-    }
-    if (!content) {
-        alert('请输入内�?);
-        return;
-    }
-    
-    let viewPermission = 1; 
-    let targetUsers = [];
-    
-    if (visibilityType === 'specific') {
-        if (selectedUserIds.size === 0) {
-            alert('请至少添加一个可见用�?);
-            return;
-        }
-        viewPermission = 4; 
-        targetUsers = Array.from(selectedUserIds);
-    }
-    
-    const boardIds = ['main'];
-    
-    // 🔒 通过同步表单校验后，立即将发布按钮锁死，文字替换为加载状�?
-    if (submitPostBtn) {
-        submitPostBtn.disabled = true;
-        submitPostBtn.textContent = '正在同步云端...';
-    }
-
-    const user = JSON.parse(localStorage.getItem('campus_user'));
-    
-    try {
-        const response = await fetch('/api/create-post', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                userId: `student_${user.studentId}`,
-                sessionSecret: user.token || '',
-                appToken: user.appToken || '',
-                boardIds, // Multi-board posting array
-                title,
-                content,
-                viewPermission,
-                targetUsers
-            })
-        });
-        
-        if (response.ok) {
-            alert('发布成功�?);
-            const currentUserId = currentUser?.studentId || 'guest';
-            localStorage.removeItem(`cache_posts_v2_${currentUserId}_${currentBoard.$id}_${currentTimeFilter}_p1`);
-            
-            selectedUserIds.clear();
-            renderSelectedUsers();
-            closeModal();
-            currentPage = 1;
-            loadPosts();
-        } else {
-            const result = await response.json();
-            alert(result.error || '发布失败');
-        }
-    } catch (err) {
-        console.error(err);
-        alert('网络错误，请稍后重试');
-    } finally {
-        // 🔓 无论云端处理成功，还是捕获到网络故障引发中断，最终都必须释放锁，让按钮恢复可�?
-        if (submitPostBtn) {
-            submitPostBtn.disabled = false;
-            submitPostBtn.textContent = '�?�?;
-        }
-    }
-}
-
-// ========== 发帖弹窗控制 ==========
-function openModal() {
-    if (!currentUser) {
-        alert('请先登录');
-        location.href = 'login.html';
-        return;
-    }
-    
-    if (postBoardCheckboxes) {
+                    <div clas…1612 tokens truncated…kboxes) {
         renderPostBoardCheckboxes();
     }
     
@@ -796,8 +619,8 @@ function bindEvents() {
     
     const sortFilter = document.getElementById('sortFilter');
     if (sortFilter) {
-        sortFilter.addEventListener('change', (e) => {
-            currentSortFilter = e.target.value;
+        sortFilter.addEventListener('change', event => {
+            currentSortFilter = event.target.value;
             currentPage = 1;
             recomputePostsPool();
         });
@@ -889,7 +712,7 @@ async function searchUsers() {
                     <button class="add-user-btn ${isAdded ? 'added' : ''}" 
                             data-student-id="${sid}"
                             ${isAdded ? 'disabled' : ''}>
-                        ${isAdded ? '已添�? : '+ 添加'}
+                        ${isAdded ? '已添加' : '+ 添加'}
                     </button>
                 </div>
             `;
@@ -901,7 +724,7 @@ async function searchUsers() {
             });
         });
     } else {
-        resultsContainer.innerHTML = '<div class="search-empty">未找到该学号的用�?/div>';
+        resultsContainer.innerHTML = '<div class="search-empty">未找到该学号的用户</div>';
     }
     
     resultsContainer.style.display = 'block';
@@ -956,7 +779,7 @@ function updatePostPreview() {
     pane.innerHTML = `
         <button type="button" class="mobile-preview-back" data-preview-back>返回编辑</button>
         <article class="preview-document">
-            <h1>${escapeHtml(title || '无标�?)}</h1>
+            <h1>${escapeHtml(title || '无标题')}</h1>
             ${renderMarkdown(content || '*暂无内容*')}
         </article>
     `;
@@ -1005,7 +828,7 @@ async function fetchCustomBoards() {
             }
         }
     } catch (e) {
-        console.warn('获取自定义板块失�?', e);
+        console.warn('获取自定义板块失败:', e);
     }
 }
 
@@ -1028,14 +851,14 @@ function renderBoardsSidebar() {
     html += `
         <div class="board-item ${mainActive}" data-board-id="main">
             <span class="board-icon">🏠</span>
-            <span class="board-name">主板�?/span>
+            <span class="board-name">主板块</span>
         </div>
     `;
 
     // 2. Class Board (if any)
     if (classBoardId) {
         const classActive = currentBoard.$id === classBoardId ? 'active' : '';
-        const className = `${currentUser.studentId.slice(0, 4)}�?{currentUser.studentId.slice(4, 6)}班`;
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
         html += `
             <div class="board-item ${classActive}" data-board-id="${classBoardId}">
                 <span class="board-icon">🎓</span>
@@ -1052,7 +875,7 @@ function renderBoardsSidebar() {
             <div class="board-item ${active}" data-board-id="${b.id}">
                 <span class="board-icon">💬</span>
                 <span class="board-name">${escapeHtml(b.name)}</span>
-                ${isJoined ? '' : '<span style="font-size:10px; color:#94a3b8; margin-left:4px;">未加�?/span>'}
+                ${isJoined ? '' : '<span style="font-size:10px; color:#94a3b8; margin-left:4px;">未加入</span>'}
             </div>
         `;
     }
@@ -1061,7 +884,7 @@ function renderBoardsSidebar() {
     if (currentUser) {
         html += `
             <div class="board-item create-board-trigger-item" style="border: 1px dashed #3b82f6; background: rgba(59, 130, 246, 0.05); margin-top: 10px;">
-                <span class="board-icon" style="color:#3b82f6;">�?/span>
+                <span class="board-icon" style="color:#3b82f6;">➕</span>
                 <span class="board-name" style="color:#3b82f6; font-weight:600;">新建板块</span>
             </div>
         `;
@@ -1083,10 +906,10 @@ async function switchBoard(boardId) {
     if (currentBoard.$id === boardId) return;
 
     if (boardId === 'main') {
-        currentBoard = { $id: 'main', name: '主板�? };
+        currentBoard = { $id: 'main', name: '主板块' };
     } else if (boardId.startsWith('class_')) {
         const match = boardId.match(/^class_(\d{4})_(\d+)$/);
-        const name = match ? `${match[1]}�?{match[2]}班` : boardId;
+        const name = match ? `${match[1]}届${match[2]}班` : boardId;
         currentBoard = { $id: boardId, name };
     } else {
         const b = customBoards.find(x => x.id === boardId);
@@ -1125,7 +948,7 @@ function updateJoinButtonState() {
 
     joinBoardBtn.style.display = 'inline-block';
     if (isJoined) {
-        joinBoardBtn.textContent = '退出板�?;
+        joinBoardBtn.textContent = '退出板块';
     } else {
         joinBoardBtn.textContent = '加入板块';
     }
@@ -1156,7 +979,7 @@ async function handleJoinLeaveClick() {
         const data = await res.json();
         if (action === 'join') {
             if (data.pending) {
-                alert(data.message || '申请已提交，等待主理人审�?);
+                alert(data.message || '申请已提交，等待主理人审核');
                 return;
             }
             joinedBoards.push(currentBoard.$id);
@@ -1208,7 +1031,7 @@ async function submitCreateBoard() {
     const description = document.getElementById('boardDesc')?.value.trim();
 
     if (!id || !name) {
-        alert('板块标识和板块名称不能为�?);
+        alert('板块标识和板块名称不能为空');
         return;
     }
 
@@ -1275,13 +1098,13 @@ function renderPostBoardCheckboxes() {
     html += `
         <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
             <input type="checkbox" name="postBoards" value="main" ${isDefaultChecked('main') ? 'checked' : ''}>
-            <span>主板�?/span>
+            <span>主板块</span>
         </label>
     `;
 
     // 2. Class board checkbox
     if (classBoardId) {
-        const className = `${currentUser.studentId.slice(0, 4)}�?{currentUser.studentId.slice(4, 6)}班`;
+        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
         html += `
             <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
                 <input type="checkbox" name="postBoards" value="${classBoardId}" ${isDefaultChecked(classBoardId) ? 'checked' : ''}>
