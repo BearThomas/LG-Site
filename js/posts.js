@@ -35,14 +35,13 @@ let currentSearchKeyword = '';
 const searchInput = document.getElementById('searchInput'); // 存储当前选中的时间：all, today, week, month
 let currentPage = 1;
 let totalPages = 1;
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 20; // 每次加载20行
 
-// 🌟 全局实名用户内存高速缓存字典
+// 全局实名用户内存高速缓存字典
 let userCache = {}; 
 let allUsers = null;
 let selectedUserIds = new Set(); 
 let postsSnapshot = [];
-
 
 // Custom Boards cache
 let customBoards = [];
@@ -78,7 +77,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         onRefresh: async () => {
             currentPage = 1;
             await loadPosts({ forceRefresh: true });
-
         }
     });
 });
@@ -127,32 +125,6 @@ function showCacheNotice(message, type = 'waiting') {
     }
 }
 
-
-
-let hasMoreHotPosts = true;
-
-async function fetchHotPostsPage(queries, maxCreatedAt, offset = 0, batchSize = 25) {
-    const pageQueries = [...queries];
-    if (maxCreatedAt) {
-        pageQueries.push(Query.greaterThan('created_at', maxCreatedAt));
-    }
-    if (offset > 0) {
-        pageQueries.push(Query.offset(offset));
-    }
-    pageQueries.push(Query.limit(batchSize));
-
-    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
-    const batch = response.documents || [];
-
-    if (batch.length > 0) {
-        try {
-            const idb = await import('./idb-cache.js');
-            await idb.putToCache('posts', batch);
-        } catch (e) {}
-    }
-    return batch;
-}
-
 // Fetch cold backup hashes + pending mods from D1
 let serverHashes = { posts: null, comments: null, confessions: null };
 let pendingModifications = [];
@@ -180,90 +152,6 @@ async function fetchAndApplyCacheVersion() {
     }
 }
 
-async function fetchWithHashCache(collection, urls) {
-    const serverHash = serverHashes[collection];
-    const cacheKeyData = `cache_data_${collection}`;
-    const cacheKeyHash = `cache_hash_${collection}`;
-    
-    if (serverHash) {
-        const localHash = localStorage.getItem(cacheKeyHash);
-        if (localHash === serverHash) {
-            const cachedData = localStorage.getItem(cacheKeyData);
-            if (cachedData) {
-                try {
-                    return JSON.parse(cachedData);
-                } catch (e) {}
-            }
-        }
-    }
-    
-    for (const url of urls) {
-        try {
-            const res = await fetch(url);
-            if (!res.ok) continue;
-            const data = await res.json();
-            
-            if (serverHash) {
-                try {
-                    localStorage.setItem(cacheKeyData, JSON.stringify(data));
-                    localStorage.setItem(cacheKeyHash, serverHash);
-                } catch (e) { }
-            }
-            return data;
-        } catch (e) { continue; }
-    }
-    throw new Error(`无法获取 ${collection} 数据`);
-}
-
-async function fetchChunkWithCache(collection, filename, chunkHash) {
-    const cacheKeyData = `cache_data_${collection}_${filename}`;
-    const cacheKeyHash = `cache_hash_${collection}_${filename}`;
-    
-    if (chunkHash) {
-        if (localStorage.getItem(cacheKeyHash) === chunkHash) {
-            try { return JSON.parse(localStorage.getItem(cacheKeyData)); } catch(e) {}
-        }
-    }
-    
-    try {
-        const res = await fetch(`./public/data-backups/${collection}/${filename}`);
-        if (!res.ok) return [];
-        const data = await res.json();
-        
-        if (chunkHash) {
-            try {
-                localStorage.setItem(cacheKeyData, JSON.stringify(data));
-                localStorage.setItem(cacheKeyHash, chunkHash);
-            } catch(e) {}
-        }
-        return data;
-    } catch(e) {
-        return [];
-    }
-}
-
-async function loadChunkedCollection(collection) {
-    try {
-        const index = await fetchWithHashCache(collection, [`./public/data-backups/${collection}/index.json`]);
-        if (!index || !index.chunks) throw new Error('No index');
-        
-        const promises = index.chunks.map(chunk => {
-            return fetchChunkWithCache(collection, chunk.file, chunk.hash);
-        });
-        
-        const arrays = await Promise.all(promises);
-        let docs = arrays.flat();
-        return applyPendingModifications(collection, docs);
-    } catch(e) {
-        try {
-            const old = await fetchWithHashCache(collection, [`./public/data-backups/${collection}.json`, `./public/data-fallback/${collection}.json`]);
-            return applyPendingModifications(collection, old.documents || old || []);
-        } catch(e2) {
-            return [];
-        }
-    }
-}
-
 function applyPendingModifications(collection, documents) {
     if (!documents || !Array.isArray(documents)) return documents;
     let modified = [...documents];
@@ -282,28 +170,21 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
-
 // ========== 瀑布流懒加载与按需加载支持 ==========
-let pendingChunks = [];
-let loadedColdPostsMap = new Map();
 let currentPostsPool = [];
-let allHotPosts = [];
-let coldIndex = null;
-let searchIndex = null;
 let infiniteObserver = null;
 let isFetchingChunk = false;
 let noMoreData = false;
+let currentOffset = 0; // 记录当前的请求偏移量
 
 // 按需清理缓存的查询状态
 function resetPostsState() {
-    pendingChunks = [];
-    loadedColdPostsMap.clear();
     currentPostsPool = [];
-    allHotPosts = [];
     noMoreData = false;
+    currentOffset = 0;
 }
 
-// ========== 加载帖子（安全增强版） ==========
+// ========== 加载帖子 ==========
 async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
@@ -313,28 +194,8 @@ async function loadPosts({ forceRefresh = false } = {}) {
             resetPostsState();
         }
 
-        // 初始化元数据
-        if (!coldIndex) {
-            try { coldIndex = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']); } catch(e){}
-        }
-        if (!searchIndex) {
-            try { searchIndex = await fetchWithHashCache('posts_search', ['./public/data-backups/posts/search-index.json']); } catch(e){}
-        }
-
-        // 1. 极速从本地获取最新状态并进行增量同步
-        const idb = await import('./idb-cache.js');
-        const latestDoc = await idb.getLatestFromCache('posts');
-        const maxCreatedAt = latestDoc ? (latestDoc.$createdAt || latestDoc.created_at) : null;
-        
-        const queries = [ Query.orderDesc('$createdAt') ];
-        await fetchHotPostsPage(queries, maxCreatedAt, 0, 50);
-
-        // 2. 准备懒加载队列（如果冷备存在）
-        if (coldIndex && coldIndex.chunks) {
-            pendingChunks = coldIndex.chunks.map(c => c.file);
-        }
-
-        await recomputePostsPool();
+        // 直接从网络获取首屏实时数据
+        await fetchNextPostsBatch();
         initInfiniteScroll();
 
     } catch (error) {
@@ -343,10 +204,25 @@ async function loadPosts({ forceRefresh = false } = {}) {
     }
 }
 
-async function recomputePostsPool() {
-    const currentUserId = currentUser?.studentId || 'guest';
+async function fetchNextPostsBatch() {
+    const queries = [];
     
-    const normalizePost = (p, isCold) => ({
+    queries.push(Query.orderDesc('$createdAt'));
+    queries.push(Query.offset(currentOffset));
+    queries.push(Query.limit(PAGE_SIZE));
+
+    const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, queries);
+    let batch = response.documents || [];
+
+    if (batch.length === 0) {
+        noMoreData = true;
+        return [];
+    }
+
+    currentOffset += batch.length;
+
+    const currentUserId = currentUser?.studentId || 'guest';
+    const normalizePost = (p) => ({
         ...p,
         $id: p.$id || p.id,
         $createdAt: p.$createdAt || p.created_at || p.createdAt,
@@ -358,7 +234,8 @@ async function recomputePostsPool() {
         targetGroups: typeof p.targetGroups === 'string' ? JSON.parse(p.targetGroups) : (p.targetGroups || []),
         status: p.status || 0,
         viewPermission: p.viewPermission,
-        _isCold: isCold
+        // 🌟 确保归一化时捕获到评论数
+        commentCount: Number(p.commentCount || p.comment_count || 0)
     });
 
     const filterFn = (post) => {
@@ -398,60 +275,35 @@ async function recomputePostsPool() {
         
         return true;
     };
-    
-    let pool = [];
-    try {
-        const idb = await import('./idb-cache.js');
-        allHotPosts = await idb.getAllFromCache('posts', 100000, 'desc');
-    } catch(e) {}
-    
-    pool.push(...allHotPosts.map(p => normalizePost(p, false)).filter(filterFn));
-    
-    // 动态调整 lazy load 的 chunks：如果正在搜索，且有 searchIndex，则只捞取命中的 chunks
-    if (currentSearchKeyword && searchIndex && coldIndex && coldIndex.chunks) {
-        const kw = currentSearchKeyword.toLowerCase();
-        const hitChunks = new Set();
-        for (const meta of searchIndex) {
-            if (meta.title && meta.title.toLowerCase().includes(kw) || 
-                meta.authorName && meta.authorName.toLowerCase().includes(kw)) {
-                hitChunks.add('chunk-' + meta.c + '.json');
-            }
-        }
-        // 更新尚未加载的 chunks（剔除没命中的）
-        pendingChunks = pendingChunks.filter(file => hitChunks.has(file));
-    }
-    
-    for (const chunk of loadedColdPostsMap.values()) {
-        pool.push(...chunk.map(p => normalizePost(p, true)).filter(filterFn));
-    }
-    
-    pool = applyPendingModifications('posts', pool);
+
+    let processedBatch = batch.map(p => normalizePost(p)).filter(filterFn);
+    processedBatch = applyPendingModifications('posts', processedBatch);
+
+    currentPostsPool.push(...processedBatch);
 
     const calculateHotScore = post => {
         const likes = Number(post.likes || 0);
-        const comments = Number(post.comments || post.commentCount || 0);
+        const comments = Number(post.commentCount || 0);
         const createdAt = new Date(post.$createdAt || post.createdAt || post.created_at).getTime();
         const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
         return (likes * 2 + comments * 3) / (ageHours + 2);
     };
 
     if (currentSortFilter === 'hot') {
-        pool.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
+        currentPostsPool.sort((a, b) => calculateHotScore(b) - calculateHotScore(a));
     } else {
-        pool.sort((a, b) => new Date(b.$createdAt || b.created_at) - new Date(a.$createdAt || a.created_at));
+        currentPostsPool.sort((a, b) => new Date(b.$createdAt || b.created_at) - new Date(a.$createdAt || a.created_at));
     }
-    
-    currentPostsPool = pool;
-    
-    // Fetch missing users for these posts
-    const authorIds = currentPostsPool.map(p => p.authorId || p.author_id).filter(Boolean);
+
+    const authorIds = processedBatch.map(p => p.authorId || p.author_id).filter(Boolean);
     try {
         const { getUsersInfo } = await import('./shared.js');
         await getUsersInfo(databases, Query, authorIds);
         userCache = window.userCache || {};
     } catch(e) {}
-    
+
     renderPosts(currentPostsPool);
+    return processedBatch;
 }
 
 function initInfiniteScroll() {
@@ -464,78 +316,39 @@ function initInfiniteScroll() {
         if (entries[0].isIntersecting && !isFetchingChunk && !noMoreData) {
             await loadNextChunk();
         }
-    }, { rootMargin: '400px' }); // 提前 400px 触发
+    }, { rootMargin: '400px' });
     
     infiniteObserver.observe(anchor);
 }
 
 async function loadNextChunk() {
     const anchor = document.getElementById('infiniteScrollAnchor');
-    
     isFetchingChunk = true;
+    
     if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载中...</span>';
     
-    // 1. Try to fetch older hot posts from D1 if we haven't exhausted them
-    if (hasMoreHotPosts) {
-        try {
-            const idb = await import('./idb-cache.js');
-            const oldestDoc = await idb.getAllFromCache('posts', 1, 'asc');
-            let oldestCreatedAt = null;
-            if (oldestDoc && oldestDoc.length > 0) {
-                oldestCreatedAt = oldestDoc[0].$createdAt || oldestDoc[0].created_at;
-            }
+    try {
+        const newPosts = await fetchNextPostsBatch();
+        if (newPosts.length === 0 && !noMoreData) {
+            isFetchingChunk = false;
+            return await loadNextChunk();
+        }
+    } catch (e) {
+        console.warn('获取后续帖子失败', e);
+    }
 
-            const pageQueries = [ Query.orderDesc('$createdAt') ];
-            if (oldestCreatedAt) {
-                pageQueries.push(Query.lessThan('created_at', oldestCreatedAt));
-            }
-            pageQueries.push(Query.limit(50));
-
-            const response = await databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, pageQueries);
-            const batch = response.documents || [];
-            
-            if (batch.length > 0) {
-                await idb.putToCache('posts', batch);
-                await recomputePostsPool();
-                isFetchingChunk = false;
-                if (anchor) anchor.innerHTML = ''; 
-                return;
-            } else {
-                hasMoreHotPosts = false;
-            }
-        } catch (e) {
-            console.warn('获取旧帖子失败', e);
+    isFetchingChunk = false;
+    
+    if (anchor) {
+        if (noMoreData) {
+            anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
+        } else {
+            anchor.innerHTML = ''; 
         }
     }
-
-    // 2. Fallback to cold backup chunks
-    if (pendingChunks.length === 0) {
-        noMoreData = true;
-        if (anchor) anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
-        isFetchingChunk = false;
-        return;
-    }
-    
-    if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载历史档案...</span>';
-    
-    const chunkFile = pendingChunks.shift();
-    try {
-        const chunkObj = coldIndex && coldIndex.chunks ? coldIndex.chunks.find(c => c.file === chunkFile) : null;
-        let chunkData = await fetchChunkWithCache('posts', chunkFile, chunkObj ? chunkObj.hash : null);
-        loadedColdPostsMap.set(chunkFile, chunkData);
-        await recomputePostsPool();
-    } catch(e) {
-        console.warn('获取区块失败', chunkFile, e);
-    }
-    
-    isFetchingChunk = false;
-    if (anchor && !noMoreData) anchor.innerHTML = ''; 
 }
 
-
-
-// ========== 🌟 智能化改写：不信任数据源渲染 ==========
-
+// ========== 渲染列表页面核心 HTML ==========
 function renderPosts(posts) {
     if (!postsList) return;
     if (!posts.length) {
@@ -555,6 +368,7 @@ function renderPosts(posts) {
         const author = getPostAuthorDisplay(post, userCache);
         const avatarHtml = renderAuthorAvatar(author, 40);
         
+        // 🌟 核心修改点：页脚区域同步渲染出“点赞数”和“评论数”
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
                 <div class="post-header">
@@ -572,12 +386,18 @@ function renderPosts(posts) {
                 </div>
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content || '', 150))}</div>
-                <div class="post-footer">
-                    <span class="post-stat" aria-label="点赞数">
+                <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem;">
+                    <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
                             <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
                         </svg>
                         ${Number(post.likes || 0)}
+                    </span>
+                    <span class="post-stat" aria-label="评论数" style="display: flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M2 1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h9.586a2 2 0 0 1 1.414.586l2 2V2a1 1 0 0 0-1-1H2zm12-1a2 2 0 0 1 2 2v12.793a.5.5 0 0 1-.854.353l-2.853-2.853a1 1 0 0 0-.707-.293H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+                        </svg>
+                        ${Number(post.commentCount || 0)}
                     </span>
                 </div>
             </div>
@@ -723,7 +543,7 @@ function bindEvents() {
         sortFilter.addEventListener('change', event => {
             currentSortFilter = event.target.value;
             currentPage = 1;
-            recomputePostsPool();
+            loadPosts({ forceRefresh: true });
         });
     }
 
@@ -732,7 +552,7 @@ function bindEvents() {
         timeFilter.addEventListener('change', (e) => {
             currentTimeFilter = e.target.value; 
             currentPage = 1; 
-            loadPosts(); 
+            loadPosts({ forceRefresh: true }); 
         });
     }
     
@@ -741,7 +561,7 @@ function bindEvents() {
             if (e.key === 'Enter') {
                 currentSearchKeyword = searchInput.value.trim();
                 currentPage = 1;
-                loadPosts();
+                loadPosts({ forceRefresh: true });
             }
         });
     }
@@ -869,7 +689,6 @@ function renderSelectedUsers() {
         });
     });
 }
-// for update
 
 function updatePostPreview() {
     const title = postTitle?.value || '';
