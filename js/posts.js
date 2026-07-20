@@ -959,7 +959,7 @@ function renderBoardsSidebar() {
     // 2. Class Board (if any)
     if (classBoardId) {
         const classActive = currentBoard.$id === classBoardId ? 'active' : '';
-        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        const className = `${currentUser.studentId.slice(0, 4)}级${currentUser.studentId.slice(4, 6)}班`;
         html += `
             <div class="board-item ${classActive}" data-board-id="${classBoardId}">
                 <span class="board-icon">🎓</span>
@@ -1010,7 +1010,7 @@ async function switchBoard(boardId) {
         currentBoard = { $id: 'main', name: '主板块' };
     } else if (boardId.startsWith('class_')) {
         const match = boardId.match(/^class_(\d{4})_(\d+)$/);
-        const name = match ? `${match[1]}届${match[2]}班` : boardId;
+        const name = match ? `${match[1]}级${match[2]}班` : boardId;
         currentBoard = { $id: boardId, name };
     } else {
         const b = customBoards.find(x => x.id === boardId);
@@ -1205,7 +1205,7 @@ function renderPostBoardCheckboxes() {
 
     // 2. Class board checkbox
     if (classBoardId) {
-        const className = `${currentUser.studentId.slice(0, 4)}届${currentUser.studentId.slice(4, 6)}班`;
+        const className = `${currentUser.studentId.slice(0, 4)}级${currentUser.studentId.slice(4, 6)}班`;
         html += `
             <label style="display:flex; align-items:center; gap:6px; background:var(--surface); padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-size:0.9rem; cursor:pointer;">
                 <input type="checkbox" name="postBoards" value="${classBoardId}" ${isDefaultChecked(classBoardId) ? 'checked' : ''}>

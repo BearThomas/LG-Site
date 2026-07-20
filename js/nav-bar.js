@@ -184,7 +184,7 @@
         
         let displayName = escapeHtml(name || '同学');
         const sid = (studentId || '').toString().replace(/^student_/, '').trim();
-        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+        if (sid.length >= 4) displayName = `${displayName}<span class="year-badge">${sid.substring(0, 4)}级</span>`;
         if (userNameSpan) userNameSpan.innerHTML = displayName;
 
         renderNavbarAvatar(name, avatar);

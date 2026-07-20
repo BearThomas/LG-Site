@@ -312,7 +312,7 @@ function main() {
       permissions: 31,
       joinedBoards: ['main'],
       ownedBoards: [],
-      className: /^\d{6,12}$/.test(id) ? `${id.slice(0, 4)}届${id.slice(4, 6)}班` : '',
+      className: /^\d{6,12}$/.test(id) ? `${id.slice(0, 4)}级${id.slice(4, 6)}班` : '',
       mutedUntil: null,
       banned: false,
       createdAt,

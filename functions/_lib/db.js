@@ -27,7 +27,7 @@ export function parseJsonArray(value) {
 export function extractClass(studentId) {
   const id = normalizeUserId(studentId);
   if (!/^\d{6,12}$/.test(id)) return '';
-  return `${id.slice(0, 4)}届${id.slice(4, 6)}班`;
+  return `${id.slice(0, 4)}级${id.slice(4, 6)}班`;
 }
 
 export async function getUserRow(env, userId) {

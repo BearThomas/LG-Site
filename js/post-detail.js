@@ -372,7 +372,7 @@ function renderPostDetail() {
         finalName = escapeHtml(finalName);
         const __sid = rawAuthorId.replace(/^student_/, '').trim();
         if (__sid.length >= 4) {
-            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
         }
 
         avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
@@ -567,7 +567,7 @@ function renderComments(comments) {
             let rawCommentName = comment.authorName || '';
             const __csid = (comment.authorId || '').toString().replace(/^student_/, '').trim();
             if (__csid.length >= 4) {
-                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}届</span>`;
+                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}级</span>`;
             } else {
                 rawCommentName = escapeHtml(rawCommentName);
             }

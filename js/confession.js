@@ -290,7 +290,7 @@ async function loadConfessions({ forceRefresh = false } = {}) {
                 authorName: (() => {
                     let n = escapeHtml(doc.authorName || '匿名');
                     let sid = (doc.authorId || doc.studentId || '').toString().replace(/^student_/, '').trim();
-                    if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+                    if (sid.length >= 4) n = `${n}<span class="year-badge">${sid.substring(0, 4)}级</span>`;
                     return n;
                 })(),
 

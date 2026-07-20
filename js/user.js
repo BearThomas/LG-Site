@@ -64,7 +64,7 @@ async function loadUserInfo() {
         if (userResult) {
             sid = (userResult.studentId || sid).replace(/^student_/, '').trim();
             finalName = window.escapeHtml ? window.escapeHtml(userResult.name || '未设置名称') : userResult.name || '未设置名称';
-            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}级</span>`;
             
             profileUsername.innerHTML = finalName;
             profileUserId.style.display = 'none'; // Don't show ID
@@ -78,7 +78,7 @@ async function loadUserInfo() {
         } else {
             // User not found in DB, fallback
             finalName = window.escapeHtml ? window.escapeHtml(`同学${sid.slice(-4)}`) : `同学${sid.slice(-4)}`;
-            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}届</span>`;
+            if (sid.length >= 4) finalName = `${finalName}<span class="year-badge">${sid.substring(0, 4)}级</span>`;
             profileUsername.innerHTML = finalName;
             profileUserId.style.display = 'none';
             updateAvatarPreview(`同学${sid.slice(-4)}`, '');

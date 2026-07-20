@@ -66,7 +66,7 @@ async function initProfile() {
             let __name = window.escapeHtml ? window.escapeHtml(currentUser.name || '未设置名称') : currentUser.name || '未设置名称';
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
     document.getElementById('nameInput').value = currentUser.name || '';
@@ -81,7 +81,7 @@ async function initProfile() {
             let __name = window.escapeHtml ? window.escapeHtml(userDoc.name || '未设置名称') : userDoc.name || '未设置名称';
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
             document.getElementById('nameInput').value = userDoc.name || '';
@@ -175,7 +175,7 @@ async function saveProfile() {
             let __name = window.escapeHtml ? window.escapeHtml(currentUser.name) : currentUser.name;
 
             let __sid = ((currentUser || window.currentUser || {}).studentId || '').toString().replace(/^student_/, '').trim();
-            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}届</span>`;
+            if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
         updateAvatarPreview(currentUser.name, currentUser.avatar);
