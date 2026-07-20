@@ -179,7 +179,7 @@ async function listPosts(env, state, viewer) {
   
   let orderByClause = '';
   if (state.order?.attribute === 'hot') {
-    orderByClause = `ORDER BY ((SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) * 2 + (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) * 3) / POW((STRFTIME('%s', 'now') - STRFTIME('%s', created_at))/3600.0 + 2, 1.5) DESC`;
+    orderByClause = `ORDER BY ((SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) * 2 + (SELECT COUNT(*) FROM comments WHERE comments.post_id = posts.id) * 3) / ((STRFTIME('%s', 'now') - STRFTIME('%s', created_at))/3600.0 + 2) DESC`;
   } else {
     const orderColumn = state.order?.attribute === 'title' ? 'title' : 'created_at';
     const orderDirection = state.order?.direction || 'DESC';
