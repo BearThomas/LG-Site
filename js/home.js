@@ -373,7 +373,7 @@ function renderHomePosts(posts) {
         const author = getPostAuthorDisplay(post, userCache);
         const avatarHtml = renderAuthorAvatar(author, 44);
         
-        // 🌟 帖子放点赞数 + 评论数
+        // 🌟 帖子放点赞数 + 评论数，图标替换为标准 SVG
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
@@ -385,9 +385,19 @@ function renderHomePosts(posts) {
                 </div>
                 <div class="post-title">${isPinned ? ' ' : ''}${escapeHtml(post.title || '无标题')}</div>
                 <div class="post-content">${escapeHtml(markdownToPreview(post.content, 100))}</div>
-                <div class="post-footer" style="display: flex; gap: 12px; color: var(--text-secondary); font-size: 0.85rem;">
-                    <span class="post-action">❤️ ${post.likes || 0} 点赞</span>
-                    <span class="post-action">💬 ${post.commentCount || 0} 评论</span>
+                <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
+                    <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                        </svg>
+                        ${Number(post.likes || 0)}
+                    </span>
+                    <span class="post-stat" aria-label="评论数" style="display: flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M2 1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h9.586a2 2 0 0 1 1.414.586l2 2V2a1 1 0 0 0-1-1H2zm12-1a2 2 0 0 1 2 2v12.793a.5.5 0 0 1-.854.353l-2.853-2.853a1 1 0 0 0-.707-.293H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+                        </svg>
+                        ${Number(post.commentCount || 0)}
+                    </span>
                 </div>
             </div>
         `;
@@ -457,12 +467,10 @@ async function loadHomeConfessions({ forceRefresh = false } = {}) {
         } catch (e) {}
     }
 
-    // 【步骤 3】清洗格式并注入点赞和评论数量支持
     const normalizeConfession = (c) => ({
         $id: c.$id || c.id,
         $createdAt: c.$createdAt || c.createdAt,
         content: c.content,
-        // 🌟 统一补全表白墙的点赞数与评论数
         likes: Number(c.likes || 0),
         commentCount: Number(c.commentCount || c.comment_count || 0),
         authorName: (() => {
@@ -511,15 +519,25 @@ function renderHomeConfessions(confessions) {
         `;
         return;
     }
-    // 🌟 表白墙同样添加点赞数和评论数底部栏展示
+    // 🌟 表白墙同样应用统一的 SVG 图标架构
     confessionList.innerHTML = confessions.map(c => `
         <div class="confession-card" onclick="location.href='confession-detail.html?id=${c.$id}'" style="cursor: pointer;">
             <div class="confession-text">${escapeHtml(c.content)}</div>
             <div class="confession-footer" style="display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
                 <span>${formatTime(new Date(c.$createdAt))}</span>
-                <div style="display: flex; gap: 12px;">
-                    <span>❤️ ${c.likes || 0}</span>
-                    <span>💬 ${c.commentCount || 0}</span>
+                <div style="display: flex; gap: 16px;">
+                    <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/>
+                        </svg>
+                        ${Number(c.likes || 0)}
+                    </span>
+                    <span class="post-stat" aria-label="评论数" style="display: flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
+                            <path d="M2 1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h9.586a2 2 0 0 1 1.414.586l2 2V2a1 1 0 0 0-1-1H2zm12-1a2 2 0 0 1 2 2v12.793a.5.5 0 0 1-.854.353l-2.853-2.853a1 1 0 0 0-.707-.293H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h12z"/>
+                        </svg>
+                        ${Number(c.commentCount || 0)}
+                    </span>
                 </div>
             </div>
         </div>
