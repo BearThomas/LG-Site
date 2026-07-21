@@ -18,3 +18,5 @@ generated/*
 !public/data-backups/
 !public/data-backups/*.json
 wrangler.d1.generated.jsonc
+
+.vs/
