@@ -1256,6 +1256,10 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   box-sizing: border-box;
 }
 
+/* ============================================================
+   一体化极简搜索与筛选工具栏 (通用全站)
+   ============================================================ */
+.posts-mobile-toolbar,
 .confession-mobile-toolbar,
 .events-mobile-toolbar {
   display: flex;
@@ -1265,4 +1269,166 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   box-sizing: border-box;
+  position: sticky;
+  top: calc(52px + env(safe-area-inset-top));
+  z-index: 90;
+}
+
+.search-bar-group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--surface-2, #f1f5f9);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar-group:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(34, 139, 230, 0.15);
+}
+
+.connected-search-input {
+  flex: 1;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.connected-search-btn {
+  border: none;
+  outline: none;
+  background: var(--accent);
+  color: white;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.connected-search-btn:hover {
+  background: var(--accent-hover);
+}
+
+.filter-dropdown-wrap {
+  position: relative;
+}
+
+.filter-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-2, #f1f5f9);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-circle-btn:hover,
+.filter-circle-btn.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-menu-group label {
+  font-size: 0.78rem;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.filter-select {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+/* ============================================================
+   全站手机端卡片无间隙贴合样式 (用 1px 下边框区分)
+   ============================================================ */
+@media (max-width: 900px) {
+  .home-content,
+  .posts-container,
+  .confession-container,
+  .events-page,
+  .recommend-feed-container,
+  .posts-list,
+  .confession-list,
+  .events-list {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .post-card,
+  .confession-card,
+  .event-card,
+  .event-list-item,
+  .feed-card-post,
+  .feed-card-confession,
+  .feed-card-event {
+    width: 100% !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-top: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 14px 16px !important;
+    box-sizing: border-box !important;
+    background: var(--surface) !important;
+  }
+
+  .feed-card-post {
+    border-left: 3px solid #3b82f6 !important;
+  }
+
+  .feed-card-confession {
+    border-left: 3px solid #ec4899 !important;
+  }
+
+  .feed-card-event {
+    border-left: 4px solid #f59e0b !important;
+    background: linear-gradient(135deg, var(--surface), var(--surface-2, rgba(245, 158, 11, 0.05))) !important;
+  }
 }
