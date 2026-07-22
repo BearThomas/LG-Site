@@ -1168,18 +1168,30 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
 
 /* 推荐页混合全能流 (帖子 + 表白墙 + 大事记) 专属样式 */
 .feed-card-post {
+  width: 100% !important;
+  box-sizing: border-box !important;
   border-left: 3px solid #3b82f6 !important;
+  margin-bottom: 16px !important;
 }
 
 .feed-card-confession {
+  width: 100% !important;
+  box-sizing: border-box !important;
   border-left: 3px solid #ec4899 !important;
-  padding: 10px 16px !important;
+  padding: 14px 18px !important;
+  margin-bottom: 16px !important;
 }
 
 .feed-card-event {
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  margin-bottom: 16px !important;
+  border-radius: var(--radius-md) !important;
   border-left: 4px solid #f59e0b !important;
-  padding: 16px 18px !important;
+  padding: 20px 24px !important;
   background: linear-gradient(135deg, var(--surface), var(--surface-2, rgba(245, 158, 11, 0.05))) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03) !important;
 }
 
 .expand-confession-btn {
