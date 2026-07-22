@@ -38,9 +38,9 @@ let totalPages = 1;
 const PAGE_SIZE = 20; // 每次加载20行
 
 // 全局实名用户内存高速缓存字典
-let userCache = {}; 
+let userCache = {};
 let allUsers = null;
-let selectedUserIds = new Set(); 
+let selectedUserIds = new Set();
 let postsSnapshot = [];
 
 // Custom Boards cache
@@ -64,10 +64,9 @@ const postBoardCheckboxes = document.getElementById('postBoardCheckboxes');
 
 // ========== ⚡ 初始化生命周期调整 ==========
 document.addEventListener('DOMContentLoaded', async () => {
-
     secureKeyReady = restoreSecureKey();
     checkLoginStatus();
-    fetchAndApplyCacheVersion().catch(() => {});
+    fetchAndApplyCacheVersion().catch(() => { });
     await loadBoards();
     // 用户资料和帖子流并行加载，避免用户名片查询阻塞首屏内容。
     await loadPosts();
@@ -80,6 +79,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 });
+
 // ========== 登录状态 ==========
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
@@ -95,9 +95,12 @@ function checkLoginStatus() {
         }
     }
 }
+
 // ========== 加载板块基础数据 ==========
 async function loadBoards() {
     try {
+        await fetchCustomBoards();
+        renderBoardsSidebar();
         updateJoinButtonState();
     } catch (error) {
         console.error('加载板块基础数据失败:', error);
@@ -113,7 +116,7 @@ function showCacheNotice(message, type = 'waiting') {
     noticeEl.id = 'cacheNoticeBar';
     noticeEl.className = `cache-notice-bar ${type}`;
     noticeEl.innerHTML = message;
-    
+
     postsList.insertBefore(noticeEl, postsList.firstChild);
 
     if (type === 'success') {
@@ -137,14 +140,14 @@ async function fetchAndApplyCacheVersion() {
         const data = await res.json();
         serverHashes = data.hashes || {};
         pendingModifications = data.pendingModifications || [];
-        
+
         const deletedPosts = pendingModifications.filter(m => m.collection === 'posts' && m.action === 'delete').map(m => m.item_id);
         const deletedComments = pendingModifications.filter(m => m.collection === 'comments' && m.action === 'delete').map(m => m.item_id);
         const deletedConfessions = pendingModifications.filter(m => m.collection === 'confessions' && m.action === 'delete').map(m => m.item_id);
-        
+
         tombstonedIds = {
-            posts:       new Set(deletedPosts),
-            comments:    new Set(deletedComments),
+            posts: new Set(deletedPosts),
+            comments: new Set(deletedComments),
             confessions: new Set(deletedConfessions)
         };
     } catch (e) {
@@ -156,7 +159,7 @@ function applyPendingModifications(collection, documents) {
     if (!documents || !Array.isArray(documents)) return documents;
     let modified = [...documents];
     const mods = pendingModifications.filter(m => m.collection === collection);
-    
+
     for (const mod of mods) {
         const idx = modified.findIndex(doc => (doc.id === mod.item_id || doc.$id === mod.item_id));
         if (idx !== -1) {
@@ -188,7 +191,7 @@ function resetPostsState() {
 async function loadPosts({ forceRefresh = false } = {}) {
     try {
         if (!postsList) return;
-        
+
         if (forceRefresh) {
             postsList.innerHTML = createListSkeleton('post', 5);
             resetPostsState();
@@ -206,7 +209,7 @@ async function loadPosts({ forceRefresh = false } = {}) {
 
 async function fetchNextPostsBatch() {
     const queries = [];
-    
+
     queries.push(Query.orderDesc('$createdAt'));
     queries.push(Query.offset(currentOffset));
     queries.push(Query.limit(PAGE_SIZE));
@@ -241,14 +244,14 @@ async function fetchNextPostsBatch() {
         if (tombstonedIds.posts.has(post.$id)) return false;
         const postBoard = post.boardId || 'main';
         if (postBoard !== currentBoard.$id) return false;
-        
+
         // time filter
         if (currentTimeFilter !== 'all') {
             const now = new Date();
             let startTime = new Date();
-            if (currentTimeFilter === 'today') startTime.setHours(0,0,0,0);
-            else if (currentTimeFilter === 'week') startTime.setDate(now.getDate()-7);
-            else if (currentTimeFilter === 'month') startTime.setDate(now.getDate()-30);
+            if (currentTimeFilter === 'today') startTime.setHours(0, 0, 0, 0);
+            else if (currentTimeFilter === 'week') startTime.setDate(now.getDate() - 7);
+            else if (currentTimeFilter === 'month') startTime.setDate(now.getDate() - 30);
             if (new Date(post.$createdAt) < startTime) return false;
         }
 
@@ -271,7 +274,7 @@ async function fetchNextPostsBatch() {
             if (currentUserId === 'guest') return false;
             if (!(post.targetGroups || []).includes(currentUserId)) return false;
         }
-        
+
         return true;
     };
 
@@ -286,7 +289,7 @@ async function fetchNextPostsBatch() {
         const comments = Number(post.commentCount || 0);
         const createdAt = new Date(post.$createdAt || post.createdAt || post.created_at).getTime();
         const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
-        
+
         // 计算内容激励系数 (基于正文字数)
         const contentLen = (post.content || '').length;
         let contentBonus = 1.0;
@@ -295,10 +298,10 @@ async function fetchNextPostsBatch() {
         } else if (contentLen > 300) {
             contentBonus = 1.1; // 丰富图文奖励
         }
-        
+
         // 设基础曝光分 G 为 10，并受内容丰富度调节
-        const baseBoost = 10 * contentBonus; 
-        
+        const baseBoost = 10 * contentBonus;
+
         // 核心公式：[点赞*1 + 评论*3 + 初始曝光分] / (小时数 + 2) 的 1.5 次方衰减
         return (likes * 1 + comments * 3 + baseBoost) / Math.pow(ageHours + 2, 1.5);
     };
@@ -313,9 +316,9 @@ async function fetchNextPostsBatch() {
     userCache = window.userCache || {};
     const now = Date.now();
     const CACHE_TTL = 30 * 60 * 1000; // 30分钟的毫秒数极限值
-    
+
     const authorIds = processedBatch.map(p => p.authorId || p.author_id).filter(Boolean);
-    
+
     // 🌟 如果本地没有缓存，或者缓存的生存周期已经打破了 30 分钟生命上限，就划入“必须从云端重新抓取”的阵营
     const missingAuthorIds = [...new Set(authorIds)].filter(id => {
         const cachedItem = userCache[id];
@@ -323,13 +326,13 @@ async function fetchNextPostsBatch() {
         // 判定时间戳差距
         return (now - (cachedItem._cacheTime || 0)) > CACHE_TTL;
     });
-    
+
     if (missingAuthorIds.length > 0) {
         try {
             const usersResponse = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, [
                 Query.equal('userId', missingAuthorIds)
             ]);
-            
+
             if (usersResponse.documents) {
                 usersResponse.documents.forEach(u => {
                     // 🌟 扩展数据字段：附带写入当前获取的时间戳
@@ -340,7 +343,7 @@ async function fetchNextPostsBatch() {
                 });
                 window.userCache = userCache;
             }
-        } catch(e) {
+        } catch (e) {
             console.warn('按需动态拉取或更新用户信息失败:', e);
         }
     }
@@ -358,24 +361,24 @@ async function fetchNextPostsBatch() {
 function initInfiniteScroll() {
     const anchor = document.getElementById('infiniteScrollAnchor');
     if (!anchor) return;
-    
+
     if (infiniteObserver) infiniteObserver.disconnect();
-    
+
     infiniteObserver = new IntersectionObserver(async (entries) => {
         if (entries[0].isIntersecting && !isFetchingChunk && !noMoreData) {
             await loadNextChunk();
         }
     }, { rootMargin: '400px' });
-    
+
     infiniteObserver.observe(anchor);
 }
 
 async function loadNextChunk() {
     const anchor = document.getElementById('infiniteScrollAnchor');
     isFetchingChunk = true;
-    
+
     if (anchor) anchor.innerHTML = '<span class="feed-initial-orbit" style="width:16px;height:16px;border-width:2px;"></span><span style="margin-left: 8px;">加载中...</span>';
-    
+
     try {
         const newPosts = await fetchNextPostsBatch();
         if (newPosts.length === 0 && !noMoreData) {
@@ -387,12 +390,12 @@ async function loadNextChunk() {
     }
 
     isFetchingChunk = false;
-    
+
     if (anchor) {
         if (noMoreData) {
             anchor.innerHTML = '<span style="font-size: 0.9rem; margin-top: 10px;">没有更多帖子了...</span>';
         } else {
-            anchor.innerHTML = ''; 
+            anchor.innerHTML = '';
         }
     }
 }
@@ -404,13 +407,13 @@ function renderPosts(posts, runtimeCache) {
         postsList.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><p>暂无帖子...</p></div>`;
         return;
     }
-    
+
     const renderCache = runtimeCache || userCache;
-    
+
     postsList.innerHTML = posts.map(post => {
         const postId = post.$id || post.id;
         const postCreatedAt = post.$createdAt || post.createdAt;
-        
+
         const isPinned = post.status ? (post.status & 1) !== 0 : false;
         const isLocked = post.status ? (post.status & 2) !== 0 : false;
         const createdAt = new Date(postCreatedAt);
@@ -418,7 +421,7 @@ function renderPosts(posts, runtimeCache) {
 
         const author = getPostAuthorDisplay(post, renderCache);
         const avatarHtml = renderAuthorAvatar(author, 40);
-        
+
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
                 <div class="post-header">
@@ -487,6 +490,12 @@ async function submitPost() {
         targetUsers = Array.from(selectedUserIds);
     }
 
+    const selectedBoards = [];
+    document.querySelectorAll('input[name="postBoards"]:checked').forEach(cb => {
+        selectedBoards.push(cb.value);
+    });
+    const boardIdsToSubmit = selectedBoards.length > 0 ? selectedBoards : [currentBoard.$id];
+
     submitPostBtn.disabled = true;
     submitPostBtn.textContent = '正在发布…';
     try {
@@ -501,7 +510,7 @@ async function submitPost() {
                 studentId: currentUser.studentId,
                 appToken: currentUser.appToken || '',
                 sessionSecret: currentUser.token || '',
-                boardIds: ['main'], // 保持原有硬编码不动
+                boardIds: boardIdsToSubmit,
                 title,
                 content,
                 viewPermission,
@@ -535,8 +544,8 @@ function openModal() {
     if (postModal) postModal.style.display = 'flex';
     if (postTitle) postTitle.value = '';
     if (postContent) postContent.value = '';
-    selectedUserIds.clear(); 
-    renderSelectedUsers();   
+    selectedUserIds.clear();
+    renderSelectedUsers();
     const visibilityTypeEl = document.getElementById('visibilityType');
     if (visibilityTypeEl) visibilityTypeEl.value = 'all';
     const specificUsersArea = document.getElementById('specificUsersArea');
@@ -582,9 +591,9 @@ function bindEvents() {
     const timeFilter = document.getElementById('timeFilter');
     if (timeFilter) {
         timeFilter.addEventListener('change', (e) => {
-            currentTimeFilter = e.target.value; 
-            currentPage = 1; 
-            loadPosts({ forceRefresh: true }); 
+            currentTimeFilter = e.target.value;
+            currentPage = 1;
+            loadPosts({ forceRefresh: true });
         });
     }
     if (searchInput) {
@@ -609,7 +618,7 @@ function bindEvents() {
 
 const visibilityTypeEl = document.getElementById('visibilityType');
 if (visibilityTypeEl) {
-    visibilityTypeEl.addEventListener('change', function() {
+    visibilityTypeEl.addEventListener('change', function () {
         const specificArea = document.getElementById('specificUsersArea');
         if (specificArea) specificArea.style.display = this.value === 'specific' ? 'block' : 'none';
     });
@@ -620,7 +629,7 @@ if (searchUserBtn) searchUserBtn.addEventListener('click', searchUsers);
 
 const userSearchInput = document.getElementById('userSearchInput');
 if (userSearchInput) {
-    userSearchInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchUsers(); });
+    userSearchInput.addEventListener('keypress', function (e) { if (e.key === 'Enter') searchUsers(); });
 }
 
 async function searchUsers() {
@@ -654,7 +663,7 @@ async function searchUsers() {
             `;
         }).join('');
         resultsContainer.querySelectorAll('.add-user-btn:not(.added)').forEach(btn => {
-            btn.addEventListener('click', function() { addUser(this.dataset.studentId); });
+            btn.addEventListener('click', function () { addUser(this.dataset.studentId); });
         });
     } else {
         resultsContainer.innerHTML = '<div class="search-empty">未找到该学号的用户</div>';
@@ -686,7 +695,7 @@ function renderSelectedUsers() {
         <span class="user-tag">${studentId}<span class="remove-tag" data-student-id="${studentId}">&times;</span></span>
     `).join('');
     container.querySelectorAll('.remove-tag').forEach(btn => {
-        btn.addEventListener('click', function() { removeUser(this.dataset.studentId); });
+        btn.addEventListener('click', function () { removeUser(this.dataset.studentId); });
     });
 }
 
@@ -720,7 +729,7 @@ function togglePostPreview() {
     if (!pane || !layout) return;
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
     updatePostPreview();
-    if (isMobile) { pane.classList.add('mobile-preview-open'); } 
+    if (isMobile) { pane.classList.add('mobile-preview-open'); }
     else { pane.classList.toggle('preview-hidden'); layout.classList.toggle('preview-closed'); }
 }
 
@@ -768,7 +777,7 @@ function renderBoardsSidebar() {
 
 async function switchBoard(boardId) {
     if (currentBoard.$id === boardId) return;
-    if (boardId === 'main') { currentBoard = { $id: 'main', name: '主板块' }; } 
+    if (boardId === 'main') { currentBoard = { $id: 'main', name: '主板块' }; }
     else if (boardId.startsWith('class_')) {
         const match = boardId.match(/^class_(\d{4})_(\d+)$/);
         currentBoard = { $id: boardId, name: match ? `${match[1]}级${match[2]}班` : boardId };
@@ -888,7 +897,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 location.href = 'login.html';
                 return;
             }
-            openCreatePostModal();
+            openModal();
         });
     }
 });
