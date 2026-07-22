@@ -186,8 +186,8 @@ export async function sendWebPushToUser(env, userId, payloadData = {}) {
     if (!subscriptions.length) return;
 
     const vapidSubject = String(env.VAPID_SUBJECT || 'mailto:admin@lg-site.com').trim();
-    const vapidPublicKey = String(env.VAPID_PUBLIC_KEY || 'BA1lrxEsu6DcYOwWIJwFc2XNF2hQPpxRH_Ryl6__kHVCxqBBtwS-6EYCXG9Hfic34t8iRhWPFkD_FlyFzs2qIsc').trim();
-    const vapidPrivateKey = String(env.VAPID_PRIVATE_KEY || 'nGu7YtinXQxjSUjDBXPs1pMEK8r2E5HG55318pGHTFw').trim();
+    const vapidPublicKey = String(env.VAPID_PUBLIC_KEY || 'BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I').trim();
+    const vapidPrivateKey = String(env.VAPID_PRIVATE_KEY || 'VWTw1aAtNWIzdO7zM-pWHmkmOtgkhkCHVeeliTvKef8').trim();
 
     const payloadText = JSON.stringify({
       title: payloadData.title || '龙高北小站',

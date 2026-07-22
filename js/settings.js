@@ -69,7 +69,7 @@
                 }
 
                 togglePushBtn.textContent = '开启中...';
-                let vapidKey = 'BA1lrxEsu6DcYOwWIJwFc2XNF2hQPpxRH_Ryl6__kHVCxqBBtwS-6EYCXG9Hfic34t8iRhWPFkD_FlyFzs2qIsc';
+                let vapidKey = 'BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I';
                 try {
                     const res = await fetch('/api/runtime-config');
                     if (res.ok) {
@@ -84,6 +84,8 @@
                     applicationServerKey: urlBase64ToUint8Array(vapidKey)
                 });
 
+                const subJson = subscription.toJSON ? subscription.toJSON() : JSON.parse(JSON.stringify(subscription));
+
                 const saveRes = await fetch('/api/subscribe-push', {
                     method: 'POST',
                     headers: {
@@ -91,7 +93,7 @@
                         ...(user.appToken ? { 'X-LG-Token': user.appToken } : {}),
                         ...(user.token ? { 'X-Appwrite-Session': user.token } : {})
                     },
-                    body: JSON.stringify({ subscription })
+                    body: JSON.stringify({ subscription: subJson })
                 });
 
                 if (saveRes.ok) {
@@ -121,6 +123,22 @@
                 try {
                     testPushBtn.disabled = true;
                     testPushBtn.textContent = '发送中...';
+
+                    // 1. 本地直接唤醒系统级横幅弹窗，验证 iOS 系统权限
+                    try {
+                        const swReg = await navigator.serviceWorker.ready;
+                        if (swReg && 'showNotification' in swReg) {
+                            await swReg.showNotification('龙高北小站 - 消息通知测试', {
+                                body: '🎉 看到此弹窗说明您的 iOS 系统级通知支持已完全成功生效！',
+                                icon: '/image/LG.png',
+                                tag: 'test-local-push'
+                            });
+                        }
+                    } catch (localErr) {
+                        console.warn('本端弹窗提醒:', localErr.message);
+                    }
+
+                    // 2. 发起云端后台推送
                     const res = await fetch('/api/send-test-push', {
                         method: 'POST',
                         headers: {
@@ -132,7 +150,7 @@
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        alert('测试推送请求已发出！如果您开启了权限并在主屏幕打开，几秒内系统即可收到弹窗提醒。');
+                        alert('云端测试推送指令已成功发送给苹果 APNs / 设备！');
                     } else {
                         alert('发送测试推送失败: ' + (data.error || '未知错误'));
                     }

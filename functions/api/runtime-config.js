@@ -10,7 +10,7 @@ function parseMap(value) {
 export async function onRequestGet(context) {
   const vapidPublicKey = String(
     context.env.VAPID_PUBLIC_KEY ||
-    "BA1lrxEsu6DcYOwWIJwFc2XNF2hQPpxRH_Ryl6__kHVCxqBBtwS-6EYCXG9Hfic34t8iRhWPFkD_FlyFzs2qIsc"
+    "BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I"
   );
 
   const acceptHeader = context.request.headers.get("accept") || "";

@@ -877,3 +877,18 @@ function renderPostBoardCheckboxes() {
     }
     container.innerHTML = html;
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const fabBtn = document.getElementById('fabNewPostBtn');
+    if (fabBtn) {
+        fabBtn.addEventListener('click', () => {
+            const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
+            if (!user) {
+                alert('请先登录后再发帖');
+                location.href = 'login.html';
+                return;
+            }
+            openCreatePostModal();
+        });
+    }
+});
