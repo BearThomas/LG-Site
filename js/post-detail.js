@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
-    
+
     if (!postId) {
         if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>帖子 ID 缺失，页面无法加载</p></div>';
         return;
@@ -165,12 +165,43 @@ document.addEventListener('DOMContentLoaded', async () => {
     bindEvents();
     if (postDetailCard) postDetailCard.innerHTML = createListSkeleton('post', 1);
 
+    // 🌟 【核心新增】：只要用户点进这篇帖子详情页，自动通知后端将该帖子的未读通知全部标为已读
+    if (currentUser && postId) {
+        try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (currentUser.appToken) headers['X-LG-Token'] = currentUser.appToken;
+            if (currentUser.token) headers['X-Appwrite-Session'] = currentUser.token;
+
+            const res = await fetch('/api/read-notifications', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify({ targetId: postId }) // 传 targetId 给后端
+            });
+
+            if (res.ok) {
+                // 成功后清除 iOS PWA 桌面图标角标/红点
+                if ('clearAppBadge' in navigator) {
+                    await navigator.clearAppBadge();
+                } else if ('setAppBadge' in navigator) {
+                    await navigator.setAppBadge(0);
+                }
+
+                // 刷新可能存在的全局红点显示函数
+                if (window.refreshNotificationBadge) {
+                    window.refreshNotificationBadge();
+                }
+            }
+        } catch (e) {
+            console.warn('自动清除该帖子通知失败:', e);
+        }
+    }
+
     await loadTombstones();
     if (tombstonedIds.posts.has(postId)) {
         if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>当前帖子已被彻底移除或并不存在</p></div>';
         return;
     }
-    
+
     await loadPostDetail();
 });
 
