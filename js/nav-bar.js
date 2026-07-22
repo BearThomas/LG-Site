@@ -53,19 +53,45 @@
         const messagesLink = document.getElementById('navMessages');
         if (!navBar || !userArea) return;
 
+        // 移除底部导航栏中的“帮助”按钮，固定保留 4 个按钮：首页、帖子、表白墙、大事记
+        navBar.querySelectorAll('.nav-bar-item').forEach(item => {
+            const onclick = (item.getAttribute('onclick') || '').toLowerCase();
+            if (onclick.includes('docs')) {
+                item.remove();
+            }
+        });
+
         if (!navBar.querySelector('[data-nav-events]')) {
             const eventsItem = document.createElement('li');
             eventsItem.className = 'nav-bar-item';
             eventsItem.dataset.navEvents = 'true';
             eventsItem.innerHTML = `${primaryNavIcons.events}<span>大事记</span>`;
             eventsItem.addEventListener('click', () => { location.href = 'events.html'; });
-            const currentPage = location.pathname.split('/').pop() || 'index.html';
-            if (currentPage === 'events' || currentPage === 'events.html') eventsItem.classList.add('active');
-            const docsItem = [...navBar.children].find(item => /docs(?:\.html)?/.test(item.getAttribute('onclick') || ''));
-            navBar.insertBefore(eventsItem, docsItem || null);
+            navBar.appendChild(eventsItem);
         }
 
         normalizePrimaryNavIcons(navBar);
+
+        // 动态设置选中态高亮 (active)
+        const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        navBar.querySelectorAll('.nav-bar-item').forEach(item => {
+            item.classList.remove('active');
+            const onclick = (item.getAttribute('onclick') || '').toLowerCase();
+            const isEvents = item.dataset.navEvents === 'true' || onclick.includes('events');
+            const isConfession = onclick.includes('confession');
+            const isPosts = onclick.includes('posts');
+            const isHome = onclick.includes("'./'") || onclick.includes('"./"') || onclick.includes('index') || onclick === '';
+
+            if (isEvents && currentPage.includes('events')) {
+                item.classList.add('active');
+            } else if (isConfession && currentPage.includes('confession')) {
+                item.classList.add('active');
+            } else if (isPosts && (currentPage.includes('posts') || currentPage.includes('post.'))) {
+                item.classList.add('active');
+            } else if (isHome && (currentPage === '' || currentPage === 'index.html' || currentPage === 'index')) {
+                item.classList.add('active');
+            }
+        });
 
         if (messagesLink && messagesLink.parentElement === navBar) {
             messagesLink.classList.remove('nav-bar-item');
@@ -90,35 +116,69 @@
     // Check if we are inside the Android App WebView container
     const isAndroidApp = !!(window.AndroidBridge || window.webkit?.messageHandlers?.AndroidBridge);
 
-    // Dynamically inject Download App link (only if NOT running inside the Android App WebView container)
-    if (!isAndroidApp) {
-        // 1. Inject into the logged-in dropdown menu
-        if (dropdownMenu && logoutBtn) {
+    function setupDropdownMenu() {
+        if (!dropdownMenu) return;
+        dropdownMenu.replaceChildren();
+
+        const profileLink = document.createElement('a');
+        profileLink.href = 'profile.html';
+        profileLink.textContent = '个人中心';
+
+        const settingsLink = document.createElement('a');
+        settingsLink.href = 'settings.html';
+        settingsLink.textContent = '设置';
+
+        const helpLink = document.createElement('a');
+        helpLink.href = 'docs.html';
+        helpLink.textContent = '帮助';
+
+        dropdownMenu.appendChild(profileLink);
+        dropdownMenu.appendChild(settingsLink);
+        dropdownMenu.appendChild(helpLink);
+
+        if (!isAndroidApp) {
             const downloadLink = document.createElement('a');
             downloadLink.href = 'download.html';
             downloadLink.className = 'download-app-link';
             downloadLink.textContent = '下载 APP';
-            dropdownMenu.insertBefore(downloadLink, logoutBtn);
+            dropdownMenu.appendChild(downloadLink);
         }
-        
-        // 2. Inject into the guest (not logged in) area
-        if (userNotLogin) {
-            const downloadLink = document.createElement('a');
-            downloadLink.href = 'download.html';
-            downloadLink.className = 'login-link download-app-link-guest';
-            downloadLink.style.marginLeft = '8px';
-            downloadLink.textContent = '下载 APP';
-            
-            const divider = document.createElement('span');
-            divider.className = 'divider';
-            divider.style.marginLeft = '6px';
-            divider.style.marginRight = '6px';
-            divider.textContent = '/';
-            
-            userNotLogin.appendChild(divider);
-            userNotLogin.appendChild(downloadLink);
-        }
+
+        const logoutLink = document.createElement('a');
+        logoutLink.href = '#';
+        logoutLink.id = 'logoutBtn';
+        logoutLink.textContent = '退出登录';
+        logoutLink.addEventListener('click', async event => {
+            event.preventDefault();
+            const user = readSavedUser();
+            if (user) {
+                try {
+                    await fetch('/api/auth-logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...authHeaders(user) },
+                        body: JSON.stringify({
+                            studentId: user.studentId,
+                            appToken: user.appToken || '',
+                            sessionSecret: user.token || ''
+                        })
+                    });
+                } catch (error) {
+                    console.warn('云端退出失败，已清理本地会话', error.message);
+                }
+            }
+            if (typeof localforage !== 'undefined') {
+                try { await localforage.removeItem('secure_gate_key'); } catch {}
+            }
+            localStorage.removeItem('campus_user');
+            localStorage.removeItem('persistent_jwt');
+            showNotLoggedIn();
+            location.reload();
+        });
+
+        dropdownMenu.appendChild(logoutLink);
     }
+
+    setupDropdownMenu();
 
     function readSavedUser() {
         try {
