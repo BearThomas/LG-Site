@@ -124,6 +124,10 @@
         profileLink.href = 'profile.html';
         profileLink.textContent = '个人中心';
 
+        const messagesLink = document.createElement('a');
+        messagesLink.href = 'messages.html';
+        messagesLink.textContent = '通知中心';
+
         const settingsLink = document.createElement('a');
         settingsLink.href = 'settings.html';
         settingsLink.textContent = '设置';
@@ -133,6 +137,7 @@
         helpLink.textContent = '帮助';
 
         dropdownMenu.appendChild(profileLink);
+        dropdownMenu.appendChild(messagesLink);
         dropdownMenu.appendChild(settingsLink);
         dropdownMenu.appendChild(helpLink);
 
