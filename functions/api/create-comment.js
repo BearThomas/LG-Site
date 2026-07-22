@@ -122,9 +122,9 @@ export async function onRequestPost({ request, env, waitUntil }) {
                 sendWebPushToUser(env, recipientId, {
                     title: notificationTitle,
                     body: notificationContent,
-                    url: `/messages`,
+                    url: `/post-detail.html?id=${postId}`,
                     unreadCount: 1,
-                    tag: 'comment-notify' // 避开动态拼接 postId 可能导致的 APNs 400 错误
+                    tag: `comment-${postId}`
                 }).catch(err => {
                     console.warn(`Web Push 下发给 ${recipientId} 失败:`, err.message);
                 })
