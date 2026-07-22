@@ -556,7 +556,7 @@ window.toggleConfessionExpand = function(btn) {
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert('大事记投稿成功！提交初审完成');
+                    alert(data.message || '大事记投稿成功！提交初审完成');
                     eventModal.style.display = 'none';
                     await loadHomeContent({ forceRefresh: true });
                 } else {

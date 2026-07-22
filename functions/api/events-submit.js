@@ -114,13 +114,17 @@ ${userInput}
       throw new HttpError(502, 'AI 审核返回格式错误');
     }
 
+    let isAiApproved = true;
+    let aiRejectReason = '';
+
     if (!aiResult.approved) {
-      throw new HttpError(400, `审核未通过：${String(aiResult.reason || '内容不符合校园大事记要求')}`);
+      isAiApproved = false;
+      aiRejectReason = String(aiResult.reason || '未通过 AI 审核');
     }
 
-    const normalizedTitle = String(aiResult.title || '无标题').trim().slice(0, 30);
-    const normalizedDesc = String(aiResult.desc || userInput).trim().slice(0, 1000);
-    const normalizedTag = String(aiResult.tag || '校园').trim().slice(0, 20);
+    const normalizedTitle = String(aiResult.title || '用户投稿待审核').trim().slice(0, 30);
+    const normalizedDesc = String(aiResult.desc || (isAiApproved ? userInput : `[AI意见: ${aiRejectReason}] ` + userInput)).trim().slice(0, 1000);
+    const normalizedTag = String(aiResult.tag || (isAiApproved ? '校园' : '人工审核')).trim().slice(0, 20);
     const normalizedDate = /^\d{4}-\d{2}-\d{2}$/.test(String(aiResult.date || ''))
       ? String(aiResult.date)
       : new Date().toISOString().split('T')[0];
@@ -142,7 +146,7 @@ ${userInput}
     return json({
       success: true,
       eventId: eventId,
-      message: '提交成功，已通过 AI 初审，等待管理员最终确认',
+      message: isAiApproved ? '提交成功，已通过 AI 初审，等待管理员最终确认' : '提交成功，已转入人工审核队列',
       data: {
         title: normalizedTitle,
         desc: normalizedDesc,

@@ -438,7 +438,7 @@ const EventsManager = (function() {
 
                 const data = await res.json();
                 if (res.ok) {
-                    alert('投稿成功！等待管理员审核');
+                    alert(data.message || '投稿成功！等待管理员审核');
                     submitModal.style.display = 'none';
                     if (contentInput) contentInput.value = '';
                     
