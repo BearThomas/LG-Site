@@ -45,7 +45,7 @@ export async function onRequestPost({ request, env, waitUntil }) {
       db.prepare('UPDATE posts SET comment_count = comment_count + 1, updated_at = updated_at WHERE id = ?').bind(postId)
     ]);
 
-    // 后台通知逻辑：通知帖子作者 + 所有参与过讨论的评论者 (不阻塞主响应流程)
+    // 后台通知逻辑：通知帖子作者 + 历史参与者 + 支持自测模式推送
     try {
       const currentUserId = normalizeUserId(profile.id);
       let postTitle = '帖子';
@@ -86,16 +86,28 @@ export async function onRequestPost({ request, env, waitUntil }) {
         console.warn('获取历史评论者失败:', e.message);
       }
 
-      // 3. 逐个下发通知与 Web Push 推送
+      // 3. 【自测模式与 100% 投递保障】：若没有其他接收者 (如用户自己在测试给自己的帖子评论)，也推送给当前用户自身
+      if (recipientsToNotify.size === 0) {
+        recipientsToNotify.add(currentUserId);
+      }
+
+      // 4. 逐个下发通知与 Web Push 推送
       const { sendWebPushToUser } = await import('../_lib/push.js');
 
       for (const recipientId of recipientsToNotify) {
         try {
+          const isSelf = recipientId === currentUserId;
           const isOwner = recipientId === postAuthorId;
-          const notificationTitle = isOwner ? '新评论提醒' : '新回复提醒';
-          const notificationContent = isOwner
-            ? `${profile.name} 评论了你的帖子《${postTitle}》`
-            : `${profile.name} 回复了你参与讨论的帖子《${postTitle}》`;
+
+          const notificationTitle = isSelf
+            ? '评论已发布'
+            : (isOwner ? '新评论提醒' : '新回复提醒');
+
+          const notificationContent = isSelf
+            ? `您在帖子《${postTitle}》中发表了新评论`
+            : (isOwner
+                ? `${profile.name} 评论了你的帖子《${postTitle}》`
+                : `${profile.name} 回复了你参与讨论的帖子《${postTitle}》`);
 
           const notificationId = crypto.randomUUID();
           await db.prepare(`
