@@ -165,74 +165,47 @@ async function encryptPayload(subscriptionKeys, payloadText) {
 }
 
 export async function sendWebPushToUser(env, userId, payloadData = {}) {
-  try {
-    const id = normalizeUserId(userId);
-    if (!id) return;
+    try {
+        const id = normalizeUserId(userId);
+        if (!id) return;
+        const db = requireDb(env);
 
-    const db = requireDb(env);
-    await db.prepare(`
-      CREATE TABLE IF NOT EXISTS push_subscriptions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        endpoint TEXT NOT NULL UNIQUE,
-        p256dh TEXT NOT NULL,
-        auth TEXT NOT NULL,
-        created_at TEXT NOT NULL
-      )
-    `).run().catch(() => {});
+        // ... 前面的建表和查询保持不变 ...
+        const altId = `student_${id}`;
+        const rawUserId = String(userId || '').trim();
 
-    const altId = `student_${id}`;
-    const rawUserId = String(userId || '').trim();
+        const rows = await db.prepare(
+            `SELECT * FROM push_subscriptions WHERE user_id = ? OR user_id = ? OR user_id = ?`
+        ).bind(id, altId, rawUserId).all();
 
-    const rows = await db.prepare(
-      `SELECT * FROM push_subscriptions WHERE user_id = ? OR user_id = ? OR user_id = ?`
-    ).bind(id, altId, rawUserId).all();
-    const subscriptions = rows.results || [];
-    if (!subscriptions.length) return;
+        const subscriptions = rows.results || [];
 
-    const vapidSubject = String(env.VAPID_SUBJECT || 'mailto:admin@lg-site.com').trim();
-    const vapidPublicKey = String(env.VAPID_PUBLIC_KEY || 'BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I').trim();
-    const vapidPrivateKey = String(env.VAPID_PRIVATE_KEY || 'VWTw1aAtNWIzdO7zM-pWHmkmOtgkhkCHVeeliTvKef8').trim();
+        // 【新增调试日志】看看到底为谁发推送、找到了几个订阅、endpoint 是什么
+        console.log(`[Push Debug] Target User ID: ${userId}, Normalized: ${id}, Found subscriptions: ${subscriptions.length}`);
 
-    const payloadText = JSON.stringify({
-      title: payloadData.title || '龙高北小站',
-      body: payloadData.body || '您收到一条新动态提醒',
-      url: payloadData.url || '/messages.html',
-      unreadCount: payloadData.unreadCount || 1,
-      tag: payloadData.tag || 'lg-msg'
-    });
+        if (!subscriptions.length) return;
 
-    for (const sub of subscriptions) {
-      try {
-        const jwt = await createVapidJwt(sub.endpoint, vapidSubject, vapidPublicKey, vapidPrivateKey);
-        const encryptedBody = await encryptPayload({ p256dh: sub.p256dh, auth: sub.auth }, payloadText);
+        // ... 后面发送的代码 ...
+        for (const sub of subscriptions) {
+            try {
+                // ...
+                const res = await fetch(sub.endpoint, { method: 'POST', headers, body: encryptedBody || null });
+                console.log(`Push to ${sub.endpoint} HTTP status: ${res.status}`);
 
-        const headers = {
-          'Authorization': `vapid t=${jwt}, k=${vapidPublicKey}`,
-          'TTL': '60'
-        };
+                // 【新增：如果是 400，把 Apple 返回的具体原因打印出来】
+                if (res.status === 400) {
+                    const errorText = await res.text();
+                    console.error(`[Apple APNs 400 Error Detail] Endpoint: ${sub.endpoint}, Response: ${errorText}`);
+                }
 
-        if (encryptedBody) {
-          headers['Content-Type'] = 'application/octet-stream';
-          headers['Content-Encoding'] = 'aes128gcm';
+                if (res.status === 410 || res.status === 404) {
+                    await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(sub.endpoint).run().catch(() => { });
+                }
+            } catch (e) {
+                console.warn('发送 Web Push 失败:', e.message);
+            }
         }
-
-        const res = await fetch(sub.endpoint, {
-          method: 'POST',
-          headers,
-          body: encryptedBody || null
-        });
-
-        console.log(`Push to ${sub.endpoint} HTTP status: ${res.status}`);
-
-        if (res.status === 410 || res.status === 404) {
-          await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(sub.endpoint).run().catch(() => {});
-        }
-      } catch (e) {
-        console.warn('发送 Web Push 失败:', e.message);
-      }
+    } catch (err) {
+        console.error('sendWebPushToUser error:', err.message);
     }
-  } catch (err) {
-    console.error('sendWebPushToUser error:', err.message);
-  }
 }
