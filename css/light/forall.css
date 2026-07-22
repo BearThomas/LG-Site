@@ -933,10 +933,10 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   .login-link { padding: 5px 13px; font-size: 0.75rem; }
 
   /* Layout */
-  body { padding-bottom: 80px; }
+  body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   .content-two-columns { flex-direction: column; gap: 36px; }
   .post-section, .confession-section { width: 100%; padding: 0; }
-  .home-content { margin: 28px auto; padding: 0 5%; gap: 36px; }
+  .home-content { margin: 0 auto !important; padding: calc(100px + env(safe-area-inset-top)) 0 0 0 !important; gap: 0 !important; }
   .event-board { padding: 28px 18px; }
   .event-board h2 { font-size: 1.7rem; flex-direction: column; align-items: flex-start; gap: 8px; }
 
@@ -956,9 +956,9 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     left: 0 !important;
     right: 0 !important;
     top: auto !important;
-    height: 64px !important;
+    height: calc(56px + env(safe-area-inset-bottom)) !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: 0 0 env(safe-area-inset-bottom) 0 !important;
     display: flex !important;
     flex-direction: row !important;
     justify-content: space-around !important;
@@ -1028,8 +1028,11 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     justify-content: space-around !important;
     background: var(--surface) !important;
     border-bottom: 1px solid var(--border) !important;
-    position: sticky !important;
+    position: fixed !important;
     top: calc(52px + env(safe-area-inset-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
     z-index: 99 !important;
     backdrop-filter: blur(16px) !important;
     -webkit-backdrop-filter: blur(16px) !important;
@@ -1118,7 +1121,7 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   .fab-new-post-btn {
     position: fixed !important;
     right: 24px !important;
-    bottom: 85px !important;
+    bottom: calc(85px + env(safe-area-inset-bottom)) !important;
     width: 52px !important;
     height: 52px !important;
     border-radius: 50% !important;
