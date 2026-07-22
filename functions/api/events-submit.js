@@ -60,9 +60,6 @@ export async function onRequestPost({ request, env }) {
 
     // 调用智谱 API
     const zhipuKey = env.ZHIPU_API_KEY;
-    if (!zhipuKey) {
-      throw new HttpError(500, '服务器未配置 AI 审核密钥');
-    }
 
     const aiPrompt = `你是一个严谨的校园大事记审核员。用户提交了一段关于学校事件的描述。
 请判断这是否是一个有价值的、真实的校园事件（如考试、活动、放假、比赛等）。
@@ -87,31 +84,36 @@ export async function onRequestPost({ request, env }) {
 ${userInput}
 `;
 
-    const aiRes = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${zhipuKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'glm-z1-flash',
-        messages: [{ role: 'user', content: aiPrompt }],
-        temperature: 0.1,
-        response_format: { type: "json_object" }
-      })
-    });
-
-    if (!aiRes.ok) {
-      console.error('AI API Error:', await aiRes.text());
-      throw new HttpError(502, 'AI 审核服务暂时不可用，请稍后再试');
-    }
-
-    const aiData = await aiRes.json();
     let aiResult;
-    try {
-      aiResult = JSON.parse(aiData.choices[0].message.content);
-    } catch(e) {
-      throw new HttpError(502, 'AI 审核返回格式错误');
+    if (!zhipuKey) {
+      aiResult = { approved: false, reason: '服务器未配置 AI 密钥，自动转入人工审核' };
+    } else {
+      try {
+        const aiRes = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${zhipuKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: 'glm-z1-flash',
+            messages: [{ role: 'user', content: aiPrompt }],
+            temperature: 0.1,
+            response_format: { type: "json_object" }
+          })
+        });
+
+        if (!aiRes.ok) {
+          console.error('AI API Error:', await aiRes.text());
+          aiResult = { approved: false, reason: 'AI 接口请求失败' };
+        } else {
+          const aiData = await aiRes.json();
+          aiResult = JSON.parse(aiData.choices[0].message.content);
+        }
+      } catch(err) {
+        console.error('AI Processing Error:', err);
+        aiResult = { approved: false, reason: 'AI 解析或网络异常' };
+      }
     }
 
     let isAiApproved = true;
