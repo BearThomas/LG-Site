@@ -13,7 +13,9 @@ import {
     decryptText,
     escapeHtml,
     formatBoardName,
+    formatNameWithYear,
     formatTime,
+    getUserFromCache,
     normalizeUserId,
     restoreSecureKey
 } from './shared.js';
