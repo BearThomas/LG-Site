@@ -484,4 +484,29 @@
     } else {
         initMobileSearchInteraction();
     }
+
+    // 解决手机端带有 backdrop-filter 的父元素导致 fixed 定位失效的问题
+    function handleNavReparent() {
+        const titleBar = document.querySelector('.title-bar');
+        const navBar = document.querySelector('.nav-bar');
+        if (!titleBar || !navBar) return;
+        
+        if (window.innerWidth <= 900) {
+            if (navBar.parentNode === titleBar) {
+                document.body.appendChild(navBar);
+            }
+        } else {
+            if (navBar.parentNode !== titleBar) {
+                const userArea = document.getElementById('userArea');
+                titleBar.insertBefore(navBar, userArea);
+            }
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleNavReparent);
+    } else {
+        handleNavReparent();
+    }
+    window.addEventListener('resize', handleNavReparent);
 })();
