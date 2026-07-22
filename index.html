@@ -63,13 +63,6 @@
 
         <!-- 移动端 FAB 快捷发帖悬浮按钮 -->
         <button type="button" id="fabNewPostBtn" class="fab-btn" aria-label="发帖" title="发帖">+</button>
-        <script>
-            // 首页大事记初始化
-            (async function() {
-                await EventsManager.loadEvents();
-                EventsManager.renderWeekEvents('#weekEvents');
-            })();
-        </script>
 
         <script src="./js/nav-bar.js?v=20260720-4"></script>
         <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>

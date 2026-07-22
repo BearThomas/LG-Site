@@ -159,37 +159,51 @@ async function loadHomeContent({ forceRefresh = false } = {}) {
         databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
             Query.orderDesc('$createdAt'),
             Query.limit(40)
-        ]).then(r => { posts = r.documents.map(p => ({ ...p, type: 'post' })); }).catch(() => {}),
+        ]).then(r => {
+            if (r && Array.isArray(r.documents)) {
+                posts = r.documents.map(p => ({ ...p, type: 'post' }));
+            }
+        }).catch(err => console.warn('D1 帖子拉取失败:', err.message)),
 
         databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, [
             Query.equal('status', 0),
             Query.orderDesc('$createdAt'),
             Query.limit(30)
-        ]).then(r => { confessions = r.documents.map(c => ({ ...c, type: 'confession' })); }).catch(() => {}),
+        ]).then(r => {
+            if (r && Array.isArray(r.documents)) {
+                confessions = r.documents.map(c => ({ ...c, type: 'confession' }));
+            }
+        }).catch(err => console.warn('D1 表白墙拉取失败:', err.message)),
 
-        fetch('./data/events.json').then(r => r.json()).then(data => {
-            events = (data || []).map(e => ({ ...e, type: 'event', $createdAt: e.date }));
+        fetch('/api/events').then(r => r.ok ? r.json() : []).then(data => {
+            if (Array.isArray(data)) {
+                events = data.map(e => ({ ...e, type: 'event', $createdAt: e.date }));
+            }
         }).catch(() => {})
     ]);
 
     if (!posts.length) {
         try {
-            let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
-            if (index && index.chunks && index.chunks.length > 0) {
-                let chunkData = await fetchWithHashCache(`posts_chunk_1`, [`./public/data-backups/posts/${index.chunks[0].file}`]);
-                posts = (chunkData || []).map(p => ({ ...p, type: 'post' }));
+            const res = await fetch('/data-fallback/posts.json');
+            if (res.ok) {
+                const fallbackPosts = await res.json();
+                posts = (fallbackPosts || []).map(p => ({ ...p, type: 'post' }));
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('Posts 兜底数据读取失败:', e);
+        }
     }
 
     if (!confessions.length) {
         try {
-            let index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
-            if (index && index.chunks && index.chunks.length > 0) {
-                let chunkData = await fetchWithHashCache(`confessions_chunk_1`, [`./public/data-backups/confessions/${index.chunks[0].file}`]);
-                confessions = (chunkData || []).map(c => ({ ...c, type: 'confession' }));
+            const res = await fetch('/data-fallback/confessions.json');
+            if (res.ok) {
+                const fallbackConf = await res.json();
+                confessions = (fallbackConf || []).map(c => ({ ...c, type: 'confession' }));
             }
-        } catch (e) {}
+        } catch (e) {
+            console.warn('Confessions 兜底数据读取失败:', e);
+        }
     }
 
     const seenIds = new Set();
