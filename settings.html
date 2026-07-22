@@ -16,6 +16,11 @@
     <link rel="icon" type="image/png" href="./image/LG.png">
     <link rel="stylesheet" href="./css/light/forall.css">
     <link rel="stylesheet" href="./css/light/docs.css">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/image/LG.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="龙高北小站">
     <style>
         .settings-option-grid {
             display: grid;
@@ -100,7 +105,7 @@
             <nav class="docs-tree" id="settingsTree" aria-label="设置目录">
                 <div class="docs-folder-title">系统偏好</div>
                 <ul>
-                    <li><a href="#" class="active" id="menuThemeSetting">主题外观</a></li>
+                    <li><a href="#" class="active" id="menuThemeSetting">主题外观与推送</a></li>
                 </ul>
                 <div class="docs-folder-title">账号与服务</div>
                 <ul>
@@ -111,7 +116,7 @@
         </aside>
 
         <article class="docs-content">
-            <div class="docs-breadcrumb">设置 / 系统偏好 / 主题外观</div>
+            <div class="docs-breadcrumb">设置 / 系统偏好 / 主题与推送</div>
             <div class="docs-article">
                 <h2 style="margin-top:0; margin-bottom: 8px; color: var(--text);">主题外观设置</h2>
                 <p style="color: var(--text-2); font-size: 0.9rem; margin-bottom: 24px;">根据您的偏好自定义龙高北小站的显示主题。</p>
@@ -140,6 +145,19 @@
                         </div>
                         <div class="theme-option-desc">舒适护眼的深色极简界面</div>
                     </div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--border); margin: 32px 0;">
+
+                <h2 style="margin-top:0; margin-bottom: 8px; color: var(--text);">系统推送通知 (Web / iOS Push)</h2>
+                <p style="color: var(--text-2); font-size: 0.9rem; margin-bottom: 20px;">在网页或添加到 iOS 主屏幕后接收互动提醒与系统通知。</p>
+
+                <div style="background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                    <div>
+                        <div style="font-weight: 600; color: var(--text); font-size: 0.98rem; margin-bottom: 4px;">iOS / Web 推送开关</div>
+                        <div style="font-size: 0.85rem; color: var(--text-2); line-height: 1.4;" id="pushStatusHint">iOS 用户需先通过 Safari 点击“添加到主屏幕”后在独立应用中开启</div>
+                    </div>
+                    <button type="button" id="togglePushBtn" style="padding: 9px 18px; border-radius: var(--radius-pill); border: 1px solid var(--accent); background: var(--accent); color: white; font-weight: 650; cursor: pointer; white-space: nowrap;">订阅推送通知</button>
                 </div>
             </div>
         </article>

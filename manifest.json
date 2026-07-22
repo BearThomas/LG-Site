@@ -1,0 +1,20 @@
+{
+  "name": "龙高北小站",
+  "short_name": "龙高小站",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#228be6",
+  "icons": [
+    {
+      "src": "/image/LG.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/image/LG.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
