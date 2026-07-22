@@ -271,6 +271,39 @@ const EventsManager = (function() {
         return headers;
     }
 
+    async function checkAdminPendingEvents() {
+        const user = getSavedUser();
+        if (!user) return;
+
+        const adminAuditBtn = document.getElementById('adminAuditBtn');
+        const adminPendingCount = document.getElementById('adminPendingCount');
+
+        try {
+            const res = await fetch('/api/events-admin', {
+                method: 'POST',
+                headers: authHeaders(user, true),
+                body: JSON.stringify({
+                    studentId: user.studentId,
+                    appToken: user.appToken || '',
+                    sessionSecret: user.token || '',
+                    action: 'list'
+                })
+            });
+
+            if (res.status === 403 || !res.ok) return;
+
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                if (adminPendingCount) adminPendingCount.textContent = data.length;
+                if (adminAuditBtn) adminAuditBtn.style.display = 'inline-flex';
+            }
+        } catch (e) {
+            console.warn('检查管理员待审核大事记数量失败:', e.message);
+        }
+    }
+
+    checkAdminPendingEvents();
+
     function readLocalRecords() {
         try {
             const records = JSON.parse(localStorage.getItem('my_event_submissions') || '[]');
