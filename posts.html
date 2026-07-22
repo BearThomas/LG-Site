@@ -102,35 +102,44 @@
         
         <!-- 帖子时间线 -->
         <main class="posts-main">
-            <!-- 帖子墙精致卡片头部 -->
-            <div class="posts-wall-header">
-                <div class="wall-title-area">
-                    <h2 class="wall-title">帖子墙</h2>
-                    <p class="wall-subtitle">在这里，分享你的校园生活与心得感受 ✨</p>
-                </div>
-                <div class="wall-actions">
-                    <button class="new-post-btn-pill" id="newPostBtn">
-                        <span>发表新帖</span>
+            <!-- 极简一体化搜索与筛选栏 -->
+            <div class="posts-mobile-toolbar">
+                <div class="search-bar-group">
+                    <input type="text" id="searchInput" class="connected-search-input" placeholder="搜索帖子...">
+                    <button type="button" id="searchSubmitBtn" class="connected-search-btn" aria-label="搜索">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
                     </button>
                 </div>
-            </div>
 
-            <!-- 排序/筛选栏 -->
-            <div class="posts-toolbar">
-                <div class="filter-options" style="display: flex; flex-wrap: wrap; gap: 10px; width: 100%; align-items: center;">
-                    <input type="text" id="searchInput" class="search-input" placeholder="搜索帖子..." style="flex: 1; min-width: 140px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem; background: var(--surface); color: var(--text);">
-                    
-                    <select id="sortFilter" class="time-filter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
-                        <option value="hot">最热</option>
-                        <option value="new">最新</option>
-                    </select>
+                <!-- 右侧圆形筛选按钮 -->
+                <div class="filter-dropdown-wrap">
+                    <button type="button" id="filterCircleBtn" class="filter-circle-btn" aria-label="筛选">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filter" viewBox="0 0 16 16">
+                            <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
+                        </svg>
+                    </button>
 
-                    <select id="timeFilter" class="time-filter" style="padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text);">
-                        <option value="all">全部时间</option>
-                        <option value="today">今天</option>
-                        <option value="week">本周</option>
-                        <option value="month">本月</option>
-                    </select>
+                    <!-- 下弹筛选面板 -->
+                    <div class="filter-dropdown-menu" id="filterDropdownMenu" style="display: none;">
+                        <div class="filter-menu-group">
+                            <label>时间范围</label>
+                            <select id="timeFilter" class="filter-select">
+                                <option value="all">全部时间</option>
+                                <option value="today">今天</option>
+                                <option value="week">本周</option>
+                                <option value="month">本月</option>
+                            </select>
+                        </div>
+                        <div class="filter-menu-group">
+                            <label>排序规则</label>
+                            <select id="sortFilter" class="filter-select">
+                                <option value="new">最新发布</option>
+                                <option value="hot">热度推荐</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 

@@ -385,7 +385,7 @@ function renderHomePosts(posts) {
         const avatarHtml = renderAuthorAvatar(author, 44);
         
         return `
-            <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
+            <div class="post-card feed-card-post" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
                     <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">${avatarHtml}</div>
                     <div>
@@ -521,15 +521,40 @@ function renderHomeConfessions(confessions) {
         return;
     }
     
-    confessionList.innerHTML = confessions.map(c => `
-        <div class="confession-card">
-            <div class="confession-text">${escapeHtml(c.content)}</div>
-            <div class="confession-footer" style="display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
-                <span>${formatTime(new Date(c.$createdAt))}</span>
+    confessionList.innerHTML = confessions.map(c => {
+        const fullContent = escapeHtml(c.content || '');
+        const isLong = fullContent.length > 80;
+        const shortContent = isLong ? fullContent.slice(0, 80) + '...' : fullContent;
+
+        return `
+            <div class="confession-card feed-card-confession">
+                <div class="confession-text" data-full-text="${fullContent.replace(/"/g, '&quot;')}" data-short-text="${shortContent.replace(/"/g, '&quot;')}">
+                    <span class="content-body">${shortContent}</span>
+                    ${isLong ? '<span class="expand-confession-btn" onclick="window.toggleConfessionExpand(this)">展开全文</span>' : ''}
+                </div>
+                <div class="confession-footer" style="display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 0.82rem; margin-top: 6px;">
+                    <span>💌 表白墙 · ${formatTime(new Date(c.$createdAt))}</span>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
+
+window.toggleConfessionExpand = function(btn) {
+    const parent = btn.parentElement;
+    const body = parent.querySelector('.content-body');
+    const fullText = parent.dataset.fullText;
+    const shortText = parent.dataset.shortText;
+    const isExpanded = btn.textContent === '收起';
+
+    if (isExpanded) {
+        body.textContent = shortText;
+        btn.textContent = '展开全文';
+    } else {
+        body.textContent = fullText;
+        btn.textContent = '收起';
+    }
+};
 
 function initHomeTabs() {
     const tabsBar = document.getElementById('homeTabsBar');

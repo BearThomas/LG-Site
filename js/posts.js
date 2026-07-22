@@ -597,11 +597,39 @@ function bindEvents() {
         });
     }
     if (searchInput) {
-        searchInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                currentSearchKeyword = searchInput.value.trim();
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                searchKeyword = e.target.value.trim();
                 currentPage = 1;
                 loadPosts({ forceRefresh: true });
+            }, 300);
+        });
+    }
+
+    const searchSubmitBtn = document.getElementById('searchSubmitBtn');
+    if (searchSubmitBtn && searchInput) {
+        searchSubmitBtn.addEventListener('click', () => {
+            searchKeyword = searchInput.value.trim();
+            currentPage = 1;
+            loadPosts({ forceRefresh: true });
+        });
+    }
+
+    const filterCircleBtn = document.getElementById('filterCircleBtn');
+    const filterDropdownMenu = document.getElementById('filterDropdownMenu');
+    if (filterCircleBtn && filterDropdownMenu) {
+        filterCircleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = filterDropdownMenu.style.display === 'none';
+            filterDropdownMenu.style.display = isHidden ? 'flex' : 'none';
+            filterCircleBtn.classList.toggle('active', isHidden);
+        });
+        document.addEventListener('click', (e) => {
+            if (!filterDropdownMenu.contains(e.target) && e.target !== filterCircleBtn) {
+                filterDropdownMenu.style.display = 'none';
+                filterCircleBtn.classList.remove('active');
             }
         });
     }

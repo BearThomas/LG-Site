@@ -136,7 +136,7 @@ const EventsManager = (function() {
         if (board) board.style.display = 'block';
 
         container.innerHTML = weekEvents.map(event => `
-            <div class="event-card">
+            <div class="event-card feed-card-event">
                 <span class="event-tag">${escapeHtml(event.tag)}</span>
                 <div class="event-title">${escapeHtml(event.title)}</div>
                 <div class="event-desc">${escapeHtml(event.desc)}</div>
