@@ -1440,7 +1440,6 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
    全站手机端卡片无间隙贴合样式 (用 1px 下边框区分)
    ============================================================ */
 @media (max-width: 900px) {
-  .home-content,
   .recommend-feed-container,
   .posts-list,
   .confession-list,
@@ -1451,6 +1450,16 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+  }
+
+  .home-content {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: calc(64px + env(safe-area-inset-top)) 0 0 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    gap: 0 !important;
   }
 
   .posts-container,

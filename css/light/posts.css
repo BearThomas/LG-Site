@@ -1496,7 +1496,6 @@
 
 @media (max-width: 900px) {
     .posts-main,
-    .posts-container,
     .posts-layout,
     .posts-content {
         width: 100% !important;
