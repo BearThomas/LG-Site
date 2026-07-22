@@ -163,20 +163,7 @@
     <script>
         (async function () {
             await EventsManager.loadEvents();
-            const { bindFilter } = EventsManager.initFilters('#filterContainer');
-            const refresh = () => EventsManager.renderAllEvents('#allEvents');
-            bindFilter(() => {
-                const tag = document.getElementById('filterTag')?.value || 'all';
-                const keyword = document.getElementById('filterKeyword')?.value || '';
-                const dateRange = document.getElementById('filterDate')?.value || 'all';
-                EventsManager.renderAllEvents('#allEvents', { tag, keyword, dateRange });
-            });
-            refresh();
-            const backButton = document.getElementById('backToTop');
-            window.addEventListener('scroll', () => {
-                backButton.style.display = window.scrollY > 300 ? 'block' : 'none';
-            });
-            backButton.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+            EventsManager.renderAllEvents('#allEvents');
         })();
     </script>
     <script src="./js/theme-change.js"></script>

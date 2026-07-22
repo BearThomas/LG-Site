@@ -161,104 +161,165 @@ function renderConfessionBatch(isInitial = false) {
         `;
     }).join('');
 
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                content,
-                userId: currentUser.studentId,
-                sessionSecret: currentUser.token || '',
-                appToken: currentUser.appToken || ''
-            })
-        });
+    if (isInitial) {
+        confessionList.innerHTML = html;
+    } else {
+        confessionList.insertAdjacentHTML('beforeend', html);
+    }
 
-        const result = await response.json();
+    feedOffset += batch.length;
+}
 
-        if (!response.ok) {
-            throw new Error(result.error || '发表失败');
-        }
-        
-        confessionContent.value = '';
-        if (charCount) charCount.textContent = '0';
-        
-        // ⚡ 【发帖清缓存策略】：清除最新的第一页本地缓存，防止再次调用渲染出老旧列表
-        const currentUserId = currentUser?.studentId || 'guest';
-        localStorage.removeItem(`cache_confessions_v2_${currentUserId}_${currentSort}_p1`);
-        
-        currentPage = 1;
-        await loadConfessions();
-        
-    } catch (error) {
-        console.error('发表失败:', error);
-        alert('发表失败，请刷新页面或重新登录重试');
-    } finally {
-        if (publishBtn) {
-            publishBtn.disabled = false;
-            publishBtn.textContent = '匿名发布';
+function setupPreloadScrollListener() {
+    window.removeEventListener('scroll', handleScrollPreload);
+    window.addEventListener('scroll', handleScrollPreload);
+}
+
+function handleScrollPreload() {
+    if (isPreloading) return;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+
+    if (documentHeight > 0 && (scrollTop + windowHeight) >= (documentHeight * 0.67)) {
+        if (feedOffset < currentFilteredConfessions.length) {
+            isPreloading = true;
+            renderConfessionBatch(false);
+            setTimeout(() => { isPreloading = false; }, 400);
         }
     }
 }
 
-// ========== 分页 ==========
-function renderPagination() {
-    if (!pagination) return;
-    if (totalPages <= 1) {
-        pagination.innerHTML = '';
-        return;
+window.toggleConfessionExpand = function(btn) {
+    const parent = btn.parentElement;
+    const body = parent.querySelector('.content-body');
+    const fullText = parent.dataset.fullText;
+    const shortText = parent.dataset.shortText;
+    const isExpanded = btn.textContent === '收起';
+
+    if (isExpanded) {
+        body.textContent = shortText;
+        btn.textContent = '展开全文';
+    } else {
+        body.textContent = fullText;
+        btn.textContent = '收起';
     }
-    
-    let html = '';
-    html += `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="prev">←</button>`;
-    
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) {
-        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+};
+
+function bindEvents() {
+    const searchInput = document.getElementById('confessionSearchInput');
+    const searchBtn = document.getElementById('confessionSearchBtn');
+    if (searchInput) {
+        let debounceTimer;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                currentSearchKeyword = e.target.value.trim();
+                applyFiltersAndSort();
+            }, 300);
+        });
     }
-    
-    if (totalPages > 5) {
-        html += `<span>...</span>`;
-        html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
+    if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', () => {
+            currentSearchKeyword = searchInput.value.trim();
+            applyFiltersAndSort();
+        });
     }
-    
-    html += `<button class="page-btn" ${currentPage === totalPages ? 'disabled' : ''} data-page="next">→</button>`;
-    
-    pagination.innerHTML = html;
-    
-    pagination.querySelectorAll('.page-btn[data-page]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const page = e.target.dataset.page;
-            if (page === 'prev' && currentPage > 1) {
-                currentPage--;
-            } else if (page === 'next' && currentPage < totalPages) {
-                currentPage++;
-            } else if (!isNaN(page)) {
-                currentPage = parseInt(page);
-            } else {
+
+    const filterBtn = document.getElementById('confessionFilterBtn');
+    const filterMenu = document.getElementById('confessionFilterMenu');
+    if (filterBtn && filterMenu) {
+        filterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = filterMenu.style.display === 'none';
+            filterMenu.style.display = isHidden ? 'flex' : 'none';
+            filterBtn.classList.toggle('active', isHidden);
+        });
+        document.addEventListener('click', (e) => {
+            if (!filterMenu.contains(e.target) && e.target !== filterBtn) {
+                filterMenu.style.display = 'none';
+                filterBtn.classList.remove('active');
+            }
+        });
+    }
+
+    const timeFilter = document.getElementById('confessionTimeFilter');
+    if (timeFilter) {
+        timeFilter.addEventListener('change', (e) => {
+            currentTimeFilter = e.target.value;
+            applyFiltersAndSort();
+        });
+    }
+
+    const sortFilter = document.getElementById('confessionSortFilter');
+    if (sortFilter) {
+        sortFilter.addEventListener('change', (e) => {
+            currentSortFilter = e.target.value;
+            applyFiltersAndSort();
+        });
+    }
+
+    const fabBtn = document.getElementById('fabConfessionBtn');
+    const modal = document.getElementById('createConfessionModal');
+    const closeModalBtn = document.getElementById('closeConfessionModal');
+    const contentArea = document.getElementById('confessionContent');
+    const charCount = document.getElementById('charCount');
+    const publishBtn = document.getElementById('publishBtn');
+
+    if (fabBtn && modal) {
+        fabBtn.addEventListener('click', () => {
+            if (!localStorage.getItem('campus_user')) {
+                location.href = 'login.html';
                 return;
             }
-            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
-            else loadConfessions();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        });
-    });
-}
-
-// ========== 事件绑定 ==========
-function bindEvents() {
-    if (confessionContent && charCount) {
-        confessionContent.addEventListener('input', () => {
-            charCount.textContent = confessionContent.value.length;
+            modal.style.display = 'flex';
+            if (contentArea) contentArea.value = '';
+            if (charCount) charCount.textContent = '0';
         });
     }
-    
-    if (publishBtn) publishBtn.addEventListener('click', publishConfession);
-    
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            currentSort = btn.dataset.sort;
-            currentPage = 1;
-            if (confessionsSnapshot.length) renderConfessionsSnapshotPage();
-            else loadConfessions();
+
+    if (closeModalBtn && modal) {
+        closeModalBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
         });
-    });
+    }
+
+    if (contentArea && charCount) {
+        contentArea.addEventListener('input', () => {
+            charCount.textContent = contentArea.value.length;
+        });
+    }
+
+    if (publishBtn && contentArea) {
+        publishBtn.addEventListener('click', async () => {
+            const text = contentArea.value.trim();
+            if (text.length < 2) {
+                alert('字数太少了，多说两个字吧');
+                return;
+            }
+            publishBtn.disabled = true;
+            publishBtn.textContent = '正在提交...';
+
+            try {
+                const res = await fetch('/api/create-confession', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: text })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('表白发布成功！已匿名提交');
+                    if (modal) modal.style.display = 'none';
+                    await loadConfessions({ forceRefresh: true });
+                } else {
+                    alert(data.error || '发布表白失败');
+                }
+            } catch (err) {
+                alert('网络错误，发布失败: ' + err.message);
+            } finally {
+                publishBtn.disabled = false;
+                publishBtn.textContent = '匿名发布';
+            }
+        });
+    }
 }
