@@ -691,8 +691,6 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   display: flex;
   flex-direction: column;
   gap: 22px;
-  max-height: 800px;
-  overflow-y: auto;
   padding-right: 10px;
 }
 
