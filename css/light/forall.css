@@ -1001,9 +1001,129 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     display: none !important;
   }
 
+  /* Mobile Header Tabs Bar (X / Twitter style) */
+  .home-tabs-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-around !important;
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border) !important;
+    position: sticky !important;
+    top: calc(52px + env(safe-area-inset-top)) !important;
+    z-index: 99 !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+  }
+
+  .home-tab-btn {
+    flex: 1 !important;
+    padding: 12px 0 !important;
+    text-align: center !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    color: var(--text-2, #64748b) !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2.5px solid transparent !important;
+    cursor: pointer !important;
+    transition: color 0.2s, border-color 0.2s !important;
+  }
+
+  .home-tab-btn.active {
+    color: var(--accent, #228be6) !important;
+    font-weight: 700 !important;
+    border-bottom-color: var(--accent, #228be6) !important;
+  }
+
+  /* Full-bleed X / Twitter style 100% width edge-to-edge card stream */
+  .home-content {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .content-two-columns {
+    gap: 0 !important;
+  }
+
+  .post-section,
+  .confession-section,
+  .event-board {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .post-card,
+  .confession-card,
+  .event-card,
+  .event-list-item {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 14px 16px !important;
+    box-sizing: border-box !important;
+    background: var(--surface) !important;
+  }
+
+  .post-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 6px !important;
+    line-height: 1.4 !important;
+  }
+
+  .section-header,
+  .confession-header {
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    border-bottom: 1px solid var(--border) !important;
+    background: var(--surface) !important;
+  }
+
+  .new-post-btn {
+    display: none !important;
+  }
+
+  /* Floating Action Button (FAB) on mobile */
+  .fab-btn {
+    position: fixed !important;
+    right: 20px !important;
+    bottom: 80px !important;
+    width: 52px !important;
+    height: 52px !important;
+    border-radius: 50% !important;
+    background: var(--accent, #228be6) !important;
+    color: #ffffff !important;
+    font-size: 2rem !important;
+    font-weight: 300 !important;
+    line-height: 52px !important;
+    text-align: center !important;
+    border: none !important;
+    box-shadow: 0 4px 16px rgba(34, 139, 230, 0.4) !important;
+    z-index: 9999 !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
   /* Profile */
   .profile-wrapper { gap: 28px; }
   .profile-sidebar, .settings-section { padding: 24px; margin-bottom: 28px; }
+}
+
+.home-tabs-bar,
+.fab-btn {
+  display: none;
 }
 
 /* ============================================================

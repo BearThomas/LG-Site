@@ -530,3 +530,59 @@ function renderHomeConfessions(confessions) {
         </div>
     `).join('');
 }
+
+function initHomeTabs() {
+    const tabsBar = document.getElementById('homeTabsBar');
+    const fabBtn = document.getElementById('fabNewPostBtn');
+    
+    if (fabBtn) {
+        fabBtn.addEventListener('click', () => {
+            if (!localStorage.getItem('campus_user')) {
+                location.href = 'login.html';
+                return;
+            }
+            location.href = 'posts.html?new=1';
+        });
+    }
+
+    if (!tabsBar) return;
+
+    const eventBoard = document.querySelector('.event-board');
+    const postSection = document.querySelector('.post-section');
+    const confessionSection = document.querySelector('.confession-section');
+
+    tabsBar.addEventListener('click', (e) => {
+        const btn = e.target.closest('.home-tab-btn');
+        if (!btn) return;
+        const tab = btn.dataset.tab;
+
+        tabsBar.querySelectorAll('.home-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        if (window.innerWidth <= 900) {
+            if (tab === 'recommend') {
+                if (eventBoard) eventBoard.style.display = 'block';
+                if (postSection) postSection.style.display = 'block';
+                if (confessionSection) confessionSection.style.display = 'block';
+            } else if (tab === 'posts') {
+                if (eventBoard) eventBoard.style.display = 'none';
+                if (postSection) postSection.style.display = 'block';
+                if (confessionSection) confessionSection.style.display = 'none';
+            } else if (tab === 'events') {
+                if (eventBoard) eventBoard.style.display = 'block';
+                if (postSection) postSection.style.display = 'none';
+                if (confessionSection) confessionSection.style.display = 'none';
+            } else if (tab === 'confessions') {
+                if (eventBoard) eventBoard.style.display = 'none';
+                if (postSection) postSection.style.display = 'none';
+                if (confessionSection) confessionSection.style.display = 'block';
+            }
+        }
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHomeTabs);
+} else {
+    initHomeTabs();
+}
