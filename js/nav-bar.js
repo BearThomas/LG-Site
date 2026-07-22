@@ -343,6 +343,20 @@
         location.reload();
     });
 
+    function renderAvatarRedDot(hasUnread) {
+        if (!userAvatar) return;
+        let dot = userAvatar.querySelector('.avatar-red-dot');
+        if (hasUnread) {
+            if (!dot) {
+                dot = document.createElement('span');
+                dot.className = 'avatar-red-dot';
+                userAvatar.appendChild(dot);
+            }
+        } else if (dot) {
+            dot.remove();
+        }
+    }
+
     async function updateNotificationBadge(user) {
         if (!user) return;
         try {
@@ -352,6 +366,7 @@
             const unreadCount = Number(result.unreadCount || 0);
 
             renderNotificationIcon(unreadCount);
+            renderAvatarRedDot(unreadCount > 0);
         } catch (e) {
             console.warn('Failed to load notification count:', e.message);
         }

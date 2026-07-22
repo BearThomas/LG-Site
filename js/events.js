@@ -126,18 +126,14 @@ const EventsManager = (function() {
         if (!container) return;
 
         const weekEvents = allEvents.filter(e => isThisWeek(e.date));
+        const board = container.closest('.event-board');
 
         if (weekEvents.length === 0) {
-            container.innerHTML = `
-                <div class="event-card">
-                    <span class="event-tag"></span>
-                    <div class="event-title">本周暂无大事记</div>
-                    <div class="event-desc">敬请期待下周精彩</div>
-                    <div class="event-date"> ${formatDate(new Date().toISOString())}</div>
-                </div>
-            `;
+            if (board) board.style.display = 'none';
             return;
         }
+
+        if (board) board.style.display = 'block';
 
         container.innerHTML = weekEvents.map(event => `
             <div class="event-card">
