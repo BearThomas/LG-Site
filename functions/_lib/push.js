@@ -1,59 +1,68 @@
-/**
- * 向极光推送 JPush 发送通知
- * @param {Object} env Cloudflare Worker 环境对象
- * @param {string[]} tokens 极光 Registration ID (device_token) 数组
- * @param {string} title 通知标题
- * @param {string} alert 通知正文
- * @param {Object} extras 附加参数，例如 { link: 'post.html?id=xxx' }
- */
-export async function sendPushNotification(env, tokens, title, alert, extras = {}) {
-  if (!tokens || tokens.length === 0) return;
-  const appKey = env.JPUSH_APP_KEY;
-  const masterSecret = env.JPUSH_MASTER_SECRET;
-  
-  if (!appKey || !masterSecret) {
-    // 未配置极光环境，跳过推送
-    return;
-  }
-  
-  // 过滤空 token
-  const targetTokens = tokens.map(t => String(t || '').trim()).filter(Boolean);
-  if (targetTokens.length === 0) return;
+import { buildPushPayload } from '@block65/webcrypto-web-push';
+import { requireDb, normalizeUserId } from './db.js';
 
-  const authHeader = 'Basic ' + btoa(`${appKey}:${masterSecret}`);
-
+export async function sendWebPushToUser(env, userId, payloadData = {}) {
   try {
-    const response = await fetch('https://api.jpush.cn/v3/push', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeader
-      },
-      body: JSON.stringify({
-        platform: 'all',
-        audience: {
-          registration_id: targetTokens
-        },
-        notification: {
-          android: {
-            alert: alert,
-            title: title,
-            extras: extras
-          }
-        },
-        options: {
-          time_to_live: 86400 // 保持一天
-        }
-      })
-    });
+    const id = normalizeUserId(userId);
+    if (!id) return;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`JPush API error: ${response.status} - ${errText}`);
-    } else {
-      console.log(`JPush notification sent successfully to ${targetTokens.length} devices.`);
+    const db = requireDb(env);
+
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `).run().catch(() => {});
+
+    const rows = await db.prepare(`
+      SELECT * FROM push_subscriptions WHERE user_id = ?
+    `).bind(id).all();
+
+    const subscriptions = rows.results || [];
+    if (!subscriptions.length) return;
+
+    const vapid = {
+      subject: String(env.VAPID_SUBJECT || 'mailto:admin@lg-site.com').trim(),
+      publicKey: String(env.VAPID_PUBLIC_KEY || 'BA1lrxEsu6DcYOwWIJwFc2XNF2hQPpxRH_Ryl6__kHVCxqBBtwS-6EYCXG9Hfic34t8iRhWPFkD_FlyFzs2qIsc').trim(),
+      privateKey: String(env.VAPID_PRIVATE_KEY || 'nGu7YtinXQxjSUjDBXPs1pMEK8r2E5HG55318pGHTFw').trim(),
+    };
+
+    const message = {
+      data: JSON.stringify({
+        title: payloadData.title || '龙高北小站',
+        body: payloadData.body || '您收到一条新动态提醒',
+        url: payloadData.url || '/messages.html',
+        unreadCount: payloadData.unreadCount || 1,
+        tag: payloadData.tag || 'lg-msg'
+      })
+    };
+
+    for (const sub of subscriptions) {
+      try {
+        const targetSub = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        };
+
+        const pushPayload = await buildPushPayload(message, targetSub, vapid);
+        const res = await fetch(sub.endpoint, pushPayload);
+
+        if (res.status === 410 || res.status === 404) {
+          await db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(sub.endpoint).run().catch(() => {});
+        }
+      } catch (e) {
+        console.warn('发送单条 Web Push 失败:', e.message);
+      }
     }
-  } catch (error) {
-    console.error(`JPush push failed: ${error.message}`);
+  } catch (err) {
+    console.error('sendWebPushToUser error:', err.message);
   }
 }

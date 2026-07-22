@@ -368,4 +368,12 @@
         const u = readSavedUser();
         if (u) updateNotificationBadge(u);
     };
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.warn('SW auto registration:', err.message);
+            });
+        });
+    }
 })();

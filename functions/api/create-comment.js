@@ -60,19 +60,19 @@ export async function onRequestPost({ request, env, waitUntil }) {
           ) VALUES (?, ?, ?, ?, 'comment', '新评论提醒', ?, ?, 0, ?)
         `).bind(notificationId, recipientId, normalizeUserId(profile.id), profile.name, notificationContent, postId, now).run();
 
-        // 2. 发送 JPush 推送
-        const recipientUser = await db.prepare('SELECT device_token FROM users WHERE id = ?').bind(recipientId).first();
-        if (recipientUser && recipientUser.device_token) {
-          const { sendPushNotification } = await import('../_lib/push.js');
-          waitUntil(
-            sendPushNotification(
-              env,
-              [recipientUser.device_token],
-              '新评论提醒',
-              notificationContent,
-              { link: `post.html?id=${postId}` }
-            )
-          );
+        // 2. 发送 Web Push 推送
+        const { sendWebPushToUser } = await import('../_lib/push.js');
+        const pushTask = sendWebPushToUser(env, recipientId, {
+          title: '新评论提醒',
+          body: notificationContent,
+          url: `/post-detail.html?id=${postId}`,
+          unreadCount: 1
+        });
+
+        if (waitUntil) {
+          waitUntil(pushTask);
+        } else {
+          await pushTask;
         }
       }
     } catch (notifError) {

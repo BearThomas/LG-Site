@@ -108,6 +108,42 @@
                 togglePushBtn.disabled = false;
             }
         });
+
+        const testPushBtn = document.getElementById('testPushBtn');
+        if (testPushBtn) {
+            testPushBtn.addEventListener('click', async () => {
+                const user = JSON.parse(localStorage.getItem('campus_user') || 'null');
+                if (!user) {
+                    alert('请先登录后再测试推送');
+                    location.href = 'login.html';
+                    return;
+                }
+                try {
+                    testPushBtn.disabled = true;
+                    testPushBtn.textContent = '发送中...';
+                    const res = await fetch('/api/send-test-push', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(user.appToken ? { 'X-LG-Token': user.appToken } : {}),
+                            ...(user.token ? { 'X-Appwrite-Session': user.token } : {})
+                        },
+                        body: JSON.stringify({})
+                    });
+                    const data = await res.json();
+                    if (res.ok) {
+                        alert('测试推送请求已发出！如果您开启了权限并在主屏幕打开，几秒内系统即可收到弹窗提醒。');
+                    } else {
+                        alert('发送测试推送失败: ' + (data.error || '未知错误'));
+                    }
+                } catch(e) {
+                    alert('网络错误，无法发送测试推送: ' + e.message);
+                } finally {
+                    testPushBtn.disabled = false;
+                    testPushBtn.textContent = '发送测试推送通知 🔔';
+                }
+            });
+        }
     }
 
     function initSettings() {
