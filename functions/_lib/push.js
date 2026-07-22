@@ -181,7 +181,12 @@ export async function sendWebPushToUser(env, userId, payloadData = {}) {
       )
     `).run().catch(() => {});
 
-    const rows = await db.prepare(`SELECT * FROM push_subscriptions WHERE user_id = ?`).bind(id).all();
+    const altId = `student_${id}`;
+    const rawUserId = String(userId || '').trim();
+
+    const rows = await db.prepare(
+      `SELECT * FROM push_subscriptions WHERE user_id = ? OR user_id = ? OR user_id = ?`
+    ).bind(id, altId, rawUserId).all();
     const subscriptions = rows.results || [];
     if (!subscriptions.length) return;
 
