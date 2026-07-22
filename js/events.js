@@ -375,6 +375,19 @@ const EventsManager = (function() {
         });
     }
 
+    if (submitBtn && submitModal) {
+        submitBtn.addEventListener('click', () => {
+            const user = getSavedUser();
+            if (!user) {
+                alert('请先登录');
+                location.href = 'login.html';
+                return;
+            }
+            submitModal.style.display = 'flex';
+            if (contentInput) contentInput.value = '';
+        });
+    }
+
     if (closeChoiceModalBtn && choiceModal) {
         closeChoiceModalBtn.addEventListener('click', () => {
             choiceModal.style.display = 'none';
@@ -392,6 +405,68 @@ const EventsManager = (function() {
     if (cancelSubmitBtn && submitModal) {
         cancelSubmitBtn.addEventListener('click', () => {
             submitModal.style.display = 'none';
+        });
+    }
+
+    if (confirmSubmitBtn && submitModal) {
+        confirmSubmitBtn.addEventListener('click', async () => {
+            const content = contentInput ? contentInput.value.trim() : '';
+            if (!content || content.length < 5) {
+                alert('描述内容至少需要 5 个字');
+                return;
+            }
+
+            const user = getSavedUser();
+            if (!user) {
+                alert('请先登录');
+                location.href = 'login.html';
+                return;
+            }
+
+            confirmSubmitBtn.disabled = true;
+            confirmSubmitBtn.textContent = 'AI 初审中...';
+
+            try {
+                const res = await fetch('/api/events-submit', {
+                    method: 'POST',
+                    headers: authHeaders(user, true),
+                    body: JSON.stringify({
+                        studentId: user.studentId,
+                        content
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    alert('投稿成功！等待管理员审核');
+                    submitModal.style.display = 'none';
+                    if (contentInput) contentInput.value = '';
+                    
+                    const records = readLocalRecords();
+                    records.unshift({
+                        id: Date.now().toString(),
+                        content: content,
+                        status: 'pending_admin',
+                        date: new Date().toISOString()
+                    });
+                    writeLocalRecords(records);
+                } else {
+                    alert(data.error || '投稿失败');
+                }
+            } catch (err) {
+                alert('网络错误，请稍后再试');
+            } finally {
+                confirmSubmitBtn.disabled = false;
+                confirmSubmitBtn.textContent = '提交审核';
+            }
+        });
+    }
+
+    if (mySubmissionsBtn && recordsModal) {
+        mySubmissionsBtn.addEventListener('click', () => {
+            recordsModal.style.display = 'flex';
+            const records = readLocalRecords();
+            renderSubmissionRecords(records);
         });
     }
 
