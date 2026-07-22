@@ -51,51 +51,14 @@
         </div>
 
         <div class="home-content">
-            <!-- 1. 大事记板块 (顶部) -->
-            <div class="event-board">
-                <h2>
-                    <span>本周大事记</span>
-                    <a href="events.html" style="font-size: 0.9rem; color: rgba(255,255,255,0.8); text-decoration: none; margin-left: auto;">查看全部 →</a>
-                </h2>
-                <div class="event-scroll" id="weekEvents">
-                    <!-- 由 events.js 动态渲染 -->
+            <!-- 统一无板块分割混合长流 (帖子 + 表白 + 大事记 融合无限流) -->
+            <div class="recommend-feed-container" id="recommendFeedContainer">
+                <div class="feed-initial-loader" role="status">
+                    <span class="feed-initial-orbit"></span>
                 </div>
             </div>
-
-            <!-- 2. 双栏区域 (帖子 + 表白墙) -->
-            <div class="content-two-columns">
-                <!-- 左侧：帖子流 -->
-                <div class="post-section">
-                    <div class="section-header">
-                        <h2> 最新帖子</h2>
-                        <button class="new-post-btn" id="newPostBtn">+ 发新帖</button>
-                    </div>
-                    <div class="post-list" id="postList">
-                        <div class="feed-initial-loader" role="status">
-                            <span class="feed-initial-orbit"></span>
-                        </div>
-                    </div>
-                    <!-- 查看更多按钮 -->
-                    <div class="view-more-wrapper">
-                        <button class="view-more-btn" id="morePostsBtn" onclick="location.href='posts'"> 查看更多帖子 </button>
-                    </div>
-                </div>
-
-                <!-- 右侧：表白墙 -->
-                <div class="confession-section">
-                    <div class="confession-header">
-                        <h2>表白墙</h2>
-                    </div>
-                    <div class="confession-list" id="confessionList">
-                        <div class="feed-initial-loader" role="status">
-                            <span class="feed-initial-orbit"></span>
-                        </div>
-                    </div>
-                    <div class="view-more-wrapper" style="margin-top: 12px;">
-                        <button class="view-more-btn" id="moreConfessionsBtn" onclick="location.href='confession'">更多表白</button>
-                    </div>
-                </div>
-            </div>
+            <!-- 2/3 预加载触底侦听锚点 -->
+            <div id="infiniteScrollAnchor" style="height: 20px;"></div>
         </div>
 
         <!-- 移动端 FAB 快捷发帖悬浮按钮 -->

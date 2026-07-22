@@ -109,6 +109,214 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
+// ========== ⚡ 推荐页无板块分割全能混合长流引擎 ==========
+let currentMixedItems = [];
+let mixedFeedOffset = 0;
+const MIXED_PAGE_SIZE = 15;
+let isPreloadingNextBatch = false;
+
+function calculateMixedHotScore(item) {
+    const createdAt = new Date(item.$createdAt || item.createdAt || item.date || Date.now()).getTime();
+    const ageHours = Math.max(0, (Date.now() - createdAt) / 3600000);
+    const ageDays = ageHours / 24;
+
+    if (ageDays > 7) {
+        return 0;
+    }
+
+    let numerator = 10;
+    if (item.type === 'event') {
+        numerator = 150;
+    } else if (item.type === 'confession') {
+        const likes = Number(item.likes || 0);
+        numerator = 25 + likes * 2;
+    } else {
+        const likes = Number(item.likes || 0);
+        const comments = Number(item.commentCount || 0);
+        const contentLength = (item.content || '').length;
+        let baseBoost = 10;
+        if (contentLength > 500) baseBoost *= 1.2;
+        else if (contentLength > 100) baseBoost *= 1.1;
+        numerator = likes * 1 + comments * 3 + baseBoost;
+    }
+
+    return numerator / Math.pow(ageHours + 2, 1.5);
+}
+
+async function loadHomeContent({ forceRefresh = false } = {}) {
+    const feedContainer = document.getElementById('recommendFeedContainer');
+    if (!feedContainer) return;
+
+    if (!forceRefresh) {
+        feedContainer.innerHTML = createListSkeleton('post', 4);
+    }
+
+    let posts = [];
+    let confessions = [];
+    let events = [];
+
+    await Promise.allSettled([
+        databases.listDocuments(DATABASE_ID, COLLECTION_POSTS, [
+            Query.orderDesc('$createdAt'),
+            Query.limit(40)
+        ]).then(r => { posts = r.documents.map(p => ({ ...p, type: 'post' })); }).catch(() => {}),
+
+        databases.listDocuments(DATABASE_ID, COLLECTION_CONFESSIONS, [
+            Query.equal('status', 0),
+            Query.orderDesc('$createdAt'),
+            Query.limit(30)
+        ]).then(r => { confessions = r.documents.map(c => ({ ...c, type: 'confession' })); }).catch(() => {}),
+
+        fetch('./data/events.json').then(r => r.json()).then(data => {
+            events = (data || []).map(e => ({ ...e, type: 'event', $createdAt: e.date }));
+        }).catch(() => {})
+    ]);
+
+    const seenIds = new Set();
+    const allItems = [...events, ...posts, ...confessions].filter(item => {
+        const id = item.$id || item.id || item.title;
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+    });
+
+    allItems.sort((a, b) => {
+        const aPinned = a.status ? (a.status & 1) !== 0 : false;
+        const bPinned = b.status ? (b.status & 1) !== 0 : false;
+        if (aPinned !== bPinned) return bPinned ? 1 : -1;
+
+        const scoreA = calculateMixedHotScore(a);
+        const scoreB = calculateMixedHotScore(b);
+
+        if (scoreA > 0 && scoreB > 0) {
+            return scoreB - scoreA;
+        }
+        if (scoreA > 0) return -1;
+        if (scoreB > 0) return 1;
+
+        const timeA = new Date(a.$createdAt || a.createdAt || a.date || 0).getTime();
+        const timeB = new Date(b.$createdAt || b.createdAt || b.date || 0).getTime();
+        return timeB - timeA;
+    });
+
+    currentMixedItems = allItems;
+    mixedFeedOffset = 0;
+
+    renderMixedBatch(true);
+    setupPreloadScrollListener();
+}
+
+function renderMixedBatch(isInitial = false) {
+    const feedContainer = document.getElementById('recommendFeedContainer');
+    if (!feedContainer) return;
+
+    const nextBatch = currentMixedItems.slice(mixedFeedOffset, mixedFeedOffset + MIXED_PAGE_SIZE);
+    if (!nextBatch.length && isInitial) {
+        feedContainer.innerHTML = `<div class="empty-state"><p>暂无最新内容，去发布一条吧</p></div>`;
+        return;
+    }
+
+    const html = nextBatch.map(item => renderMixedFeedItem(item)).join('');
+
+    if (isInitial) {
+        feedContainer.innerHTML = html;
+    } else {
+        feedContainer.insertAdjacentHTML('beforeend', html);
+    }
+
+    mixedFeedOffset += nextBatch.length;
+}
+
+function renderMixedFeedItem(item) {
+    if (item.type === 'event') {
+        return `
+            <div class="event-card feed-card-event">
+                <span class="event-tag">${escapeHtml(item.tag || '大事记')}</span>
+                <div class="event-title">${escapeHtml(item.title)}</div>
+                <div class="event-desc">${escapeHtml(item.desc || '')}</div>
+                <div class="event-date">⭐ 本周大事记 · ${formatTime(new Date(item.date || item.$createdAt))}</div>
+            </div>
+        `;
+    }
+
+    if (item.type === 'confession') {
+        const fullContent = escapeHtml(item.content || '');
+        const isLong = fullContent.length > 80;
+        const shortContent = isLong ? fullContent.slice(0, 80) + '...' : fullContent;
+
+        return `
+            <div class="confession-card feed-card-confession">
+                <div class="confession-text" data-full-text="${fullContent.replace(/"/g, '&quot;')}" data-short-text="${shortContent.replace(/"/g, '&quot;')}">
+                    <span class="content-body">${shortContent}</span>
+                    ${isLong ? '<span class="expand-confession-btn" onclick="window.toggleConfessionExpand(this)">展开全文</span>' : ''}
+                </div>
+                <div class="confession-footer" style="display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 0.82rem; margin-top: 6px;">
+                    <span>💌 表白墙 · ${formatTime(new Date(item.$createdAt || item.createdAt))}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    const timeStr = formatTime(new Date(item.$createdAt || item.createdAt));
+    const isPinned = item.status ? (item.status & 1) !== 0 : false;
+    const author = getPostAuthorDisplay(item, userCache);
+    const avatarHtml = renderAuthorAvatar(author, 44);
+
+    return `
+        <div class="post-card feed-card-post" onclick="location.href='post.html?id=${item.$id || item.id}'">
+            <div class="post-header">
+                <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">${avatarHtml}</div>
+                <div>
+                    <div class="post-author" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;">${author.name}</div>
+                    <div class="post-time">📄 帖子 · ${timeStr}</div>
+                </div>
+            </div>
+            <div class="post-title">${isPinned ? '<span class="post-badge pinned-badge" style="margin-right:6px;">置顶</span>' : ''}${escapeHtml(item.title || '无标题')}</div>
+            <div class="post-content">${escapeHtml(markdownToPreview(item.content || '', 100))}</div>
+            <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
+                <span class="post-stat" style="display: flex; align-items: center; gap: 4px;">❤️ ${Number(item.likes || 0)}</span>
+                <span class="post-stat" style="display: flex; align-items: center; gap: 4px;">💬 ${Number(item.commentCount || 0)}</span>
+            </div>
+        </div>
+    `;
+}
+
+function setupPreloadScrollListener() {
+    window.removeEventListener('scroll', handleScrollPreload);
+    window.addEventListener('scroll', handleScrollPreload);
+}
+
+function handleScrollPreload() {
+    if (isPreloadingNextBatch) return;
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const windowHeight = window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+
+    if (documentHeight > 0 && (scrollTop + windowHeight) >= (documentHeight * 0.67)) {
+        if (mixedFeedOffset < currentMixedItems.length) {
+            isPreloadingNextBatch = true;
+            renderMixedBatch(false);
+            setTimeout(() => { isPreloadingNextBatch = false; }, 400);
+        }
+    }
+}
+
+window.toggleConfessionExpand = function(btn) {
+    const parent = btn.parentElement;
+    const body = parent.querySelector('.content-body');
+    const fullText = parent.dataset.fullText;
+    const shortText = parent.dataset.shortText;
+    const isExpanded = btn.textContent === '收起';
+
+    if (isExpanded) {
+        body.textContent = shortText;
+        btn.textContent = '展开全文';
+    } else {
+        body.textContent = fullText;
+        btn.textContent = '收起';
+    }
+};
+
 // ========== 初始化入口 ==========
 (async function init() {
     secureKeyReady = restoreSecureKey();
@@ -118,14 +326,7 @@ function applyPendingModifications(collection, documents) {
         try {
             const saved = JSON.parse(userData);
             if (saved && saved.authVersion === 2 && saved.studentId) {
-                currentUser = {
-                    studentId: saved.studentId,
-                    userId: saved.userId || `student_${saved.studentId}`,
-                    token: saved.token,
-                    name: saved.name || '同学'
-                };
-            } else {
-                localStorage.removeItem('campus_user');
+                currentUser = saved;
             }
         } catch (e) {
             console.warn('解析本地用户凭证失败:', e);
