@@ -1450,6 +1450,7 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+    gap: 0 !important;
   }
 
   .home-content {
