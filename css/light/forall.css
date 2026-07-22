@@ -1279,6 +1279,9 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   top: 72px;
   z-index: 900;
   width: 100%;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              top 0.3s ease;
 }
 
 .search-bar-group {
@@ -1459,5 +1462,49 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   .feed-card-event {
     border-left: 4px solid #f59e0b !important;
     background: linear-gradient(135deg, var(--surface), var(--surface-2, rgba(245, 158, 11, 0.05))) !important;
+  }
+
+  .toolbar-hidden {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-12px) !important;
+  }
+
+  .toolbar-pinned-fixed {
+    position: fixed !important;
+    top: calc(52px + env(safe-area-inset-top)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
+    z-index: 1001 !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+  }
+}
+
+/* 手机端顶栏头像左侧搜索图标按钮 */
+.nav-mobile-search-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  padding: 6px;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.nav-mobile-search-btn:hover {
+  background: var(--surface-2);
+}
+
+@media screen and (min-width: 901px) {
+  .nav-mobile-search-btn {
+    display: none !important;
   }
 }

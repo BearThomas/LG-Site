@@ -389,4 +389,99 @@
             });
         });
     }
+
+    // 手机端滚动离屏隐藏搜索栏与标题栏左侧搜索图标联动
+    function initMobileSearchInteraction() {
+        const userArea = document.getElementById('userArea');
+        if (!userArea) return;
+
+        let topSearchBtn = document.getElementById('navMobileSearchBtn');
+        if (!topSearchBtn) {
+            topSearchBtn = document.createElement('button');
+            topSearchBtn.type = 'button';
+            topSearchBtn.id = 'navMobileSearchBtn';
+            topSearchBtn.className = 'nav-mobile-search-btn';
+            topSearchBtn.setAttribute('aria-label', '搜索');
+            topSearchBtn.style.display = 'none';
+            topSearchBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+            `;
+            userArea.insertBefore(topSearchBtn, userArea.firstChild);
+        }
+
+        const getToolbar = () => document.querySelector('.posts-mobile-toolbar, .confession-mobile-toolbar, .events-mobile-toolbar');
+        const getSearchInput = () => document.querySelector('.connected-search-input');
+
+        let isPinnedFixed = false;
+        let isInputFocused = false;
+
+        window.addEventListener('scroll', () => {
+            if (window.innerWidth > 900) return;
+            const toolbar = getToolbar();
+            if (!toolbar) return;
+
+            const scrollY = window.scrollY || document.documentElement.scrollTop;
+
+            if (scrollY > 50) {
+                if (!isPinnedFixed && !isInputFocused) {
+                    toolbar.classList.add('toolbar-hidden');
+                    topSearchBtn.style.display = 'flex';
+                }
+            } else {
+                toolbar.classList.remove('toolbar-hidden', 'toolbar-pinned-fixed');
+                topSearchBtn.style.display = 'none';
+                isPinnedFixed = false;
+            }
+        });
+
+        topSearchBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const toolbar = getToolbar();
+            const input = getSearchInput();
+            if (!toolbar) return;
+
+            isPinnedFixed = true;
+            toolbar.classList.remove('toolbar-hidden');
+            toolbar.classList.add('toolbar-pinned-fixed');
+            topSearchBtn.style.display = 'none';
+
+            if (input) {
+                input.focus();
+            }
+        });
+
+        document.addEventListener('focusin', (e) => {
+            const input = getSearchInput();
+            if (input && e.target === input) {
+                isInputFocused = true;
+                topSearchBtn.style.display = 'none';
+            }
+        });
+
+        document.addEventListener('focusout', (e) => {
+            const input = getSearchInput();
+            if (input && e.target === input) {
+                isInputFocused = false;
+                setTimeout(() => {
+                    if (!isInputFocused && window.scrollY > 50) {
+                        const toolbar = getToolbar();
+                        if (toolbar) {
+                            toolbar.classList.remove('toolbar-pinned-fixed');
+                            toolbar.classList.add('toolbar-hidden');
+                            topSearchBtn.style.display = 'flex';
+                            isPinnedFixed = false;
+                        }
+                    }
+                }, 200);
+            }
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileSearchInteraction);
+    } else {
+        initMobileSearchInteraction();
+    }
 })();
