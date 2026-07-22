@@ -1,0 +1,19 @@
+[agent]
+# 限制每次对话可以回传给模型的最大 Token 数量，防止单次误操作烧掉太多额度
+max_context_tokens = 4096
+
+[tools]
+# 核心省额度配置：限制系统命令或测试输出回传给 AI 的最大字符数。超过会被自动截断，不再浪费 Token。
+max_output_chars = 2000 
+
+[files]
+# 绝对不要读取的黑名单。这些大文件一旦被 Codex CLI 扫描并作为上下文上传，额度会瞬间耗尽。
+exclude = [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "package-lock.json",
+    "yarn.lock",
+    "*.log"
+]

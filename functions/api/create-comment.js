@@ -92,55 +92,51 @@ export async function onRequestPost({ request, env, waitUntil }) {
       }
 
       // 4. 逐个下发通知与 Web Push 推送
-      const { sendWebPushToUser } = await import('../_lib/push.js');
+        // 4. 批量下发通知与 Web Push 推送（修复循环调用 waitUntil 的 Bug）
+        const { sendWebPushToUser } = await import('../_lib/push.js');
 
-      for (const recipientId of recipientsToNotify) {
-        try {
-          const isSelf = recipientId === currentUserId;
-          const isOwner = recipientId === postAuthorId;
+        const pushPromises = [];
 
-          const notificationTitle = isSelf
-            ? '评论已发布'
-            : (isOwner ? '新评论提醒' : '新回复提醒');
+        for (const recipientId of recipientsToNotify) {
+            const isSelf = recipientId === currentUserId;
+            const isOwner = recipientId === postAuthorId;
+            const notificationTitle = isSelf ? '评论已发布' : (isOwner ? '新评论提醒' : '新回复提醒');
+            const notificationContent = isSelf
+                ? `您在帖子《${postTitle}》中发表了新评论`
+                : (isOwner ? `${profile.name} 评论了你的帖子《${postTitle}》` : `${profile.name} 回复了你参与讨论的帖子《${postTitle}》`);
 
-          const notificationContent = isSelf
-            ? `您在帖子《${postTitle}》中发表了新评论`
-            : (isOwner
-                ? `${profile.name} 评论了你的帖子《${postTitle}》`
-                : `${profile.name} 回复了你参与讨论的帖子《${postTitle}》`);
+            const notificationId = crypto.randomUUID();
 
-          const notificationId = crypto.randomUUID();
-          await db.prepare(`
-            INSERT INTO notifications (
-              id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
-            ) VALUES (?, ?, ?, ?, 'comment', ?, ?, ?, 0, ?)
-          `).bind(
-            notificationId,
-            recipientId,
-            currentUserId,
-            profile.name,
-            notificationTitle,
-            notificationContent,
-            postId,
-            now
-          ).run();
+            // 写入数据库通知（必须同步或确保完成）
+            await db.prepare(`
+        INSERT INTO notifications (
+            id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
+        ) VALUES (?, ?, ?, ?, 'comment', ?, ?, ?, 0, ?)
+    `).bind(
+                notificationId, recipientId, currentUserId, profile.name,
+                notificationTitle, notificationContent, postId, now
+            ).run().catch(err => console.warn(`写入通知数据库失败 (${recipientId}):`, err.message));
 
-          const pushTask = sendWebPushToUser(env, recipientId, {
-            title: notificationTitle,
-            body: notificationContent,
-            url: `/post-detail.html?id=${postId}`,
-            unreadCount: 1
-          });
-
-          if (waitUntil) {
-            waitUntil(pushTask);
-          } else {
-            await pushTask;
-          }
-        } catch (err) {
-          console.warn(`通知下发给 ${recipientId} 失败:`, err.message);
+            // 收集 Web Push 任务，统一并发处理
+            pushPromises.push(
+                sendWebPushToUser(env, recipientId, {
+                    title: notificationTitle,
+                    body: notificationContent,
+                    url: `/post-detail.html?id=${postId}`,
+                    unreadCount: 1,
+                    tag: `comment-${postId}`
+                }).catch(err => {
+                    console.warn(`Web Push 下发给 ${recipientId} 失败:`, err.message);
+                })
+            );
         }
-      }
+
+        // 统一交给 waitUntil 确保后台执行完毕，不阻塞 HTTP 响应
+        if (waitUntil && pushPromises.length > 0) {
+            waitUntil(Promise.all(pushPromises));
+        } else if (pushPromises.length > 0) {
+            await Promise.all(pushPromises);
+        }
     } catch (notifError) {
       console.error('Failed to create/send notifications:', notifError);
     }
