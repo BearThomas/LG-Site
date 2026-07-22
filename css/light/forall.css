@@ -1259,6 +1259,13 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
 /* ============================================================
    一体化极简搜索与筛选工具栏 (通用全站)
    ============================================================ */
+.posts-container,
+.confession-container,
+.events-page {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
 .posts-mobile-toolbar,
 .confession-mobile-toolbar,
 .events-mobile-toolbar {
@@ -1389,9 +1396,6 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
    ============================================================ */
 @media (max-width: 900px) {
   .home-content,
-  .posts-container,
-  .confession-container,
-  .events-page,
   .recommend-feed-container,
   .posts-list,
   .confession-list,
@@ -1402,6 +1406,27 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     border: none !important;
     border-radius: 0 !important;
     box-shadow: none !important;
+  }
+
+  .posts-container,
+  .confession-container,
+  .events-page {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: calc(52px + env(safe-area-inset-top)) 0 0 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .posts-mobile-toolbar,
+  .confession-mobile-toolbar,
+  .events-mobile-toolbar {
+    position: sticky !important;
+    top: calc(52px + env(safe-area-inset-top)) !important;
+    margin: 0 !important;
+    padding: 10px 16px !important;
+    z-index: 900 !important;
   }
 
   .post-card,
