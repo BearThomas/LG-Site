@@ -58,7 +58,7 @@
 
         const items = [
             { key: 'home', title: '推荐', url: 'index.html', icon: primaryNavIcons.home },
-            { key: 'posts', title: '最新帖子', url: 'posts.html', icon: primaryNavIcons.posts },
+            { key: 'posts', title: '帖子', url: 'posts.html', icon: primaryNavIcons.posts },
             { key: 'events', title: '大事记', url: 'events.html', icon: primaryNavIcons.events },
             { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession }
         ];
