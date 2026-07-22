@@ -25,7 +25,7 @@ const client = new Client()
     .setEndpoint(APPWRITE_ENDPOINT)
     .setProject(APPWRITE_PROJECT_ID);
 
-let databases;
+const databases = new Databases(client);
 let currentUser = null;
 let userCache = {};
 let secureKeyReady = Promise.resolve(null);
@@ -171,6 +171,26 @@ async function loadHomeContent({ forceRefresh = false } = {}) {
             events = (data || []).map(e => ({ ...e, type: 'event', $createdAt: e.date }));
         }).catch(() => {})
     ]);
+
+    if (!posts.length) {
+        try {
+            let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
+            if (index && index.chunks && index.chunks.length > 0) {
+                let chunkData = await fetchWithHashCache(`posts_chunk_1`, [`./public/data-backups/posts/${index.chunks[0].file}`]);
+                posts = (chunkData || []).map(p => ({ ...p, type: 'post' }));
+            }
+        } catch (e) {}
+    }
+
+    if (!confessions.length) {
+        try {
+            let index = await fetchWithHashCache('confessions', ['./public/data-backups/confessions/index.json']);
+            if (index && index.chunks && index.chunks.length > 0) {
+                let chunkData = await fetchWithHashCache(`confessions_chunk_1`, [`./public/data-backups/confessions/${index.chunks[0].file}`]);
+                confessions = (chunkData || []).map(c => ({ ...c, type: 'confession' }));
+            }
+        } catch (e) {}
+    }
 
     const seenIds = new Set();
     const allItems = [...events, ...posts, ...confessions].filter(item => {
