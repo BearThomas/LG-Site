@@ -25,19 +25,25 @@ let userDoc = null;
 let userCache = {}; // Minimal cache for the target user
 
 function updateAvatarPreview(name, url) {
-    if (url && (url.startsWith('http') || url.startsWith('/') || url.startsWith('data:'))) {
-        avatarImg.src = url;
+    const cleanUrl = url ? url.trim() : '';
+    const hasUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:'));
+    const firstChar = (name || '?').trim().charAt(0) || '?';
+
+    if (hasUrl) {
+        avatarImg.src = cleanUrl;
         avatarImg.onerror = () => {
             avatarImg.style.display = 'none';
+            avatarImg.src = '';
             avatarText.style.display = 'block';
-            avatarText.textContent = (name || '?').charAt(0);
+            avatarText.textContent = firstChar;
         };
         avatarImg.style.display = 'block';
         avatarText.style.display = 'none';
     } else {
         avatarImg.style.display = 'none';
+        avatarImg.src = '';
         avatarText.style.display = 'block';
-        avatarText.textContent = (name || '?').charAt(0);
+        avatarText.textContent = firstChar;
     }
 }
 

@@ -148,6 +148,7 @@
         const cleanName = String(name || '').trim();
         const cleanUrl = String(avatarUrl || '').trim();
         const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('data:') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//'));
+        const firstChar = cleanName.charAt(0) || '?';
 
         userAvatar.style.overflow = 'hidden';
         userAvatar.style.border = 'none';
@@ -156,20 +157,24 @@
         userAvatar.style.outline = 'none';
         userAvatar.style.webkitTapHighlightColor = 'transparent';
 
+        userAvatar.style.backgroundColor = 'var(--accent, #228be6)';
+        userAvatar.style.color = '#ffffff';
+        userAvatar.style.fontWeight = 'bold';
+
         if (isImage) {
-            userAvatar.style.backgroundColor = 'transparent';
             userAvatar.replaceChildren();
             const image = document.createElement('img');
             image.src = cleanUrl;
             image.alt = '用户头像';
-            image.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;background:transparent;';
+            image.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;';
+            image.onerror = () => {
+                userAvatar.textContent = firstChar;
+                userAvatar.style.lineHeight = '40px';
+            };
             userAvatar.appendChild(image);
         } else {
-            userAvatar.textContent = cleanName.charAt(0) || '?';
-            userAvatar.style.backgroundColor = '#228be6';
+            userAvatar.textContent = firstChar;
             userAvatar.style.lineHeight = '40px';
-            userAvatar.style.color = '#ffffff';
-            userAvatar.style.fontWeight = 'bold';
         }
     }
 

@@ -192,14 +192,28 @@ function checkLoginStatus() {
             if (commentAvatar) {
                 const cleanUrl = String(currentUser.avatar || '').trim();
                 const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:');
+                const firstChar = (currentUser.name || currentUser.studentId || '?').trim().charAt(0) || '?';
+
+                commentAvatar.style.overflow = 'hidden';
+                commentAvatar.style.backgroundColor = 'var(--accent, #228be6)';
+                commentAvatar.style.color = '#ffffff';
+                commentAvatar.style.fontWeight = 'bold';
+                commentAvatar.style.display = 'flex';
+                commentAvatar.style.alignItems = 'center';
+                commentAvatar.style.justifyContent = 'center';
+                commentAvatar.style.borderRadius = '50%';
+
                 if (isImage) {
                     commentAvatar.replaceChildren();
                     const img = document.createElement('img');
                     img.src = cleanUrl;
                     img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;';
+                    img.onerror = () => {
+                        commentAvatar.textContent = firstChar;
+                    };
                     commentAvatar.appendChild(img);
                 } else {
-                    commentAvatar.textContent = (currentUser.name || currentUser.studentId).charAt(0);
+                    commentAvatar.textContent = firstChar;
                 }
             }
             
@@ -352,30 +366,26 @@ function renderPostDetail() {
 
     // 🛡️ 宁信 ID，不信其名：通过内存缓存快速穿透主贴作者信息
     const rawAuthorId = (currentPost.authorId || '').toString().trim();
-    const cachedUser = userCache[rawAuthorId];
-    
-    let finalName = '未知成员';
-    let avatarHtml = '?';
+    const cleanAuthorId = normalizeUserId(rawAuthorId);
+    const cachedUser = getUserFromCache(userCache, rawAuthorId);
+    const rawName = (currentPost.authorName || '').toString().trim();
+    const fallbackName = cleanAuthorId ? `同学${cleanAuthorId.slice(-4)}` : '未知成员';
 
-    if (cachedUser) {
-        finalName = cachedUser.name;
-        const isImgUrl = cachedUser.avatar && (cachedUser.avatar.startsWith('http') || cachedUser.avatar.startsWith('/') || cachedUser.avatar.startsWith('data:'));
-        if (isImgUrl) {
-            avatarHtml = `<img src="${escapeHtml(cachedUser.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像">`;
-        } else {
-            avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
-        }
+    const plainName = cachedUser?.name || (!rawName || rawName.includes(':') ? fallbackName : rawName);
+    const finalName = formatNameWithYear(plainName, cleanAuthorId);
+
+    const avatarUrl = cachedUser?.avatar || '';
+    const cleanAvatar = String(avatarUrl).trim();
+    const isImageAvatar = cleanAvatar.startsWith('http://') || cleanAvatar.startsWith('https://') || cleanAvatar.startsWith('/') || cleanAvatar.startsWith('data:');
+    const firstChar = (plainName || cleanAuthorId || '?').trim().charAt(0) || '?';
+
+    let avatarHtml = '';
+    const fallbackSpan = `<span style="line-height: 40px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${escapeHtml(firstChar)}</span>`;
+
+    if (isImageAvatar) {
+        avatarHtml = `<img src="${escapeHtml(cleanAvatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像" onerror="this.onerror=null;this.outerHTML='${fallbackSpan.replace(/'/g, "&#39;").replace(/"/g, "&quot;")}'">`;
     } else {
-        const rawName = currentPost.authorName || '';
-        
-        finalName = rawName.includes(':') ? `同学${rawAuthorId.slice(-4)}` : (rawName || '匿名同学');
-        finalName = escapeHtml(finalName);
-        const __sid = rawAuthorId.replace(/^student_/, '').trim();
-        if (__sid.length >= 4) {
-            finalName = `${finalName}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
-        }
-
-        avatarHtml = `<span style="line-height: 40px;">${escapeHtml(finalName.trim().charAt(0) || '?')}</span>`;
+        avatarHtml = fallbackSpan;
     }
     
     postDetailCard.innerHTML = `
@@ -383,7 +393,7 @@ function renderPostDetail() {
             <h1 class="post-detail-title">${escapeHtml(currentPost.title)}</h1>
             <div class="post-detail-meta">
                 <div class="post-author-info">
-                    <div class="post-detail-avatar" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
+                    <div class="post-detail-avatar" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
                     <div class="post-author-detail">
@@ -549,37 +559,32 @@ function renderComments(comments) {
 
         // 🛡️ 评论实名制穿透：强制依据 comment.authorId 从字典快照捞数据
         const rawCommentAuthorId = (comment.authorId || '').toString().trim();
-        const cachedCommentUser = userCache[rawCommentAuthorId];
+        const cleanCommentAuthorId = normalizeUserId(rawCommentAuthorId);
+        const cachedCommentUser = getUserFromCache(userCache, rawCommentAuthorId);
+        const rawCommentName = (comment.authorName || '').toString().trim();
+        const fallbackCommentName = cleanCommentAuthorId ? `同学${cleanCommentAuthorId.slice(-4)}` : '未知成员';
 
-        let commentName = '未知成员';
-        let commentAvatarHtml = '?';
+        const plainCommentName = cachedCommentUser?.name || (!rawCommentName || rawCommentName.includes(':') ? fallbackCommentName : rawCommentName);
+        const commentName = formatNameWithYear(plainCommentName, cleanCommentAuthorId);
 
-        if (cachedCommentUser) {
-            commentName = cachedCommentUser.name;
-            const isCommentImg = cachedCommentUser.avatar && (cachedCommentUser.avatar.startsWith('http') || cachedCommentUser.avatar.startsWith('/') || cachedCommentUser.avatar.startsWith('data:'));
-            if (isCommentImg) {
-                commentAvatarHtml = `<img src="${escapeHtml(cachedCommentUser.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像">`;
-            } else {
-                commentAvatarHtml = `<span style="line-height: 32px;">${escapeHtml(commentName.trim().charAt(0) || '?')}</span>`;
-            }
+        const commentAvatarUrl = cachedCommentUser?.avatar || '';
+        const cleanCommentAvatar = String(commentAvatarUrl).trim();
+        const isCommentImg = cleanCommentAvatar.startsWith('http://') || cleanCommentAvatar.startsWith('https://') || cleanCommentAvatar.startsWith('/') || cleanCommentAvatar.startsWith('data:');
+        const commentFirstChar = (plainCommentName || cleanCommentAuthorId || '?').trim().charAt(0) || '?';
+
+        let commentAvatarHtml = '';
+        const commentFallbackSpan = `<span style="line-height: 32px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${escapeHtml(commentFirstChar)}</span>`;
+
+        if (isCommentImg) {
+            commentAvatarHtml = `<img src="${escapeHtml(cleanCommentAvatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像" onerror="this.onerror=null;this.outerHTML='${commentFallbackSpan.replace(/'/g, "&#39;").replace(/"/g, "&quot;")}'">`;
         } else {
-            
-            let rawCommentName = comment.authorName || '';
-            const __csid = (comment.authorId || '').toString().replace(/^student_/, '').trim();
-            if (__csid.length >= 4) {
-                rawCommentName = `${escapeHtml(rawCommentName)}<span class="year-badge">${__csid.substring(0, 4)}级</span>`;
-            } else {
-                rawCommentName = escapeHtml(rawCommentName);
-            }
-
-            commentName = rawCommentName.includes(':') ? escapeHtml(`同学${rawCommentAuthorId.slice(-4)}`) : (rawCommentName || escapeHtml('匿名同学'));
-            commentAvatarHtml = `<span style="line-height: 32px;">${escapeHtml(commentName.trim().charAt(0) || '?')}</span>`;
+            commentAvatarHtml = commentFallbackSpan;
         }
         
         return `
             <div class="comment-item" data-comment-id="${comment.$id}">
                 <div class="comment-header">
-                    <div class="comment-author-avatar" onclick="window.goToUserProfile('${rawCommentAuthorId}', event)" style="cursor: pointer;" style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e9ecef; flex-shrink: 0; font-size: 0.85rem;">
+                    <div class="comment-author-avatar" onclick="window.goToUserProfile('${rawCommentAuthorId}', event)" style="cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0; font-size: 0.85rem;">
                         ${commentAvatarHtml}
                     </div>
                     <div class="comment-author-info">

@@ -387,7 +387,7 @@ function renderHomePosts(posts) {
         return `
             <div class="post-card" onclick="location.href='post.html?id=${post.$id}'">
                 <div class="post-header">
-                    <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;">${avatarHtml}</div>
+                    <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">${avatarHtml}</div>
                     <div>
                         <div class="post-author" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${author.name}</div>
                         <div class="post-time">${timeStr} · ${formatBoardName(post.boardId)}</div>

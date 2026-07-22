@@ -422,7 +422,7 @@ function renderPosts(posts, runtimeCache) {
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
                 <div class="post-header">
-                    <div class="post-avatar" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: #e0e0e0; flex-shrink: 0;">
+                    <div class="post-avatar" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
                     <div class="post-author-info">

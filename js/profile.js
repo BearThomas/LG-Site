@@ -104,30 +104,34 @@ async function initProfile() {
 function updateAvatarPreview(name, avatarUrl) {
     const avatarText = document.getElementById('avatarText');
     const avatarImg = document.getElementById('avatarImg');
+    const avatarPreview = document.getElementById('avatarPreview');
     
     if (!avatarText || !avatarImg) return;
 
-    // 盘查是否输入了合法的图片网络链接
-    const hasUrl = avatarUrl && (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://') || avatarUrl.startsWith('/') || avatarUrl.startsWith('data:'));
+    if (avatarPreview) {
+        avatarPreview.style.backgroundColor = 'var(--accent, #228be6)';
+        avatarPreview.style.color = '#ffffff';
+        avatarPreview.style.fontWeight = 'bold';
+    }
+
+    const cleanUrl = avatarUrl ? avatarUrl.trim() : '';
+    const hasUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:'));
+    const firstChar = (name || '?').trim().charAt(0) || '?';
 
     if (hasUrl) {
-        // 模式 A：渲染网络图片头像
         avatarText.style.display = 'none';
-        avatarImg.src = avatarUrl.trim();
+        avatarImg.src = cleanUrl;
         avatarImg.onerror = () => {
             avatarImg.style.display = 'none';
             avatarImg.src = '';
-            const cleanName = name ? name.trim() : '';
-            avatarText.textContent = cleanName ? cleanName.charAt(0) : '?';
+            avatarText.textContent = firstChar;
             avatarText.style.display = 'block';
         };
         avatarImg.style.display = 'block';
     } else {
-        // 模式 B：降级渲染动态首字文本头像
         avatarImg.style.display = 'none';
         avatarImg.src = '';
-        const cleanName = name ? name.trim() : '';
-        avatarText.textContent = cleanName ? cleanName.charAt(0) : '?';
+        avatarText.textContent = firstChar;
         avatarText.style.display = 'block';
     }
 }

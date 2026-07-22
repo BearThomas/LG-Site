@@ -93,32 +93,36 @@ export function getPostAuthorDisplay(post, userCache = {}) {
     const cleanAuthorId = normalizeUserId(rawAuthorId);
     const cachedUser = getUserFromCache(userCache, rawAuthorId);
     const rawName = (post.authorName || '').toString().trim();
-    const fallbackName = cleanAuthorId ? `\u540c\u5b66${cleanAuthorId.slice(-4)}` : '\u672a\u77e5\u6210\u5458';
+    const fallbackName = cleanAuthorId ? `同学${cleanAuthorId.slice(-4)}` : '未知成员';
 
-    let name = cachedUser?.name || (!rawName || rawName.includes(':') ? fallbackName : rawName);
-    name = formatNameWithYear(name, cleanAuthorId);
+    const plainName = cachedUser?.name || (!rawName || rawName.includes(':') ? fallbackName : rawName);
+    const name = formatNameWithYear(plainName, cleanAuthorId);
     
     const avatar = cachedUser?.avatar || '';
-    const isImageAvatar = avatar.startsWith('http://') || avatar.startsWith('https://') || avatar.startsWith('/') || avatar.startsWith('data:');
-    const initial = name.trim().charAt(0) || cleanAuthorId.charAt(0) || '?';
+    const cleanAvatar = String(avatar).trim();
+    const isImageAvatar = cleanAvatar.startsWith('http://') || cleanAvatar.startsWith('https://') || cleanAvatar.startsWith('/') || cleanAvatar.startsWith('data:');
+    const initial = (plainName || cleanAuthorId || '?').trim().charAt(0) || '?';
 
     return {
-        avatar,
+        avatar: cleanAvatar,
         cleanAuthorId,
         initial,
         isImageAvatar,
-        name
+        name,
+        plainName
     };
 }
 
 export function renderAuthorAvatar(author, lineHeight = 40) {
-    if (author.isImageAvatar) {
-        const fallback = `<span style='line-height:${lineHeight}px'>${escapeHtml(author.initial)}</span>`;
-        return `<img src="${escapeHtml(author.avatar)}" style="width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block;" alt="\u5934\u50cf" onerror="this.outerHTML='${fallback.replace(/'/g, "&#39;")}'">`;
+    const initial = (author.initial || author.plainName || '?').trim().charAt(0) || '?';
+    const initialEscaped = escapeHtml(initial);
+    const fallbackSpan = `<span style="line-height: ${lineHeight}px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${initialEscaped}</span>`;
 
+    if (author.isImageAvatar) {
+        return `<img src="${escapeHtml(author.avatar)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block;" alt="头像" onerror="this.onerror=null;this.outerHTML='${fallbackSpan.replace(/'/g, "&#39;").replace(/"/g, "&quot;")}'">`;
     }
 
-    return `<span style="line-height: ${lineHeight}px;">${escapeHtml(author.initial)}</span>`;
+    return fallbackSpan;
 }
 
 export function indexUsersById(documents) {
