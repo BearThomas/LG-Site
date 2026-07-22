@@ -45,38 +45,92 @@ export async function onRequestPost({ request, env, waitUntil }) {
       db.prepare('UPDATE posts SET comment_count = comment_count + 1, updated_at = updated_at WHERE id = ?').bind(postId)
     ]);
 
-    // 后台通知逻辑 (不阻塞主响应流程)
+    // 后台通知逻辑：通知帖子作者 + 所有参与过讨论的评论者 (不阻塞主响应流程)
     try {
-      const postRow = await db.prepare('SELECT author_id, title FROM posts WHERE id = ?').bind(postId).first();
-      if (postRow && normalizeUserId(postRow.author_id) !== normalizeUserId(profile.id)) {
-        const recipientId = normalizeUserId(postRow.author_id);
-        const notificationId = crypto.randomUUID();
-        const notificationContent = `${profile.name} 评论了你的帖子《${postRow.title}》`;
-        
-        // 1. 存入数据库通知表
-        await db.prepare(`
-          INSERT INTO notifications (
-            id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
-          ) VALUES (?, ?, ?, ?, 'comment', '新评论提醒', ?, ?, 0, ?)
-        `).bind(notificationId, recipientId, normalizeUserId(profile.id), profile.name, notificationContent, postId, now).run();
+      const currentUserId = normalizeUserId(profile.id);
+      let postTitle = '帖子';
+      let postAuthorId = null;
 
-        // 2. 发送 Web Push 推送
-        const { sendWebPushToUser } = await import('../_lib/push.js');
-        const pushTask = sendWebPushToUser(env, recipientId, {
-          title: '新评论提醒',
-          body: notificationContent,
-          url: `/post-detail.html?id=${postId}`,
-          unreadCount: 1
-        });
+      try {
+        const postRow = await db.prepare('SELECT author_id, title FROM posts WHERE id = ?').bind(postId).first();
+        if (postRow) {
+          postAuthorId = normalizeUserId(postRow.author_id);
+          if (postRow.title) postTitle = postRow.title;
+        }
+      } catch (e) {
+        console.warn('获取帖子作者信息失败:', e.message);
+      }
 
-        if (waitUntil) {
-          waitUntil(pushTask);
-        } else {
-          await pushTask;
+      const recipientsToNotify = new Set();
+
+      // 1. 帖子作者
+      if (postAuthorId && postAuthorId !== currentUserId) {
+        recipientsToNotify.add(postAuthorId);
+      }
+
+      // 2. 之前参与过该帖子讨论的所有评论者
+      try {
+        const prevCommenters = await db.prepare(`
+          SELECT DISTINCT author_id FROM comments WHERE post_id = ?
+        `).bind(postId).all();
+
+        if (prevCommenters && prevCommenters.results) {
+          for (const row of prevCommenters.results) {
+            const cId = normalizeUserId(row.author_id);
+            if (cId && cId !== currentUserId) {
+              recipientsToNotify.add(cId);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('获取历史评论者失败:', e.message);
+      }
+
+      // 3. 逐个下发通知与 Web Push 推送
+      const { sendWebPushToUser } = await import('../_lib/push.js');
+
+      for (const recipientId of recipientsToNotify) {
+        try {
+          const isOwner = recipientId === postAuthorId;
+          const notificationTitle = isOwner ? '新评论提醒' : '新回复提醒';
+          const notificationContent = isOwner
+            ? `${profile.name} 评论了你的帖子《${postTitle}》`
+            : `${profile.name} 回复了你参与讨论的帖子《${postTitle}》`;
+
+          const notificationId = crypto.randomUUID();
+          await db.prepare(`
+            INSERT INTO notifications (
+              id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
+            ) VALUES (?, ?, ?, ?, 'comment', ?, ?, ?, 0, ?)
+          `).bind(
+            notificationId,
+            recipientId,
+            currentUserId,
+            profile.name,
+            notificationTitle,
+            notificationContent,
+            postId,
+            now
+          ).run();
+
+          const pushTask = sendWebPushToUser(env, recipientId, {
+            title: notificationTitle,
+            body: notificationContent,
+            url: `/post-detail.html?id=${postId}`,
+            unreadCount: 1
+          });
+
+          if (waitUntil) {
+            waitUntil(pushTask);
+          } else {
+            await pushTask;
+          }
+        } catch (err) {
+          console.warn(`通知下发给 ${recipientId} 失败:`, err.message);
         }
       }
     } catch (notifError) {
-      console.error('Failed to create/send notification:', notifError);
+      console.error('Failed to create/send notifications:', notifError);
     }
 
     return json({ success: true, commentId: id }, 201);
