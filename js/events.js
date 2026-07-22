@@ -389,6 +389,18 @@ const EventsManager = (function() {
         });
     }
 
+    if (cancelSubmitBtn && submitModal) {
+        cancelSubmitBtn.addEventListener('click', () => {
+            submitModal.style.display = 'none';
+        });
+    }
+
+    if (closeSubmissionsBtn && recordsModal) {
+        closeSubmissionsBtn.addEventListener('click', () => {
+            recordsModal.style.display = 'none';
+        });
+    }
+
     // 极简工具栏筛选与搜索处理
     const searchInput = document.getElementById('eventsSearchInput');
     const searchBtn = document.getElementById('eventsSearchBtn');
