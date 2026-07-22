@@ -69,22 +69,71 @@
     </div>
 
     <main class="events-page">
-        <h1 class="events-page-title">大事记</h1>
-        <section class="events-apply-panel" aria-label="大事记投稿">
-            <div>
-                <h2>记录校园里的重要时刻</h2>
-                <p>提交事件后将先由 AI 整理和初审，再交由管理员确认发布。</p>
+        <!-- 极简一体化搜索与筛选栏 -->
+        <div class="events-mobile-toolbar">
+            <div class="search-bar-group">
+                <input type="text" id="eventsSearchInput" class="connected-search-input" placeholder="搜索大事记...">
+                <button type="button" id="eventsSearchBtn" class="connected-search-btn" aria-label="搜索">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                </button>
             </div>
-            <div class="events-apply-actions">
-                <button type="button" id="submitEventBtn" class="event-action-primary">我要投稿</button>
-                <button type="button" id="mySubmissionsBtn" class="event-action-secondary">我的投稿记录</button>
-                <button type="button" id="adminAuditBtn" class="event-action-secondary" style="display: none; border-color: var(--warning, #f08c00); color: var(--warning, #f08c00);" onclick="location.href='admin-events.html'">审核大事记 (<span id="adminPendingCount">0</span>条待审核)</button>
+
+            <!-- 右侧圆形筛选按钮 -->
+            <div class="filter-dropdown-wrap">
+                <button type="button" id="eventsFilterBtn" class="filter-circle-btn" aria-label="筛选">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filter" viewBox="0 0 16 16">
+                        <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
+                    </svg>
+                </button>
+
+                <!-- 下弹筛选面板 -->
+                <div class="filter-dropdown-menu" id="eventsFilterMenu" style="display: none;">
+                    <div class="filter-menu-group">
+                        <label>标签分类</label>
+                        <select id="eventsTagFilter" class="filter-select">
+                            <option value="all">全部标签</option>
+                            <option value="校园活动">校园活动</option>
+                            <option value="学术讲座">学术讲座</option>
+                            <option value="考试安排">考试安排</option>
+                            <option value="假期通知">假期通知</option>
+                            <option value="其它">其它</option>
+                        </select>
+                    </div>
+                    <div class="filter-menu-group">
+                        <label>时间范围</label>
+                        <select id="eventsTimeFilter" class="filter-select">
+                            <option value="all">全部时间</option>
+                            <option value="week">本周</option>
+                            <option value="month">本月</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-        </section>
-        <div id="filterContainer"></div>
+        </div>
+
         <div id="allEvents" class="events-list"></div>
-        <button class="back-to-top" id="backToTop" title="返回顶部" aria-label="返回顶部">↑</button>
+        <!-- 2/3 触底预加载锚点 -->
+        <div id="infiniteScrollAnchor" style="height: 20px;"></div>
     </main>
+
+    <!-- 金色悬浮 + 号大事记按钮 -->
+    <button type="button" id="fabEventBtn" class="fab-btn fab-btn-gold" aria-label="大事记操作" title="大事记操作">+</button>
+
+    <!-- 管理员选择操作弹窗 -->
+    <div class="modal-overlay" id="eventAdminChoiceModal" style="display: none;">
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3>⭐ 大事记管理菜单</h3>
+                <button class="modal-close" id="closeAdminChoiceModal">&times;</button>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 12px; padding: 20px 0;">
+                <button type="button" id="choiceCreateEventBtn" class="publish-btn-gold" style="width: 100%; padding: 12px;">✨ 投稿 / 新建大事记</button>
+                <button type="button" id="choiceAuditEventsBtn" class="btn" style="width: 100%; padding: 12px; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-weight: 600; cursor: pointer;" onclick="location.href='admin-events.html'">📋 审核待处理大事记</button>
+            </div>
+        </div>
+    </div>
 
     <div id="submitEventModal" class="modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
         <div class="modal-content" style="background: var(--surface); padding: 20px; border-radius: 12px; max-width: 500px; width: 90%;">

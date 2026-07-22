@@ -369,14 +369,184 @@ window.toggleConfessionExpand = function(btn) {
     
     await loadHomeContent({ forceRefresh: true });
 
-    const fabBtn = document.getElementById('fabNewPostBtn');
-    if (fabBtn) {
-        fabBtn.addEventListener('click', () => {
+    // 首页多功能 FAB + 悬浮菜单与弹窗逻辑
+    const multiFabBtn = document.getElementById('fabHomeMultiBtn');
+    const choiceMenu = document.getElementById('fabChoiceMenu');
+    const btnOpenPost = document.getElementById('btnOpenHomePost');
+    const btnOpenConfession = document.getElementById('btnOpenHomeConfession');
+    const btnOpenEvent = document.getElementById('btnOpenHomeEvent');
+
+    const postModal = document.getElementById('homePostModal');
+    const closePostModalBtn = document.getElementById('closeHomePostModal');
+    const submitPostBtn = document.getElementById('submitHomePostBtn');
+
+    const confessionModal = document.getElementById('homeConfessionModal');
+    const closeConfessionModalBtn = document.getElementById('closeHomeConfessionModal');
+    const submitConfessionBtn = document.getElementById('submitHomeConfessionBtn');
+
+    const eventModal = document.getElementById('homeEventModal');
+    const closeEventModalBtn = document.getElementById('closeHomeEventModal');
+    const submitEventBtn = document.getElementById('submitHomeEventBtn');
+
+    if (multiFabBtn && choiceMenu) {
+        multiFabBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (!localStorage.getItem('campus_user')) {
                 location.href = 'login.html';
                 return;
             }
-            location.href = 'posts.html?new=1';
+            const isHidden = choiceMenu.style.display === 'none';
+            choiceMenu.style.display = isHidden ? 'flex' : 'none';
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!choiceMenu.contains(e.target) && e.target !== multiFabBtn) {
+                choiceMenu.style.display = 'none';
+            }
+        });
+    }
+
+    if (btnOpenPost && postModal) {
+        btnOpenPost.addEventListener('click', () => {
+            if (choiceMenu) choiceMenu.style.display = 'none';
+            postModal.style.display = 'flex';
+        });
+    }
+    if (closePostModalBtn && postModal) {
+        closePostModalBtn.addEventListener('click', () => postModal.style.display = 'none');
+    }
+    if (submitPostBtn) {
+        submitPostBtn.addEventListener('click', async () => {
+            const title = document.getElementById('homePostTitle')?.value.trim();
+            const content = document.getElementById('homePostContent')?.value.trim();
+            if (!title || !content) {
+                alert('请填写完整的标题和内容');
+                return;
+            }
+            submitPostBtn.disabled = true;
+            submitPostBtn.textContent = '正在发布...';
+            try {
+                const res = await fetch('/api/create-post', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-LG-Token': currentUser?.appToken || '',
+                        'X-Appwrite-Session': currentUser?.token || ''
+                    },
+                    body: JSON.stringify({ title, content, boardIds: ['main'] })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('帖子发布成功！');
+                    postModal.style.display = 'none';
+                    await loadHomeContent({ forceRefresh: true });
+                } else {
+                    alert(data.error || '发布失败');
+                }
+            } catch (err) {
+                alert('网络连接失败');
+            } finally {
+                submitPostBtn.disabled = false;
+                submitPostBtn.textContent = '发布帖子';
+            }
+        });
+    }
+
+    if (btnOpenConfession && confessionModal) {
+        btnOpenConfession.addEventListener('click', () => {
+            if (choiceMenu) choiceMenu.style.display = 'none';
+            confessionModal.style.display = 'flex';
+        });
+    }
+    if (closeConfessionModalBtn && confessionModal) {
+        closeConfessionModalBtn.addEventListener('click', () => confessionModal.style.display = 'none');
+    }
+
+    const homeConfessionContent = document.getElementById('homeConfessionContent');
+    const homeConfessionCharCount = document.getElementById('homeConfessionCharCount');
+    if (homeConfessionContent && homeConfessionCharCount) {
+        homeConfessionContent.addEventListener('input', () => {
+            homeConfessionCharCount.textContent = homeConfessionContent.value.length;
+        });
+    }
+
+    if (submitConfessionBtn && homeConfessionContent) {
+        submitConfessionBtn.addEventListener('click', async () => {
+            const content = homeConfessionContent.value.trim();
+            if (content.length < 2) {
+                alert('内容太少了');
+                return;
+            }
+            submitConfessionBtn.disabled = true;
+            submitConfessionBtn.textContent = '正在提交...';
+            try {
+                const res = await fetch('/api/create-confession', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    alert('匿名表白发布成功！');
+                    confessionModal.style.display = 'none';
+                    await loadHomeContent({ forceRefresh: true });
+                } else {
+                    alert(data.error || '表白发布失败');
+                }
+            } catch (err) {
+                alert('网络连接失败');
+            } finally {
+                submitConfessionBtn.disabled = false;
+                submitConfessionBtn.textContent = '匿名发布';
+            }
+        });
+    }
+
+    if (btnOpenEvent && eventModal) {
+        btnOpenEvent.addEventListener('click', () => {
+            if (choiceMenu) choiceMenu.style.display = 'none';
+            eventModal.style.display = 'flex';
+        });
+    }
+    if (closeEventModalBtn && eventModal) {
+        closeEventModalBtn.addEventListener('click', () => eventModal.style.display = 'none');
+    }
+    if (submitEventBtn) {
+        submitEventBtn.addEventListener('click', async () => {
+            const content = document.getElementById('homeEventContent')?.value.trim();
+            if (!content || content.length < 5) {
+                alert('描述内容至少需要 5 个字');
+                return;
+            }
+            submitEventBtn.disabled = true;
+            submitEventBtn.textContent = 'AI 审核中...';
+            try {
+                const res = await fetch('/api/events-submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-LG-Token': currentUser?.appToken || '',
+                        'X-Appwrite-Session': currentUser?.token || ''
+                    },
+                    body: JSON.stringify({
+                        studentId: currentUser?.studentId,
+                        content
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert('大事记投稿成功！提交初审完成');
+                    eventModal.style.display = 'none';
+                    await loadHomeContent({ forceRefresh: true });
+                } else {
+                    alert(data.error || '投稿失败');
+                }
+            } catch (err) {
+                alert('网络错误，请稍后再试');
+            } finally {
+                submitEventBtn.disabled = false;
+                submitEventBtn.textContent = '提交大事记';
+            }
         });
     }
 

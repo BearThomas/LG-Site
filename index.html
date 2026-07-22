@@ -61,8 +61,69 @@
             <div id="infiniteScrollAnchor" style="height: 20px;"></div>
         </div>
 
-        <!-- 移动端 FAB 快捷发帖悬浮按钮 -->
-        <button type="button" id="fabNewPostBtn" class="fab-btn" aria-label="发帖" title="发帖">+</button>
+        <!-- 首页多功能 FAB + 悬浮菜单与弹窗 -->
+        <div class="fab-menu-wrap" style="position: fixed; bottom: 85px; right: 20px; z-index: 1000;">
+            <!-- 弹出选择菜单 -->
+            <div class="fab-choice-menu" id="fabChoiceMenu" style="display: none; position: absolute; bottom: 65px; right: 0; flex-direction: column; gap: 10px; width: 140px;">
+                <button type="button" id="btnOpenHomePost" class="fab-choice-item item-blue" style="background: #3b82f6; color: white; border: none; padding: 10px 14px; border-radius: 20px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.88rem;">📄 发帖子</button>
+                <button type="button" id="btnOpenHomeConfession" class="fab-choice-item item-pink" style="background: #ec4899; color: white; border: none; padding: 10px 14px; border-radius: 20px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.88rem;">💖 写表白</button>
+                <button type="button" id="btnOpenHomeEvent" class="fab-choice-item item-gold" style="background: #f59e0b; color: white; border: none; padding: 10px 14px; border-radius: 20px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.88rem;">⭐ 记大事</button>
+            </div>
+            <!-- 圆形 FAB + 按钮 -->
+            <button type="button" id="fabHomeMultiBtn" class="fab-btn" aria-label="快捷新建" title="快捷新建" style="width: 52px; height: 52px; border-radius: 50%; border: none; background: linear-gradient(135deg, #3b82f6, #ec4899); color: white; font-size: 1.8rem; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;">+</button>
+        </div>
+
+        <!-- 1. 首页内联发帖弹窗 -->
+        <div class="modal-overlay" id="homePostModal" style="display: none;">
+            <div class="modal-container">
+                <div class="modal-header">
+                    <h3>📄 发布新帖子</h3>
+                    <button class="modal-close" id="closeHomePostModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="homePostTitle" placeholder="请输入帖子标题..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); margin-bottom: 10px; box-sizing: border-box;">
+                    <textarea id="homePostContent" placeholder="分享你的新鲜事或想法..." rows="6" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); resize: vertical; box-sizing: border-box;"></textarea>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 12px;">
+                        <button type="button" id="submitHomePostBtn" class="publish-btn-pink" style="background: #3b82f6;">发布帖子</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 首页内联表白弹窗 (纯文本) -->
+        <div class="modal-overlay" id="homeConfessionModal" style="display: none;">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h3>💖 匿名表白</h3>
+                    <button class="modal-close" id="closeHomeConfessionModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px;">勇敢说出你的心意，完全匿名，安全放心</p>
+                    <textarea id="homeConfessionContent" class="confession-textarea-modal" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="5"></textarea>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <span style="font-size: 0.8rem; color: var(--text-2);"><span id="homeConfessionCharCount">0</span>/300</span>
+                        <button type="button" id="submitHomeConfessionBtn" class="publish-btn-pink">匿名发布</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 首页内联大事记投稿弹窗 -->
+        <div class="modal-overlay" id="homeEventModal" style="display: none;">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h3>⭐ 投稿校园大事记</h3>
+                    <button class="modal-close" id="closeHomeEventModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px;">记录校园重大事件，提交后由系统整理与初审</p>
+                    <textarea id="homeEventContent" class="confession-textarea-modal" placeholder="请描述事件详情（例如：2026年6月26日初三同学奔赴中考...）" maxlength="500" rows="5"></textarea>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                        <button type="button" id="submitHomeEventBtn" class="publish-btn-gold">提交大事记</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <script src="./js/nav-bar.js?v=20260720-4"></script>
         <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>

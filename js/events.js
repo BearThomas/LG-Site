@@ -350,105 +350,83 @@ const EventsManager = (function() {
         }).join('');
     }
 
-    submitBtn.addEventListener('click', () => {
-        submitModal.style.display = 'flex';
-        contentInput.value = '';
-    });
+    // 金色 FAB + 号按钮与管理员菜单/投稿弹窗逻辑
+    const fabBtn = document.getElementById('fabEventBtn');
+    const choiceModal = document.getElementById('eventAdminChoiceModal');
+    const closeChoiceModalBtn = document.getElementById('closeAdminChoiceModal');
+    const choiceCreateBtn = document.getElementById('choiceCreateEventBtn');
 
-    cancelSubmitBtn.addEventListener('click', () => {
-        submitModal.style.display = 'none';
-    });
-
-    confirmSubmitBtn.addEventListener('click', async () => {
-        const val = contentInput.value.trim();
-        if (val.length < 5 || val.length > 500) {
-            alert('字数需在 5 到 500 之间');
-            return;
-        }
-
-        const user = getSavedUser();
-        if (!user) {
-            alert('请先登录后投稿');
-            location.href = 'login.html';
-            return;
-        }
-
-        confirmSubmitBtn.disabled = true;
-        confirmSubmitBtn.textContent = 'AI 审核中...';
-
-        try {
-            const res = await fetch('/api/events-submit', {
-                method: 'POST',
-                headers: authHeaders(user, true),
-                body: JSON.stringify({
-                    studentId: user.studentId,
-                    appToken: user.appToken || '',
-                    sessionSecret: user.token || '',
-                    content: val
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                alert('投稿成功！已通过初审，请等待管理员复核。');
-                submitModal.style.display = 'none';
-                
-                // 保存到本地记录
-                const records = readLocalRecords();
-                records.unshift({
-                    id: data.eventId,
-                    content: val,
-                    title: data.data?.title || '无标题',
-                    date: new Date().toISOString(),
-                    status: data.data?.status || 'pending_admin'
-                });
-                writeLocalRecords(records);
-            } else {
-                alert('投稿失败: ' + (data.error || '未知错误'));
+    if (fabBtn) {
+        fabBtn.addEventListener('click', () => {
+            const user = getSavedUser();
+            if (!user) {
+                alert('请先登录');
+                location.href = 'login.html';
+                return;
             }
-        } catch(e) {
-            alert('网络错误，请稍后再试');
-        } finally {
-            confirmSubmitBtn.disabled = false;
-            confirmSubmitBtn.textContent = '提交审核';
-        }
-    });
 
-    mySubmissionsBtn.addEventListener('click', async () => {
-        recordsModal.style.display = 'flex';
-        const records = readLocalRecords();
-        renderSubmissionRecords(records);
-        if (!records.length) return;
+            const isAdmin = user.role === 'admin' || user.permissions === 255;
+            if (isAdmin && choiceModal) {
+                choiceModal.style.display = 'flex';
+            } else if (submitModal) {
+                submitModal.style.display = 'flex';
+                if (contentInput) contentInput.value = '';
+            }
+        });
+    }
 
-        const user = getSavedUser();
-        if (!user) return;
+    if (closeChoiceModalBtn && choiceModal) {
+        closeChoiceModalBtn.addEventListener('click', () => {
+            choiceModal.style.display = 'none';
+        });
+    }
 
-        recordsList.insertAdjacentHTML('afterbegin', '<div id="submissionSyncState" style="font-size: 0.82rem; color: var(--text-muted); padding-bottom: 10px;">正在同步审核状态…</div>');
-        try {
-            const ids = records.map(record => record.id).filter(Boolean).join(',');
-            const response = await fetch(`/api/events-submit?ids=${encodeURIComponent(ids)}`, {
-                headers: authHeaders(user)
-            });
-            const data = await response.json().catch(() => ({}));
-            if (!response.ok) throw new Error(data.error || '状态同步失败');
+    if (choiceCreateBtn && submitModal && choiceModal) {
+        choiceCreateBtn.addEventListener('click', () => {
+            choiceModal.style.display = 'none';
+            submitModal.style.display = 'flex';
+            if (contentInput) contentInput.value = '';
+        });
+    }
 
-            const serverRecords = new Map((data.submissions || []).map(item => [item.id, item]));
-            const updated = records.map(record => {
-                const serverRecord = serverRecords.get(record.id);
-                if (!serverRecord) return { ...record, statusLabel: '记录暂未查到，请稍后重试' };
-                return {
-                    ...record,
-                    title: serverRecord.title || record.title,
-                    status: serverRecord.status || record.status
-                };
-            });
-            writeLocalRecords(updated);
-            renderSubmissionRecords(updated);
-        } catch (error) {
-            document.getElementById('submissionSyncState').textContent = error.message;
-        }
-    });
+    // 极简工具栏筛选与搜索处理
+    const searchInput = document.getElementById('eventsSearchInput');
+    const searchBtn = document.getElementById('eventsSearchBtn');
+    const filterBtn = document.getElementById('eventsFilterBtn');
+    const filterMenu = document.getElementById('eventsFilterMenu');
+    const tagFilter = document.getElementById('eventsTagFilter');
+    const timeFilter = document.getElementById('eventsTimeFilter');
 
-    closeSubmissionsBtn.addEventListener('click', () => {
-        recordsModal.style.display = 'none';
-    });
+    function applyEventsFilter() {
+        const keyword = searchInput ? searchInput.value.trim() : '';
+        const tag = tagFilter ? tagFilter.value : 'all';
+        const dateRange = timeFilter ? timeFilter.value : 'all';
+        renderAllEvents('#allEvents', { keyword, tag, dateRange });
+    }
+
+    if (searchInput) {
+        let timer;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(timer);
+            timer = setTimeout(applyEventsFilter, 300);
+        });
+    }
+    if (searchBtn) searchBtn.addEventListener('click', applyEventsFilter);
+    if (tagFilter) tagFilter.addEventListener('change', applyEventsFilter);
+    if (timeFilter) timeFilter.addEventListener('change', applyEventsFilter);
+
+    if (filterBtn && filterMenu) {
+        filterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = filterMenu.style.display === 'none';
+            filterMenu.style.display = isHidden ? 'flex' : 'none';
+            filterBtn.classList.toggle('active', isHidden);
+        });
+        document.addEventListener('click', (e) => {
+            if (!filterMenu.contains(e.target) && e.target !== filterBtn) {
+                filterMenu.style.display = 'none';
+                filterBtn.classList.remove('active');
+            }
+        });
+    }
 })();

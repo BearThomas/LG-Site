@@ -58,44 +58,77 @@
 
     <!-- 主内容区 -->
     <div class="confession-container">
-        <!-- 页面头部 -->
-        <div class="confession-header">
-            <h1>表白墙</h1>
-            <p class="confession-subtitle">勇敢说出来，完全匿名，只有你知道</p>
-        </div>
+        <!-- 极简一体化搜索与筛选栏 -->
+        <div class="confession-mobile-toolbar">
+            <div class="search-bar-group">
+                <input type="text" id="confessionSearchInput" class="connected-search-input" placeholder="搜索表白...">
+                <button type="button" id="confessionSearchBtn" class="connected-search-btn" aria-label="搜索">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                    </svg>
+                </button>
+            </div>
 
-        <!-- 发表表白卡片 -->
-        <div class="publish-card">
-            <div class="publish-header">
-                <svg fill="#60a5fa" width="20px" height="20px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22,7.24a1,1,0,0,0-.29-.71L17.47,2.29A1,1,0,0,0,16.76,2a1,1,0,0,0-.71.29L13.22,5.12h0L2.29,16.05a1,1,0,0,0-.29.71V21a1,1,0,0,0,1,1H7.24A1,1,0,0,0,8,21.71L18.87,10.78h0L21.71,8a1.19,1.19,0,0,0,.22-.33,1,1,0,0,0,0-.24.7.7,0,0,0,0-.14ZM6.83,20H4V17.17l9.93-9.93,2.83,2.83ZM18.17,8.66,15.34,5.83l1.42-1.41,2.82,2.82Z"/></svg>
-                <span>写下你的心意</span>
-            </div>
-            <textarea id="confessionContent" class="confession-textarea" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="3"></textarea>
-            <div class="publish-footer">
-                <span class="char-count"><span id="charCount">0</span>/300</span>
-                <button id="publishBtn" class="publish-btn">匿名发布</button>
-            </div>
-            <div class="login-tip" id="loginTip" style="display: none;">
-                <p>请先<a href="login.html">登录</a>后发表表白</p>
-            </div>
-        </div>
+            <!-- 右侧圆形筛选按钮 -->
+            <div class="filter-dropdown-wrap">
+                <button type="button" id="confessionFilterBtn" class="filter-circle-btn" aria-label="筛选">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filter" viewBox="0 0 16 16">
+                        <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
+                    </svg>
+                </button>
 
-        <!-- 排序栏 -->
-        <div class="sort-bar">
-            <button class="sort-btn active" data-sort="latest"> 最新</button>
-            <button class="sort-btn" data-sort="hot"> 最旧</button>
+                <!-- 下弹筛选面板 -->
+                <div class="filter-dropdown-menu" id="confessionFilterMenu" style="display: none;">
+                    <div class="filter-menu-group">
+                        <label>时间范围</label>
+                        <select id="confessionTimeFilter" class="filter-select">
+                            <option value="all">全部时间</option>
+                            <option value="today">今天</option>
+                            <option value="week">本周</option>
+                            <option value="month">本月</option>
+                        </select>
+                    </div>
+                    <div class="filter-menu-group">
+                        <label>排序规则</label>
+                        <select id="confessionSortFilter" class="filter-select">
+                            <option value="new">最新发布</option>
+                            <option value="hot">热门排行</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- 表白列表 -->
         <div class="confession-list" id="confessionList">
             <div class="feed-initial-loader" role="status">
                 <span class="feed-initial-orbit"></span>
-                
             </div>
         </div>
 
-        <!-- 分页器 -->
-        <div class="pagination" id="pagination"></div>
+        <!-- 2/3 触底预加载锚点 -->
+        <div id="infiniteScrollAnchor" style="height: 20px;"></div>
+    </div>
+
+    <!-- 粉色悬浮 + 号发表白按钮 -->
+    <button type="button" id="fabConfessionBtn" class="fab-btn fab-btn-pink" aria-label="写表白" title="写表白">+</button>
+
+    <!-- 纯文本表白弹窗 (不含 Markdown) -->
+    <div class="modal-overlay" id="createConfessionModal" style="display: none;">
+        <div class="modal-container modal-small">
+            <div class="modal-header">
+                <h3>💖 匿名表白</h3>
+                <button class="modal-close" id="closeConfessionModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px;">勇敢说出你的心意，完全匿名，安全放心</p>
+                <textarea id="confessionContent" class="confession-textarea-modal" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="5"></textarea>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                    <span style="font-size: 0.8rem; color: var(--text-2);"><span id="charCount">0</span>/300</span>
+                    <button type="button" id="publishBtn" class="publish-btn-pink">匿名发布</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 举报弹窗 -->

@@ -1201,3 +1201,68 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   cursor: pointer;
   margin-left: 4px;
 }
+
+/* FAB Colors & Plain Text Modal Styles */
+.fab-btn-pink {
+  background: #ec4899 !important;
+  color: white !important;
+}
+
+.fab-btn-gold {
+  background: #f59e0b !important;
+  color: white !important;
+}
+
+.publish-btn-pink {
+  background: #ec4899;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.publish-btn-pink:hover {
+  opacity: 0.9;
+}
+
+.publish-btn-gold {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-pill);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.publish-btn-gold:hover {
+  opacity: 0.9;
+}
+
+.confession-textarea-modal {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.confession-mobile-toolbar,
+.events-mobile-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+}
