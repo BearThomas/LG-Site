@@ -1482,15 +1482,43 @@
 
 /* 帖子卡片美化微调 */
 .post-card {
-    border: 1px solid rgba(0, 0, 0, 0.03) !important;
-    border-radius: var(--radius-lg) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .post-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    border-color: rgba(59, 130, 246, 0.1) !important;
+    border-color: rgba(59, 130, 246, 0.1);
+}
+
+@media (max-width: 900px) {
+    .posts-main,
+    .posts-container,
+    .posts-layout,
+    .posts-content {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .post-card {
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border) !important;
+        padding: 14px 16px !important;
+        box-sizing: border-box !important;
+        background: var(--surface) !important;
+    }
 }
 
