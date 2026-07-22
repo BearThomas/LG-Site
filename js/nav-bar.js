@@ -53,47 +53,37 @@
         const messagesLink = document.getElementById('navMessages');
         if (!navBar || !userArea) return;
 
-        // 移除底部导航栏中的“帮助”按钮，固定保留 4 个按钮：首页、帖子、表白墙、大事记
-        navBar.querySelectorAll('.nav-bar-item').forEach(item => {
-            const onclick = (item.getAttribute('onclick') || '').toLowerCase();
-            if (onclick.includes('docs')) {
-                item.remove();
-            }
-        });
+        // 统一构建 4 大主导航按键：推荐 | 最新帖子 | 大事记 | 表白墙
+        navBar.replaceChildren();
 
-        if (!navBar.querySelector('[data-nav-events]')) {
-            const eventsItem = document.createElement('li');
-            eventsItem.className = 'nav-bar-item';
-            eventsItem.dataset.navEvents = 'true';
-            eventsItem.innerHTML = `${primaryNavIcons.events}<span>大事记</span>`;
-            eventsItem.addEventListener('click', () => { location.href = 'events.html'; });
-            navBar.appendChild(eventsItem);
-        }
+        const items = [
+            { key: 'home', title: '推荐', url: 'index.html', icon: primaryNavIcons.home },
+            { key: 'posts', title: '最新帖子', url: 'posts.html', icon: primaryNavIcons.posts },
+            { key: 'events', title: '大事记', url: 'events.html', icon: primaryNavIcons.events },
+            { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession }
+        ];
 
-        normalizePrimaryNavIcons(navBar);
-
-        // 动态设置选中态高亮 (active)
         const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-        navBar.querySelectorAll('.nav-bar-item').forEach(item => {
-            item.classList.remove('active');
-            const onclick = (item.getAttribute('onclick') || '').toLowerCase();
-            const isEvents = item.dataset.navEvents === 'true' || onclick.includes('events');
-            const isConfession = onclick.includes('confession');
-            const isPosts = onclick.includes('posts');
-            const isHome = onclick.includes("'./'") || onclick.includes('"./"') || onclick.includes('index') || onclick === '';
 
-            if (isEvents && currentPage.includes('events')) {
-                item.classList.add('active');
-            } else if (isConfession && currentPage.includes('confession')) {
-                item.classList.add('active');
-            } else if (isPosts && (currentPage.includes('posts') || currentPage.includes('post.'))) {
-                item.classList.add('active');
-            } else if (isHome && (currentPage === '' || currentPage === 'index.html' || currentPage === 'index')) {
-                item.classList.add('active');
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'nav-bar-item';
+            li.innerHTML = `${item.icon}<span>${item.title}</span>`;
+            li.addEventListener('click', () => { location.href = item.url; });
+
+            const isCurrent = (item.key === 'home' && (currentPage === '' || currentPage === 'index.html' || currentPage === 'index'))
+                || (item.key === 'posts' && (currentPage.includes('posts') || currentPage.includes('post.')))
+                || (item.key === 'events' && currentPage.includes('events'))
+                || (item.key === 'confession' && currentPage.includes('confession'));
+
+            if (isCurrent) {
+                li.classList.add('active');
             }
+
+            navBar.appendChild(li);
         });
 
-        if (messagesLink && messagesLink.parentElement === navBar) {
+        if (messagesLink) {
             messagesLink.classList.remove('nav-bar-item');
             messagesLink.classList.add('notification-center-link');
             messagesLink.setAttribute('role', 'link');
@@ -117,8 +107,9 @@
     const isAndroidApp = !!(window.AndroidBridge || window.webkit?.messageHandlers?.AndroidBridge);
 
     function setupDropdownMenu() {
-        if (!dropdownMenu) return;
-        dropdownMenu.replaceChildren();
+        const menu = document.getElementById('dropdownMenu');
+        if (!menu) return;
+        menu.replaceChildren();
 
         const profileLink = document.createElement('a');
         profileLink.href = 'profile.html';
@@ -136,17 +127,17 @@
         helpLink.href = 'docs.html';
         helpLink.textContent = '帮助';
 
-        dropdownMenu.appendChild(profileLink);
-        dropdownMenu.appendChild(messagesLink);
-        dropdownMenu.appendChild(settingsLink);
-        dropdownMenu.appendChild(helpLink);
+        menu.appendChild(profileLink);
+        menu.appendChild(messagesLink);
+        menu.appendChild(settingsLink);
+        menu.appendChild(helpLink);
 
         if (!isAndroidApp) {
             const downloadLink = document.createElement('a');
             downloadLink.href = 'download.html';
             downloadLink.className = 'download-app-link';
             downloadLink.textContent = '下载 APP';
-            dropdownMenu.appendChild(downloadLink);
+            menu.appendChild(downloadLink);
         }
 
         const logoutLink = document.createElement('a');
@@ -180,8 +171,10 @@
             location.reload();
         });
 
-        dropdownMenu.appendChild(logoutLink);
+        menu.appendChild(logoutLink);
     }
+
+    setupDropdownMenu();
 
     setupDropdownMenu();
 
