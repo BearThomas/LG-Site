@@ -24,7 +24,7 @@ for (const name of directories) {
 
 for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
   if (!entry.isFile()) continue;
-  if (/\.html?$/i.test(entry.name) || /\.apk$/i.test(entry.name) || /^_headers$|^_redirects$/.test(entry.name) || /^[a-f0-9]{32}\.txt$/i.test(entry.name)) {
+  if (/\.(html?|json|js|apk)$/i.test(entry.name) || /^_headers$|^_redirects$|^sw\.js$|^manifest\.json$/.test(entry.name) || /^[a-f0-9]{32}\.txt$/i.test(entry.name)) {
     fs.copyFileSync(path.join(root, entry.name), path.join(output, entry.name));
   }
 }
