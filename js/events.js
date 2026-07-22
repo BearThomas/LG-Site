@@ -248,7 +248,7 @@ const EventsManager = (function() {
     const contentInput = document.getElementById('eventSubmitContent');
     const recordsList = document.getElementById('mySubmissionsList');
 
-    if (!submitBtn || !mySubmissionsBtn || !submitModal || !recordsModal) return;
+    if (!submitModal || !recordsModal) return;
 
     function getSavedUser() {
         try {

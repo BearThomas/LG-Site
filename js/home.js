@@ -395,12 +395,12 @@ window.toggleConfessionExpand = function(btn) {
                 location.href = 'login.html';
                 return;
             }
-            const isHidden = choiceMenu.style.display === 'none';
+            const isHidden = choiceMenu.style.display === 'none' || getComputedStyle(choiceMenu).display === 'none';
             choiceMenu.style.display = isHidden ? 'flex' : 'none';
         });
 
         document.addEventListener('click', (e) => {
-            if (!choiceMenu.contains(e.target) && e.target !== multiFabBtn) {
+            if (!choiceMenu.contains(e.target) && !multiFabBtn.contains(e.target)) {
                 choiceMenu.style.display = 'none';
             }
         });
