@@ -64,6 +64,24 @@
         ];
 
         const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+        const isStandardPage = /^(index\.html?|posts\.html?|events\.html?|confession\.html?|)$/i.test(currentPage);
+
+        if (!isStandardPage) {
+            const titleBar = document.querySelector('.title-bar');
+            if (titleBar) {
+                const backBtn = document.createElement('div');
+                backBtn.className = 'mobile-back-btn';
+                backBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-chevron-left" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/></svg>`;
+                backBtn.onclick = function() {
+                    if (document.referrer && document.referrer !== window.location.href) {
+                        window.history.back();
+                    } else {
+                        window.location.href = './'; 
+                    }
+                };
+                titleBar.insertBefore(backBtn, titleBar.firstChild);
+            }
+        }
 
         items.forEach(item => {
             const li = document.createElement('li');

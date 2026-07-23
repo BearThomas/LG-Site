@@ -237,6 +237,10 @@ body::before {
 }
 .title-bar img:hover { opacity: 1; }
 
+.mobile-back-btn {
+  display: none;
+}
+
 .site-title {
   font-size: 1.55rem;
   color: var(--text);
@@ -959,7 +963,25 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     box-sizing: border-box !important;
   }
   .title-bar > img { display: none !important; }
-  .site-title { font-size: 1.15rem !important; margin-left: 0 !important; font-weight: 700 !important; }
+  .mobile-back-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    color: var(--text);
+    z-index: 1001;
+    margin-left: -8px; /* Offset the container padding slightly */
+  }
+  .site-title { 
+    font-size: 1.15rem !important; 
+    margin-left: 0 !important; 
+    font-weight: 700 !important;
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+  }
   .user-area { margin-left: auto !important; display: flex !important; align-items: center !important; }
   .notification-center-link,
   .theme-toggle,
