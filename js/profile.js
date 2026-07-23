@@ -7,7 +7,8 @@ import {
     COLLECTION_USERS,
     DATABASE_ID,
     COLLECTION_POSTS,
-    COLLECTION_COMMENTS
+    COLLECTION_COMMENTS,
+    setupImageUpload
 } from './shared.js';
 
 const client = new Client().setEndpoint(APPWRITE_ENDPOINT).setProject(APPWRITE_PROJECT_ID);
@@ -257,6 +258,15 @@ function bindEvents() {
     document.getElementById('avatarInput')?.addEventListener('input', (e) => {
         const currentName = document.getElementById('nameInput').value;
         updateAvatarPreview(currentName, e.target.value);
+    });
+
+    setupImageUpload('uploadAvatarBtn', 'avatarFileInput', null, currentUser, (url) => {
+        const avatarInput = document.getElementById('avatarInput');
+        if (avatarInput) {
+            avatarInput.value = url;
+            const currentName = document.getElementById('nameInput')?.value || '';
+            updateAvatarPreview(currentName, url);
+        }
     });
 }
 

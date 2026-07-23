@@ -187,9 +187,9 @@ export function getUserFromCache(userCache, userId) {
 export function setupImageUpload(btnId, inputId, textareaId, currentUser, onUploadSuccess) {
     const uploadBtn = document.getElementById(btnId);
     const fileInput = document.getElementById(inputId);
-    const textarea = document.getElementById(textareaId);
+    const textarea = textareaId ? document.getElementById(textareaId) : null;
     
-    if (!uploadBtn || !fileInput || !textarea) return;
+    if (!uploadBtn || !fileInput) return;
 
     uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', async (e) => {
@@ -222,19 +222,22 @@ export function setupImageUpload(btnId, inputId, textareaId, currentUser, onUplo
 
             if (onUploadSuccess) onUploadSuccess(data.url);
 
-            const insertText = `\n\n![图片](${data.url})\n\n`;
-            
-            if (textarea.selectionStart || textarea.selectionStart === 0) {
-                const startPos = textarea.selectionStart;
-                const endPos = textarea.selectionEnd;
-                textarea.value = textarea.value.substring(0, startPos) + insertText + textarea.value.substring(endPos, textarea.value.length);
-                textarea.selectionStart = startPos + insertText.length;
-                textarea.selectionEnd = startPos + insertText.length;
-            } else {
-                textarea.value += insertText;
+            if (textarea) {
+                const insertText = `\n\n![图片](${data.url})\n\n`;
+                
+                if (textarea.selectionStart || textarea.selectionStart === 0) {
+                    const startPos = textarea.selectionStart;
+                    const endPos = textarea.selectionEnd;
+                    textarea.value = textarea.value.substring(0, startPos) + insertText + textarea.value.substring(endPos, textarea.value.length);
+                    textarea.selectionStart = startPos + insertText.length;
+                    textarea.selectionEnd = startPos + insertText.length;
+                } else {
+                    textarea.value += insertText;
+                }
+                
+                textarea.dispatchEvent(new Event('input'));
+                textarea.focus();
             }
-            
-            textarea.dispatchEvent(new Event('input'));
             
         } catch (err) {
             alert(err.message || '图片上传异常');
