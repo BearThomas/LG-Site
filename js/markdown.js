@@ -7,15 +7,30 @@ marked.setOptions({
 });
 
 const renderer = new marked.Renderer();
+
 renderer.image = function(token) {
     const href = token.href || '';
     const title = token.title || '';
     const text = token.text || '';
     const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(href);
     if (isVideo) {
-        return `<video src="${href}" controls playsinline style="max-width: 100%; max-height: 500px; border-radius: 8px; margin: 10px 0;"></video>`;
+        return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><video src="${href}" controls playsinline style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); background: var(--surface-2);"></video></div>`;
     }
-    return `<img src="${href}" alt="${text}" title="${title}" style="max-width: 100%; border-radius: 8px; margin: 10px 0;" />`;
+    return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="${text}" title="${title}" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></div>`;
+};
+
+renderer.link = function(token) {
+    const href = token.href || '';
+    const text = token.text || '';
+    const isImage = /\.(png|jpe?g|gif|webp|bmp)(\?.*)?$/i.test(href);
+    
+    // 如果它是一个纯链接且指向图片
+    if (isImage && text === href) {
+        return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="图片" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></div>`;
+    }
+    
+    // 默认的 link 渲染
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
 };
 marked.use({ renderer });
 

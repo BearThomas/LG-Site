@@ -12,6 +12,7 @@ import {
     DATABASE_ID,
     decryptText,
     escapeHtml,
+    formatFeedContent,
     formatBoardName,
     formatTime,
     getPostAuthorDisplay,
@@ -267,23 +268,28 @@ function renderMixedFeedItem(item) {
             <div class="event-card feed-card-event">
                 <span class="event-tag">${escapeHtml(item.tag || '大事记')}</span>
                 <div class="event-title">${escapeHtml(item.title)}</div>
-                <div class="event-desc">${escapeHtml(item.desc || '')}</div>
+                <div class="event-desc">${formatFeedContent(item.desc || '', text => escapeHtml(text))}</div>
                 <div class="event-date">⭐ 本周大事记 · ${formatTime(new Date(item.date || item.$createdAt))}</div>
             </div>
         `;
     }
 
     if (item.type === 'confession') {
-        const fullContent = escapeHtml(item.content || '');
-        const isLong = fullContent.length > 80;
-        const shortContent = isLong ? fullContent.slice(0, 80) + '...' : fullContent;
+        const processedHtml = formatFeedContent(item.content || '', (cleanText) => {
+            const isLong = cleanText.length > 80;
+            const shortText = isLong ? escapeHtml(cleanText.slice(0, 80)) + '...' : escapeHtml(cleanText);
+            const fullText = escapeHtml(cleanText);
+            return `
+                <div class="confession-text" data-full-text="${fullText.replace(/"/g, '&quot;')}" data-short-text="${shortText.replace(/"/g, '&quot;')}">
+                    <span class="content-body">${shortText}</span>
+                    ${isLong ? '<span class="expand-confession-btn" onclick="window.toggleConfessionExpand(this)">展开全文</span>' : ''}
+                </div>
+            `;
+        });
 
         return `
             <div class="confession-card feed-card-confession">
-                <div class="confession-text" data-full-text="${fullContent.replace(/"/g, '&quot;')}" data-short-text="${shortContent.replace(/"/g, '&quot;')}">
-                    <span class="content-body">${shortContent}</span>
-                    ${isLong ? '<span class="expand-confession-btn" onclick="window.toggleConfessionExpand(this)">展开全文</span>' : ''}
-                </div>
+                ${processedHtml}
                 <div class="confession-footer" style="display: flex; justify-content: space-between; align-items: center; color: var(--text-secondary); font-size: 0.82rem; margin-top: 6px;">
                     <span style="display: flex; align-items: center; gap: 4px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-envelope-heart" viewBox="0 0 16 16">
@@ -317,7 +323,7 @@ function renderMixedFeedItem(item) {
                 </div>
             </div>
             <div class="post-title">${isPinned ? '<span class="post-badge pinned-badge" style="margin-right:6px;">置顶</span>' : ''}${escapeHtml(item.title || '无标题')}</div>
-            <div class="post-content">${escapeHtml(markdownToPreview(item.content || '', 100))}</div>
+            <div class="post-content">${formatFeedContent(item.content || '', text => escapeHtml(markdownToPreview(text, 100)))}</div>
             <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem; margin-top: 8px;">
                 <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">

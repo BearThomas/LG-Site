@@ -26,6 +26,93 @@ export async function decryptText(value) {
     return ENCRYPTED_BACKUP_VALUE.test(text) ? null : value;
 }
 
+
+
+export function formatFeedContent(rawContent, processTextFn) {
+    if (!rawContent) return '';
+    const imgRegex = /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s]*)?)/gi;
+    
+    // 1. 提取图片链接
+    const images = [];
+    let match;
+    while ((match = imgRegex.exec(rawContent)) !== null) {
+        images.push(match[1]);
+    }
+    
+    // 2. 从原文本中移除图片链接，避免占据预览截断空间
+    const cleanText = rawContent.replace(imgRegex, '').trim();
+    
+    // 3. 处理纯文本 (通常是传入 markdownToPreview 或截断 + escapeHtml)
+    let processedHtml = processTextFn ? processTextFn(cleanText) : escapeHtml(cleanText);
+    
+    // 4. 追加图片
+    if (images.length > 0) {
+        const imagesHtml = images.map(url => `
+            <div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;">
+                <img src="${escapeHtml(url)}" class="feed-image" onclick="if(window.previewImage){window.previewImage('${escapeHtml(url)}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" />
+            </div>
+        `).join('');
+        processedHtml += `<div class="feed-images-wrapper" style="margin-top: 10px;">${imagesHtml}</div>`;
+    }
+    
+    return processedHtml;
+}
+
+// 全局图片预览功能
+if (typeof window !== 'undefined') {
+    window.previewImage = function(url) {
+        let overlay = document.getElementById('global-image-preview-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'global-image-preview-overlay';
+            Object.assign(overlay.style, {
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100vw',
+                height: '100vh',
+                backgroundColor: 'rgba(0,0,0,0.9)',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: '999999',
+                cursor: 'zoom-out',
+                opacity: '0',
+                transition: 'opacity 0.3s ease'
+            });
+            
+            const img = document.createElement('img');
+            img.id = 'global-image-preview-img';
+            Object.assign(img.style, {
+                maxWidth: '95%',
+                maxHeight: '95%',
+                objectFit: 'contain',
+                borderRadius: '8px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                transform: 'scale(0.95)',
+                transition: 'transform 0.3s ease'
+            });
+            
+            overlay.appendChild(img);
+            document.body.appendChild(overlay);
+            
+            overlay.onclick = function() {
+                overlay.style.opacity = '0';
+                img.style.transform = 'scale(0.95)';
+                setTimeout(() => { overlay.style.display = 'none'; }, 300);
+            };
+        }
+        
+        const img = document.getElementById('global-image-preview-img');
+        img.src = url;
+        overlay.style.display = 'flex';
+        // 强制重绘以触发动画
+        void overlay.offsetWidth;
+        overlay.style.opacity = '1';
+        img.style.transform = 'scale(1)';
+    };
+}
+
 export function formatTime(date) {
     const parsedDate = date instanceof Date ? date : new Date(date);
     if (Number.isNaN(parsedDate.getTime())) return '';

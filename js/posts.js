@@ -11,6 +11,7 @@ import {
     DATABASE_ID,
     decryptText,
     escapeHtml,
+    formatFeedContent,
     formatTime,
     getPostAuthorDisplay,
     normalizeUserId,
@@ -438,7 +439,7 @@ function renderPosts(posts, runtimeCache) {
                     </div>
                 </div>
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
-                <div class="post-content-preview">${escapeHtml(markdownToPreview(post.content || '', 150))}</div>
+                <div class="post-content-preview">${formatFeedContent(post.content || '', text => escapeHtml(markdownToPreview(text, 150)))}</div>
                 <div class="post-footer" style="display: flex; gap: 16px; color: var(--text-secondary); font-size: 0.85rem;">
                     <span class="post-stat" aria-label="点赞数" style="display: flex; align-items: center; gap: 4px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
