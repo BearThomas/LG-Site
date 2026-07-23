@@ -45,14 +45,18 @@ export function formatFeedContent(rawContent, processTextFn) {
     // 3. 处理纯文本 (通常是传入 markdownToPreview 或截断 + escapeHtml)
     let processedHtml = processTextFn ? processTextFn(cleanText) : escapeHtml(cleanText);
     
-    // 4. 追加图片
+    // 4. 追加图片 (横向滑动图库)
     if (images.length > 0) {
         const imagesHtml = images.map(url => `
-            <div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;">
-                <img src="${escapeHtml(url)}" class="feed-image" onclick="if(window.previewImage){window.previewImage('${escapeHtml(url)}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" />
-            </div>
+            <img src="${escapeHtml(url)}" onclick="if(window.previewImage){window.previewImage('${escapeHtml(url)}'); event.stopPropagation();}" loading="lazy" style="flex: 0 0 auto; max-height: 160px; width: auto; max-width: 85vw; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2); object-fit: cover; object-position: top;" />
         `).join('');
-        processedHtml += `<div class="feed-images-wrapper" style="margin-top: 10px;">${imagesHtml}</div>`;
+        
+        // 使用 -webkit-scrollbar 隐藏滚动条需要写在 CSS 里，这里用内联样式尽可能控制
+        processedHtml += `
+            <div class="feed-images-wrapper" style="display: flex; overflow-x: auto; gap: 8px; margin-top: 10px; padding-bottom: 4px; scroll-snap-type: x mandatory; -ms-overflow-style: none; scrollbar-width: none;">
+                ${imagesHtml}
+            </div>
+        `;
     }
     
     return processedHtml;
