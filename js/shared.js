@@ -159,9 +159,13 @@ export function formatNameWithYear(name, studentId) {
 }
 
 export function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text || '';
-    return div.innerHTML;
+    if (text === undefined || text === null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 export function normalizeUserId(userId) {

@@ -234,6 +234,34 @@ async function loadHomeContent({ forceRefresh = false } = {}) {
         return timeB - timeA;
     });
 
+    const uids = new Set(allItems.map(p => (p.authorId || '').toString().trim()).filter(Boolean));
+    if (uids.size > 0) {
+        try {
+            const queries = [Query.limit(100)];
+            const uidArray = Array.from(uids).map(uid => uid.replace(/^student_/, ''));
+            const batchIds = uidArray.slice(0, 100);
+            if (batchIds.length > 0) {
+                queries.push(Query.equal('studentId', batchIds));
+                const usersRes = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, queries);
+                if (usersRes && usersRes.documents) {
+                    usersRes.documents.forEach(doc => {
+                        const id = (doc.userId || doc.studentId || doc.$id || '').toString().trim();
+                        const cleanId = id.replace(/^student_/, '');
+                        const item = {
+                            studentId: id,
+                            name: doc.name || `同学${cleanId.slice(-4)}`,
+                            avatar: doc.avatar || ''
+                        };
+                        userCache[cleanId] = item;
+                        userCache[`student_${cleanId}`] = item;
+                    });
+                }
+            }
+        } catch (e) {
+            console.warn('首页拉取用户头像失败:', e);
+        }
+    }
+
     currentMixedItems = allItems;
     mixedFeedOffset = 0;
 
