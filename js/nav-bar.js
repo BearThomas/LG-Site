@@ -443,7 +443,15 @@
             const scrollY = window.scrollY || document.documentElement.scrollTop;
 
             if (scrollY > 50) {
-                if (!isPinnedFixed && !isInputFocused) {
+                const filterMenus = document.querySelectorAll('.filter-dropdown-menu');
+                let isFilterOpen = false;
+                filterMenus.forEach(menu => {
+                    if (menu.style.display !== 'none' && getComputedStyle(menu).display !== 'none') {
+                        isFilterOpen = true;
+                    }
+                });
+
+                if (!isPinnedFixed && !isInputFocused && !isFilterOpen) {
                     toolbar.classList.add('toolbar-hidden');
                     topSearchBtn.style.display = 'flex';
                 }
@@ -483,7 +491,16 @@
             if (input && e.target === input) {
                 isInputFocused = false;
                 setTimeout(() => {
-                    if (!isInputFocused && window.scrollY > 50) {
+                    // Check if any filter menu is currently open
+                    const filterMenus = document.querySelectorAll('.filter-dropdown-menu');
+                    let isFilterOpen = false;
+                    filterMenus.forEach(menu => {
+                        if (menu.style.display !== 'none' && getComputedStyle(menu).display !== 'none') {
+                            isFilterOpen = true;
+                        }
+                    });
+
+                    if (!isInputFocused && window.scrollY > 50 && !isFilterOpen) {
                         const toolbar = getToolbar();
                         if (toolbar) {
                             toolbar.classList.remove('toolbar-pinned-fixed');
@@ -493,6 +510,18 @@
                         }
                     }
                 }, 200);
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (isPinnedFixed && window.scrollY > 50) {
+                const toolbar = getToolbar();
+                if (toolbar && !toolbar.contains(e.target) && e.target !== topSearchBtn && !topSearchBtn.contains(e.target)) {
+                    toolbar.classList.remove('toolbar-pinned-fixed');
+                    toolbar.classList.add('toolbar-hidden');
+                    topSearchBtn.style.display = 'flex';
+                    isPinnedFixed = false;
+                }
             }
         });
     }
