@@ -1,4 +1,4 @@
-<!-- index.html -->
+﻿<!-- index.html -->
 <!-- Made by BearThomas 2026/4/18-->
 <!DOCTYPE html>
 <html>
@@ -15,6 +15,7 @@
         <title>龙高北小站 | 首页</title>
         <link rel="icon" type="image/png" href="./image/LG.png">
         <link rel="stylesheet" href="./css/light/forall.css">
+        <link rel="stylesheet" href="./css/light/posts.css">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     </head>
     <body>
@@ -75,11 +76,250 @@
             <button type="button" id="fabHomeMultiBtn" class="fab-btn" aria-label="快捷新建" title="快捷新建" style="width: 52px; height: 52px; border-radius: 50%; border: none; background: linear-gradient(135deg, #3b82f6, #ec4899); color: white; font-size: 1.8rem; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;">+</button>
         </div>
 
-    
+        <!-- 1. 首页内联发帖弹窗 -->
+    <div class="modal-overlay" id="postModal" style="display: none;">
+        <div class="modal-container editor-modal-container">
+            <div class="modal-header">
+                <h3>鍙戞柊甯?/h3>
+
+                <div class="editor-header-actions">
+                    <button
+                        type="button"
+                        class="preview-toggle-btn"
+                        id="togglePostPreviewBtn">
+                        棰勮
+                    </button>
+
+                    <button
+                        class="modal-close"
+                        id="closeModalBtn">
+                        &times;
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-body editor-modal-body">
+
+                <div class="editor-layout">
+
+                    <!-- 宸︿晶缂栬緫鍣?-->
+                    <div class="editor-pane">
+
+                        <div class="form-group">
+                            <label>鏍囬</label>
+                            <input
+                                type="text"
+                                id="postTitle"
+                                placeholder="杈撳叆鏍囬锛堟渶澶?00瀛楋級"
+                                maxlength="100">
+                        </div>
+
+                        <div class="form-group editor-content-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <label style="margin-bottom: 0;">鍐呭锛堟敮鎸?Markdown锛?/label>
+                                <button type="button" class="upload-image-btn" id="uploadImageBtn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-image" viewBox="0 0 16 16">
+                                      <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
+                                      <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
+                                    </svg>
+                                    鎻掑叆鍥剧墖
+                                </button>
+                                <input type="file" id="imageFileInput" accept="image/jpeg, image/png, image/webp, image/gif" style="display: none;">
+                            </div>
+
+                            <textarea
+                                id="postContent"
+                                placeholder="# 涓€绾ф爣棰?
+        ## 浜岀骇鏍囬
+
+        **鍔犵矖**
+        *鏂滀綋*
+
+        - 鍒楄〃1
+        - 鍒楄〃2
+
+        > 寮曠敤鍐呭
+
+        ```js
+        console.log('Hello World');
+        ```"
+                                maxlength="10000"></textarea>
+                        </div>
+
+                    </div>
+
+                    <!-- 鍙充晶棰勮 -->
+                    <div
+                        class="preview-pane markdown-body"
+                        id="postPreviewPane">
+
+                        <div class="preview-empty">
+
+                            <h2>Markdown 棰勮</h2>
+
+                            <p>
+                                鍦ㄥ乏渚ц緭鍏ュ唴瀹瑰悗锛?                                杩欓噷浼氬疄鏃舵樉绀烘渶缁堟晥鏋溿€?                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- 鍙戝竷鏉垮潡 (宸查殣钘? -->
+                <div class="form-group" style="display: none;">
+                    <label>鍙戝竷鍒版澘鍧?/label>
+                    <div id="postBoardCheckboxes"></div>
+                </div>
+
+                <!-- 鍙鑼冨洿 -->
+                <div class="form-group">
+                    <label>鍙鑼冨洿</label>
+
+                    <select id="visibilityType">
+                        <option value="all">
+                            馃實 鍏ㄥ憳鍙
+                        </option>
+
+                        <option value="specific">
+                            馃敀 鎸囧畾瀛﹀彿鍙
+                        </option>
+                    </select>
+                </div>
+
+                <!-- 鎸囧畾鐢ㄦ埛鍖哄煙 -->
+                <div id="specificUsersArea" style="display:none;">
+
+                    <div class="form-group">
+
+                        <label>娣诲姞鍙鐢ㄦ埛</label>
+
+                        <div class="user-search-box">
+
+                            <input
+                                type="text"
+                                id="userSearchInput"
+                                placeholder="杈撳叆瀛﹀彿鎼滅储..."
+                                maxlength="12"
+                                autocomplete="off">
+
+                            <button
+                                type="button"
+                                class="search-btn"
+                                id="searchUserBtn">
+
+                                <svg
+                                    fill="#000000"
+                                    width="15px"
+                                    height="15px"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg">
+
+                                    <path d="M21.71,20.29,18,16.61A9,9,0,1,0,16.61,18l3.68,3.68a1,1,0,0,0,1.42,0A1,1,0,0,0,21.71,20.29ZM11,18a7,7,0,1,1,7-7A7,7,0,0,1,11,18Z"/>
+
+                                </svg>
+
+                            </button>
+
+                        </div>
+
+                        <div
+                            class="search-results"
+                            id="searchResults"
+                            style="display:none;">
+                        </div>
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label>
+                            宸查€夌敤鎴?                            (<span id="selectedCount">0</span>浜?
+                        </label>
+
+                        <div
+                            class="selected-users"
+                            id="selectedUsers">
+
+                            <div class="no-users-hint">
+                                灏氭湭娣诲姞鐢ㄦ埛
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="button"
+                        class="cancel-btn"
+                        id="cancelPostBtn">
+                        鍙栨秷
+                    </button>
+
+                    <button
+                        type="button"
+                        class="submit-btn"
+                        id="submitPostBtn">
+                        鍙戝竷
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+        </div>
+
+        <!-- 2. 首页内联表白弹窗 (纯文本) -->
+        <div class="modal-overlay" id="homeConfessionModal" style="display: none;">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h3>💖 匿名表白</h3>
+                    <button class="modal-close" id="closeHomeConfessionModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px;">勇敢说出你的心意，完全匿名，安全放心</p>
+                    <textarea id="homeConfessionContent" class="confession-textarea-modal" placeholder="Ta 的特征？你想对 Ta 说的话..." maxlength="300" rows="5"></textarea>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+                        <span style="font-size: 0.8rem; color: var(--text-2);"><span id="homeConfessionCharCount">0</span>/300</span>
+                        <button type="button" id="submitHomeConfessionBtn" class="publish-btn-pink">匿名发布</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 首页内联大事记投稿弹窗 -->
+        <div class="modal-overlay" id="homeEventModal" style="display: none;">
+            <div class="modal-container modal-small">
+                <div class="modal-header">
+                    <h3>⭐ 投稿校园大事记</h3>
+                    <button class="modal-close" id="closeHomeEventModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p style="font-size: 0.85rem; color: var(--text-2); margin-bottom: 8px;">记录校园重大事件，提交后由系统整理与初审</p>
+                    <textarea id="homeEventContent" class="confession-textarea-modal" placeholder="请描述事件详情（例如：2026年6月26日初三同学奔赴中考...）" maxlength="500" rows="5"></textarea>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                        <button type="button" id="submitHomeEventBtn" class="publish-btn-gold">提交大事记</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <script src="./js/nav-bar.js?v=20260720-4"></script>
         <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.3/purify.min.js"></script>
+        <script src="./js/markdown.js?v=20260720-4"></script>
+        <script type="module" src="./js/posts.js?v=20260720-4"></script>
         <script type="module" src="./js/home.js?v=20260720-3"></script>
         
     </body>
 </html>
+
+
+
+

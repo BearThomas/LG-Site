@@ -516,12 +516,4 @@ const EventsManager = (function() {
             }
         });
     }
-
-    // Check URL parameters for ?action=new
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('action') === 'new') {
-        window.history.replaceState(null, '', window.location.pathname);
-        const submitEventBtn = document.getElementById('submitEventBtn');
-        if (submitEventBtn) submitEventBtn.click();
-    }
 })();

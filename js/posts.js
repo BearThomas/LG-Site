@@ -1,4 +1,4 @@
-// js/posts.js
+﻿// js/posts.js
 // Made by BearThomas 2026/5/31
 import { markdownToPreview, renderMarkdown } from './markdown.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
@@ -79,7 +79,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupPullToRefresh({
         onRefresh: async () => {
             currentPage = 1;
-            await loadPosts({ forceRefresh: true });
+            window.dispatchEvent(new Event('postCreated'));
+        await loadPosts({ forceRefresh: true });
         }
     });
 });
@@ -536,6 +537,8 @@ async function submitPost() {
         alert('发布成功');
         closeModal();
         currentPage = 1;
+        window.dispatchEvent(new Event('postCreated'));
+        window.dispatchEvent(new Event('postCreated'));
         await loadPosts({ forceRefresh: true });
     } catch (error) {
         console.error('发布帖子失败:', error);
@@ -589,6 +592,8 @@ function openRequestedPostModal() {
 let trackedUploadedImages = new Set();
 
 function bindEvents() {
+    window.openPostModal = openModal;
+    window.openPostModal = openModal;
     if (newPostBtn) newPostBtn.addEventListener('click', openModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
     if (cancelPostBtn) cancelPostBtn.addEventListener('click', closeModal);
@@ -841,7 +846,8 @@ async function switchBoard(boardId) {
     updateJoinButtonState();
     currentPage = 1;
     renderBoardsSidebar();
-    await loadPosts({ forceRefresh: true });
+    window.dispatchEvent(new Event('postCreated'));
+        await loadPosts({ forceRefresh: true });
 }
 
 function updateJoinButtonState() {
