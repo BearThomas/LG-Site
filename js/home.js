@@ -144,13 +144,17 @@ function calculateMixedHotScore(item) {
     return numerator / Math.pow(ageHours + 2, 1.5);
 }
 
+let isFetchingHome = false;
 async function loadHomeContent({ forceRefresh = false } = {}) {
-    const feedContainer = document.getElementById('recommendFeedContainer');
-    if (!feedContainer) return;
+    if (isFetchingHome) return;
+    try {
+        isFetchingHome = true;
+        const feedContainer = document.getElementById('recommendFeedContainer');
+        if (!feedContainer) return;
 
-    if (!forceRefresh) {
-        feedContainer.innerHTML = createListSkeleton('post', 4);
-    }
+        if (!forceRefresh) {
+            feedContainer.innerHTML = createListSkeleton('post', 4);
+        }
 
     let posts = [];
     let confessions = [];
@@ -267,6 +271,11 @@ async function loadHomeContent({ forceRefresh = false } = {}) {
 
     renderMixedBatch(true);
     setupPreloadScrollListener();
+    } catch (e) {
+        console.error('加载推荐内容失败', e);
+    } finally {
+        isFetchingHome = false;
+    }
 }
 
 function renderMixedBatch(isInitial = false) {

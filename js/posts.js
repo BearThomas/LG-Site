@@ -193,7 +193,9 @@ function resetPostsState() {
 
 // ========== 加载帖子 ==========
 async function loadPosts({ forceRefresh = false } = {}) {
+    if (isFetchingChunk) return;
     try {
+        isFetchingChunk = true;
         if (!postsList) return;
 
         if (forceRefresh) {
@@ -208,6 +210,8 @@ async function loadPosts({ forceRefresh = false } = {}) {
     } catch (error) {
         console.error('加载最新数据失败:', error);
         postsList.innerHTML = `<div class="empty-state"><p>同步失败，请检查网络</p></div>`;
+    } finally {
+        isFetchingChunk = false;
     }
 }
 
