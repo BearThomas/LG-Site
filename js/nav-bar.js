@@ -64,7 +64,7 @@
         ];
 
         const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-        const isStandardPage = /^(index\.html?|posts\.html?|events\.html?|confession\.html?|)$/i.test(currentPage);
+        const isStandardPage = /^(index|posts|events|confession)(\.html?)?$/i.test(currentPage) || currentPage === '';
 
         if (!isStandardPage) {
             const titleBar = document.querySelector('.title-bar');
