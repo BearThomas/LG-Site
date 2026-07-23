@@ -80,14 +80,14 @@
     <div class="modal-overlay" id="postModal" style="display: none;">
         <div class="modal-container editor-modal-container">
             <div class="modal-header">
-                <h3>鍙戞柊甯?/h3>
+                <h3>发新帖</h3>
 
                 <div class="editor-header-actions">
                     <button
                         type="button"
                         class="preview-toggle-btn"
                         id="togglePostPreviewBtn">
-                        棰勮
+                        预览
                     </button>
 
                     <button
@@ -102,43 +102,44 @@
 
                 <div class="editor-layout">
 
-                    <!-- 宸︿晶缂栬緫鍣?-->
+                    <!-- 左侧编辑器 -->
                     <div class="editor-pane">
 
                         <div class="form-group">
-                            <label>鏍囬</label>
+                            <label>标题</label>
                             <input
                                 type="text"
                                 id="postTitle"
-                                placeholder="杈撳叆鏍囬锛堟渶澶?00瀛楋級"
+                                placeholder="输入标题（最多100字）"
                                 maxlength="100">
                         </div>
 
                         <div class="form-group editor-content-group">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <label style="margin-bottom: 0;">鍐呭锛堟敮鎸?Markdown锛?/label>
+                                <label style="margin-bottom: 0;">内容（支持 Markdown）</label>
                                 <button type="button" class="upload-image-btn" id="uploadImageBtn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-image" viewBox="0 0 16 16">
                                       <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
                                       <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
                                     </svg>
-                                    鎻掑叆鍥剧墖
+                                    插入图片
                                 </button>
                                 <input type="file" id="imageFileInput" accept="image/jpeg, image/png, image/webp, image/gif" style="display: none;">
                             </div>
 
                             <textarea
                                 id="postContent"
-                                placeholder="# 涓€绾ф爣棰?
-        ## 浜岀骇鏍囬
+                                placeholder="# 一级标题
 
-        **鍔犵矖**
-        *鏂滀綋*
+        ## 二级标题
 
-        - 鍒楄〃1
-        - 鍒楄〃2
+        **加粗**
+        *斜体*
 
-        > 寮曠敤鍐呭
+        - 列表1
+        - 列表2
+
+        > 引用内容
 
         ```js
         console.log('Hello World');
@@ -148,17 +149,19 @@
 
                     </div>
 
-                    <!-- 鍙充晶棰勮 -->
+                    <!-- 右侧预览 -->
                     <div
                         class="preview-pane markdown-body"
                         id="postPreviewPane">
 
                         <div class="preview-empty">
 
-                            <h2>Markdown 棰勮</h2>
+                            <h2>Markdown 预览</h2>
 
                             <p>
-                                鍦ㄥ乏渚ц緭鍏ュ唴瀹瑰悗锛?                                杩欓噷浼氬疄鏃舵樉绀烘渶缁堟晥鏋溿€?                            </p>
+                                在左侧输入内容后，
+                                这里会实时显示最终效果。
+                            </p>
 
                         </div>
 
@@ -166,40 +169,40 @@
 
                 </div>
 
-                <!-- 鍙戝竷鏉垮潡 (宸查殣钘? -->
+                <!-- 发布板块 (已隐藏) -->
                 <div class="form-group" style="display: none;">
-                    <label>鍙戝竷鍒版澘鍧?/label>
+                    <label>发布到板块</label>
                     <div id="postBoardCheckboxes"></div>
                 </div>
 
-                <!-- 鍙鑼冨洿 -->
+                <!-- 可见范围 -->
                 <div class="form-group">
-                    <label>鍙鑼冨洿</label>
+                    <label>可见范围</label>
 
                     <select id="visibilityType">
                         <option value="all">
-                            馃實 鍏ㄥ憳鍙
+                            🌍 全员可见
                         </option>
 
                         <option value="specific">
-                            馃敀 鎸囧畾瀛﹀彿鍙
+                            🔒 指定学号可见
                         </option>
                     </select>
                 </div>
 
-                <!-- 鎸囧畾鐢ㄦ埛鍖哄煙 -->
+                <!-- 指定用户区域 -->
                 <div id="specificUsersArea" style="display:none;">
 
                     <div class="form-group">
 
-                        <label>娣诲姞鍙鐢ㄦ埛</label>
+                        <label>添加可见用户</label>
 
                         <div class="user-search-box">
 
                             <input
                                 type="text"
                                 id="userSearchInput"
-                                placeholder="杈撳叆瀛﹀彿鎼滅储..."
+                                placeholder="输入学号搜索..."
                                 maxlength="12"
                                 autocomplete="off">
 
@@ -234,7 +237,8 @@
                     <div class="form-group">
 
                         <label>
-                            宸查€夌敤鎴?                            (<span id="selectedCount">0</span>浜?
+                            已选用户
+                            (<span id="selectedCount">0</span>人)
                         </label>
 
                         <div
@@ -242,7 +246,7 @@
                             id="selectedUsers">
 
                             <div class="no-users-hint">
-                                灏氭湭娣诲姞鐢ㄦ埛
+                                尚未添加用户
                             </div>
 
                         </div>
@@ -257,14 +261,14 @@
                         type="button"
                         class="cancel-btn"
                         id="cancelPostBtn">
-                        鍙栨秷
+                        取消
                     </button>
 
                     <button
                         type="button"
                         class="submit-btn"
                         id="submitPostBtn">
-                        鍙戝竷
+                        发布
                     </button>
 
                 </div>
@@ -272,7 +276,6 @@
             </div>
         </div>
     </div>
-        </div>
 
         <!-- 2. 首页内联表白弹窗 (纯文本) -->
         <div class="modal-overlay" id="homeConfessionModal" style="display: none;">
