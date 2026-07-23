@@ -241,7 +241,7 @@ async function loadHomeContent({ forceRefresh = false } = {}) {
             const uidArray = Array.from(uids).map(uid => uid.replace(/^student_/, ''));
             const batchIds = uidArray.slice(0, 100);
             if (batchIds.length > 0) {
-                queries.push(Query.equal('studentId', batchIds));
+                queries.push(Query.equal('userId', batchIds));
                 const usersRes = await databases.listDocuments(DATABASE_ID, COLLECTION_USERS, queries);
                 if (usersRes && usersRes.documents) {
                     usersRes.documents.forEach(doc => {
