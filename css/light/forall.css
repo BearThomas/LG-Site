@@ -875,11 +875,13 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   inset: 0;
   z-index: 99999;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  padding: 20px 0;
+  overflow-y: auto;
 }
 .modal-container {
   background: var(--surface);
@@ -892,6 +894,7 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: auto;
 }
 .modal-header {
   display: flex;
