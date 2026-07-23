@@ -30,7 +30,7 @@ export async function decryptText(value) {
 
 export function formatFeedContent(rawContent, processTextFn) {
     if (!rawContent) return '';
-    const imgRegex = /(https?:\/\/[^\s]+?\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s]*)?)/gi;
+    const imgRegex = /(?:!\[[^\]]*\]\()?((?:https?:\/\/[^\s)]+?|\/api\/images\/[^\s)]+?)\.(?:png|jpe?g|gif|webp|bmp)(?:\?[^\s)]*)?)(?:\))?/gi;
     
     // 1. 提取图片链接
     const images = [];

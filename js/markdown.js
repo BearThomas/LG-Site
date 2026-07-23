@@ -14,9 +14,9 @@ renderer.image = function(token) {
     const text = token.text || '';
     const isVideo = /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(href);
     if (isVideo) {
-        return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><video src="${href}" controls playsinline style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); background: var(--surface-2);"></video></div>`;
+        return `<span class="feed-image-container" style="display: block; text-align: center; padding: 12px 0; width: 100%;"><video src="${href}" controls playsinline style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); background: var(--surface-2);"></video></span>`;
     }
-    return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="${text}" title="${title}" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></div>`;
+    return `<span class="feed-image-container" style="display: block; text-align: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="${text}" title="${title}" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></span>`;
 };
 
 renderer.link = function(token) {
@@ -26,7 +26,7 @@ renderer.link = function(token) {
     
     // 如果它是一个纯链接且指向图片
     if (isImage && text === href) {
-        return `<div class="feed-image-container" style="display: flex; justify-content: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="图片" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></div>`;
+        return `<span class="feed-image-container" style="display: block; text-align: center; padding: 12px 0; width: 100%;"><img src="${href}" alt="图片" onclick="if(window.previewImage){window.previewImage('${href}'); event.stopPropagation();}" loading="lazy" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: var(--shadow-sm); cursor: zoom-in; background: var(--surface-2);" /></span>`;
     }
     
     // 默认的 link 渲染
