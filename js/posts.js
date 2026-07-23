@@ -16,7 +16,10 @@ import {
     getPostAuthorDisplay,
     normalizeUserId,
     renderAuthorAvatar,
-    restoreSecureKey
+    restoreSecureKey,
+    setupImageUpload,
+    extractImageUrls,
+    deleteImages
 } from './shared.js';
 
 // 初始化 Appwrite
@@ -521,6 +524,11 @@ async function submitPost() {
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || '发布失败');
 
+        const finalImages = extractImageUrls(content);
+        const unused = new Set([...trackedUploadedImages].filter(url => !finalImages.has(url)));
+        if (unused.size > 0) deleteImages(unused, currentUser);
+        trackedUploadedImages.clear();
+
         alert('发布成功');
         closeModal();
         currentPage = 1;
@@ -557,6 +565,10 @@ function openModal() {
 function closeModal() {
     closePostMobilePreview();
     if (postModal) postModal.style.display = 'none';
+    if (trackedUploadedImages.size > 0) {
+        deleteImages(trackedUploadedImages, currentUser);
+        trackedUploadedImages.clear();
+    }
 }
 
 function openPostDetail(postId) {
@@ -570,6 +582,8 @@ function openRequestedPostModal() {
     openModal();
 }
 
+let trackedUploadedImages = new Set();
+
 function bindEvents() {
     if (newPostBtn) newPostBtn.addEventListener('click', openModal);
     if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
@@ -579,6 +593,10 @@ function bindEvents() {
     document.getElementById('closeBoardModal')?.addEventListener('click', closeCreateBoardModal);
     document.getElementById('cancelBoardBtn')?.addEventListener('click', closeCreateBoardModal);
     document.getElementById('submitBoardBtn')?.addEventListener('click', submitCreateBoard);
+
+    setupImageUpload('uploadImageBtn', 'imageFileInput', 'postContent', currentUser, (url) => {
+        trackedUploadedImages.add(url);
+    });
     if (joinBoardBtn) joinBoardBtn.addEventListener('click', handleJoinLeaveClick);
     if (postModal) postModal.addEventListener('click', (e) => { if (e.target === postModal) closeModal(); });
     const sortFilter = document.getElementById('sortFilter');

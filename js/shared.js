@@ -183,6 +183,93 @@ export function getUserFromCache(userCache, userId) {
     return userCache[rawId] || userCache[cleanId] || userCache[`student_${cleanId}`] || null;
 }
 
+// ========== 图片上传通用逻辑 ==========
+export function setupImageUpload(btnId, inputId, textareaId, currentUser, onUploadSuccess) {
+    const uploadBtn = document.getElementById(btnId);
+    const fileInput = document.getElementById(inputId);
+    const textarea = document.getElementById(textareaId);
+    
+    if (!uploadBtn || !fileInput || !textarea) return;
+
+    uploadBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        fileInput.value = '';
+
+        const originalText = uploadBtn.innerHTML;
+        uploadBtn.innerHTML = '上传中...';
+        uploadBtn.disabled = true;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const headers = {};
+            if (currentUser?.appToken) headers['X-LG-Token'] = currentUser.appToken;
+            if (currentUser?.token) headers['X-Appwrite-Session'] = currentUser.token;
+
+            const res = await fetch('/api/images/upload', {
+                method: 'POST',
+                headers,
+                body: formData
+            });
+
+            let data;
+            try { data = await res.json(); } catch(e) { throw new Error('上传接口返回异常'); }
+            
+            if (!data.success) throw new Error(data.error || '上传失败');
+
+            if (onUploadSuccess) onUploadSuccess(data.url);
+
+            const insertText = `\n\n![图片](${data.url})\n\n`;
+            
+            if (textarea.selectionStart || textarea.selectionStart === 0) {
+                const startPos = textarea.selectionStart;
+                const endPos = textarea.selectionEnd;
+                textarea.value = textarea.value.substring(0, startPos) + insertText + textarea.value.substring(endPos, textarea.value.length);
+                textarea.selectionStart = startPos + insertText.length;
+                textarea.selectionEnd = startPos + insertText.length;
+            } else {
+                textarea.value += insertText;
+            }
+            
+            textarea.dispatchEvent(new Event('input'));
+            
+        } catch (err) {
+            alert(err.message || '图片上传异常');
+        } finally {
+            uploadBtn.innerHTML = originalText;
+            uploadBtn.disabled = false;
+        }
+    });
+}
+
+export function extractImageUrls(text) {
+    const regex = /\/api\/images\/([^)"\s]+)/gi;
+    const urls = new Set();
+    let match;
+    while ((match = regex.exec(text || '')) !== null) {
+        urls.add('/api/images/' + match[1]);
+    }
+    return urls;
+}
+
+export async function deleteImages(urlsSet, currentUser) {
+    if (!urlsSet || urlsSet.size === 0) return;
+    const headers = {};
+    if (currentUser?.appToken) headers['X-LG-Token'] = currentUser.appToken;
+    if (currentUser?.token) headers['X-Appwrite-Session'] = currentUser.token;
+
+    for (const url of urlsSet) {
+        try {
+            await fetch(url, { method: 'DELETE', headers });
+        } catch (e) {
+            console.warn('图片删除失败:', url, e);
+        }
+    }
+}
+
 export function getPostAuthorDisplay(post, userCache = {}) {
     const rawAuthorId = (post.authorId || '').toString().trim();
     const cleanAuthorId = normalizeUserId(rawAuthorId);

@@ -19,4 +19,4 @@ generated/*
 !public/data-backups/*.json
 wrangler.d1.generated.jsonc
 
-.vs/
+.vs/longgaobei-b2.env

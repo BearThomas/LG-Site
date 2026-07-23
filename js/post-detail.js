@@ -15,8 +15,13 @@ import {
     formatBoardName,
     formatNameWithYear,
     formatTime,
-    getUserFromCache,
+    getPostAuthorDisplay,
     normalizeUserId,
+    renderAuthorAvatar,
+    setupImageUpload,
+    extractImageUrls,
+    deleteImages,
+    getUserFromCache,
     restoreSecureKey
 } from './shared.js';
 
@@ -150,11 +155,17 @@ function applyPendingModifications(collection, documents) {
     return modified;
 }
 
-// ========== 页面加载初始化生命周期调整 ==========
+// ========== 页面加载初始化 ==========
+let trackedUploadedImagesEdit = new Set();
+
 document.addEventListener('DOMContentLoaded', async () => {
     secureKeyReady = restoreSecureKey();
     const params = new URLSearchParams(window.location.search);
     postId = params.get('id');
+
+    setupImageUpload('uploadImageEditBtn', 'imageFileEditInput', 'editContent', currentUser, (url) => {
+        trackedUploadedImagesEdit.add(url);
+    });
 
     if (!postId) {
         if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>帖子 ID 缺失，页面无法加载</p></div>';
@@ -775,6 +786,18 @@ async function submitEdit() {
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || '保存失败');
         
+        // Clean up unused images after edit
+        const finalImages = extractImageUrls(content);
+        const originalImages = extractImageUrls(currentPost.content);
+        
+        const deletedOriginals = new Set([...originalImages].filter(url => !finalImages.has(url)));
+        if (deletedOriginals.size > 0) deleteImages(deletedOriginals, currentUser);
+        
+        const unusedNew = new Set([...trackedUploadedImagesEdit].filter(url => !finalImages.has(url)));
+        if (unusedNew.size > 0) deleteImages(unusedNew, currentUser);
+        
+        trackedUploadedImagesEdit.clear();
+        
         // Ensure cache bust by reloading the page or fetching latest mod-log
         location.reload();
     } catch (error) {
@@ -804,6 +827,11 @@ async function confirmDelete() {
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || '删除失败');
+        
+        // Clean up all images upon deletion
+        const images = extractImageUrls(currentPost.content);
+        if (images.size > 0) deleteImages(images, currentUser);
+        
         alert('帖子已成功销毁');
         location.href = 'posts.html';
     } catch (error) {
@@ -850,6 +878,10 @@ function bindEvents() {
 function closeEditModal() {
     closeEditMobilePreview();
     if (editModal) editModal.style.display = 'none';
+    if (trackedUploadedImagesEdit.size > 0) {
+        deleteImages(trackedUploadedImagesEdit, currentUser);
+        trackedUploadedImagesEdit.clear();
+    }
 }
 
 function updateEditPreview() {
