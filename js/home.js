@@ -451,7 +451,6 @@ window.toggleConfessionExpand = function(btn) {
     const eventModal = document.getElementById('homeEventModal');
     const closeEventModalBtn = document.getElementById('closeHomeEventModal');
     const submitEventBtn = document.getElementById('submitHomeEventBtn');
-
     if (multiFabBtn && choiceMenu) {
         multiFabBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -470,147 +469,24 @@ window.toggleConfessionExpand = function(btn) {
         });
     }
 
-    if (btnOpenPost && postModal) {
+    if (btnOpenPost) {
         btnOpenPost.addEventListener('click', () => {
             if (choiceMenu) choiceMenu.style.display = 'none';
-            postModal.style.display = 'flex';
-        });
-    }
-    if (closePostModalBtn && postModal) {
-        closePostModalBtn.addEventListener('click', () => postModal.style.display = 'none');
-    }
-    if (submitPostBtn) {
-        submitPostBtn.addEventListener('click', async () => {
-            const title = document.getElementById('homePostTitle')?.value.trim();
-            const content = document.getElementById('homePostContent')?.value.trim();
-            if (!title || !content) {
-                alert('请填写完整的标题和内容');
-                return;
-            }
-            submitPostBtn.disabled = true;
-            submitPostBtn.textContent = '正在发布...';
-            try {
-                const res = await fetch('/api/create-post', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-LG-Token': currentUser?.appToken || '',
-                        'X-Appwrite-Session': currentUser?.token || ''
-                    },
-                    body: JSON.stringify({ title, content, boardIds: ['main'] })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    alert('帖子发布成功！');
-                    postModal.style.display = 'none';
-                    await loadHomeContent({ forceRefresh: true });
-                } else {
-                    alert(data.error || '发布失败');
-                }
-            } catch (err) {
-                alert('网络连接失败');
-            } finally {
-                submitPostBtn.disabled = false;
-                submitPostBtn.textContent = '发布帖子';
-            }
+            location.href = 'posts.html?action=new';
         });
     }
 
-    if (btnOpenConfession && confessionModal) {
+    if (btnOpenConfession) {
         btnOpenConfession.addEventListener('click', () => {
             if (choiceMenu) choiceMenu.style.display = 'none';
-            confessionModal.style.display = 'flex';
-        });
-    }
-    if (closeConfessionModalBtn && confessionModal) {
-        closeConfessionModalBtn.addEventListener('click', () => confessionModal.style.display = 'none');
-    }
-
-    const homeConfessionContent = document.getElementById('homeConfessionContent');
-    const homeConfessionCharCount = document.getElementById('homeConfessionCharCount');
-    if (homeConfessionContent && homeConfessionCharCount) {
-        homeConfessionContent.addEventListener('input', () => {
-            homeConfessionCharCount.textContent = homeConfessionContent.value.length;
+            location.href = 'confession.html?action=new';
         });
     }
 
-    if (submitConfessionBtn && homeConfessionContent) {
-        submitConfessionBtn.addEventListener('click', async () => {
-            const content = homeConfessionContent.value.trim();
-            if (content.length < 2) {
-                alert('内容太少了');
-                return;
-            }
-            submitConfessionBtn.disabled = true;
-            submitConfessionBtn.textContent = '正在提交...';
-            try {
-                const res = await fetch('/api/create-confession', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content })
-                });
-                const data = await res.json();
-                if (res.ok && data.success) {
-                    alert('匿名表白发布成功！');
-                    confessionModal.style.display = 'none';
-                    await loadHomeContent({ forceRefresh: true });
-                } else {
-                    alert(data.error || '表白发布失败');
-                }
-            } catch (err) {
-                alert('网络连接失败');
-            } finally {
-                submitConfessionBtn.disabled = false;
-                submitConfessionBtn.textContent = '匿名发布';
-            }
-        });
-    }
-
-    if (btnOpenEvent && eventModal) {
+    if (btnOpenEvent) {
         btnOpenEvent.addEventListener('click', () => {
             if (choiceMenu) choiceMenu.style.display = 'none';
-            eventModal.style.display = 'flex';
-        });
-    }
-    if (closeEventModalBtn && eventModal) {
-        closeEventModalBtn.addEventListener('click', () => eventModal.style.display = 'none');
-    }
-    if (submitEventBtn) {
-        submitEventBtn.addEventListener('click', async () => {
-            const content = document.getElementById('homeEventContent')?.value.trim();
-            if (!content || content.length < 5) {
-                alert('描述内容至少需要 5 个字');
-                return;
-            }
-            submitEventBtn.disabled = true;
-            submitEventBtn.textContent = 'AI 审核中...';
-            try {
-                const res = await fetch('/api/events-submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-LG-Token': currentUser?.appToken || '',
-                        'X-Appwrite-Session': currentUser?.token || ''
-                    },
-                    body: JSON.stringify({
-                        studentId: currentUser?.studentId,
-                        content
-                    })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    alert(data.message || '大事记投稿成功！提交初审完成');
-                    eventModal.style.display = 'none';
-                    await loadHomeContent({ forceRefresh: true });
-                } else {
-                    alert(data.error || '投稿失败');
-                }
-            } catch (err) {
-                alert('网络错误，请稍后再试');
-            } finally {
-                submitEventBtn.disabled = false;
-                submitEventBtn.textContent = '提交大事记';
-            }
+            location.href = 'events.html?action=new';
         });
     }
 

@@ -37,7 +37,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             await loadConfessions({ forceRefresh: true });
         }
     });
+    checkUrlActions();
 });
+
+function checkUrlActions() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') === 'new') {
+        window.history.replaceState(null, '', window.location.pathname);
+        const newBtn = document.getElementById('newConfessionBtn');
+        if (newBtn) newBtn.click();
+    }
+}
 
 function checkLoginStatus() {
     const userData = localStorage.getItem('campus_user');
