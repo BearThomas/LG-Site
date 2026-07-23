@@ -85,7 +85,7 @@ export async function onRequestPost({ request, env }) {
     return json({
       success: true,
       key: key,
-      url: `/api/images/${key}`,
+      url: `/api/${key}`,
       contentType: file.type,
       size: file.size
     }, 200, {
