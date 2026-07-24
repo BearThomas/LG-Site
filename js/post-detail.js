@@ -432,6 +432,18 @@ function renderPostDetail() {
         avatarHtml = fallbackSpan;
     }
     
+    let followBtnHtml = '';
+    const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
+    const myId = currentUserData.studentId || currentUserData.userId || '';
+    if (cleanAuthorId && cleanAuthorId !== myId) {
+        const isFollowing = new Set(currentUserData.following || []).has(cleanAuthorId);
+        if (isFollowing) {
+            followBtnHtml = `<span class="detail-follow-btn" data-author="${escapeHtml(cleanAuthorId)}" style="margin-left: 10px; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer;">· 已关注</span>`;
+        } else {
+            followBtnHtml = `<button class="detail-follow-btn" data-author="${escapeHtml(cleanAuthorId)}" style="margin-left: 10px; padding: 4px 10px; font-size: 0.8rem; border-radius: 12px; background: var(--accent); color: #fff; border: 1px solid var(--accent); cursor: pointer;">+ 关注</button>`;
+        }
+    }
+
     postDetailCard.innerHTML = `
         <div class="post-detail-header">
             <h1 class="post-detail-title">${escapeHtml(currentPost.title)}</h1>
@@ -440,8 +452,11 @@ function renderPostDetail() {
                     <div class="post-detail-avatar" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">
                         ${avatarHtml}
                     </div>
-                    <div class="post-author-detail">
-                        <span class="post-author-name" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${finalName}</span>
+                    <div class="post-author-detail" style="display: flex; flex-direction: column; justify-content: center;">
+                        <div style="display: flex; align-items: center;">
+                            <span class="post-author-name" onclick="window.goToUserProfile('${rawAuthorId}', event)" style="cursor: pointer;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${finalName}</span>
+                            ${followBtnHtml}
+                        </div>
                         <span class="post-time">${timeStr} · ${isPinned ? '<span style="color:#e03131;">置顶</span>' : ''} ${isLocked ? '<span style="color:#f59f00;">已锁定</span>' : ''}</span>
                     </div>
                 </div>
@@ -458,7 +473,69 @@ function renderPostDetail() {
         </div>
     `;
     
-    if (isAuthor) {
+    // Bind post detail follow button
+    const detailFollowBtn = postDetailCard.querySelector('.detail-follow-btn');
+    if (detailFollowBtn) {
+        detailFollowBtn.addEventListener('click', async function followHandler(e) {
+            e.stopPropagation();
+            if (!currentUserData.appToken) {
+                alert('请先登录');
+                return;
+            }
+            const targetUserId = detailFollowBtn.dataset.author;
+            const followingSet = new Set(currentUserData.following || []);
+            let isFollowing = followingSet.has(targetUserId);
+            
+            const originalHtml = detailFollowBtn.outerHTML;
+            const container = detailFollowBtn.parentElement;
+            
+            // Optimistic update
+            isFollowing = !isFollowing;
+            if (isFollowing) {
+                detailFollowBtn.outerHTML = `<span class="detail-follow-btn" data-author="${escapeHtml(targetUserId)}" style="margin-left: 10px; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer;">· 已关注</span>`;
+            } else {
+                detailFollowBtn.outerHTML = `<button class="detail-follow-btn" data-author="${escapeHtml(targetUserId)}" style="margin-left: 10px; padding: 4px 10px; font-size: 0.8rem; border-radius: 12px; background: var(--accent); color: #fff; border: 1px solid var(--accent); cursor: pointer;">+ 关注</button>`;
+            }
+            
+            // Re-bind the click event to the new element
+            const newBtn = container.querySelector('.detail-follow-btn');
+            if (newBtn) {
+                newBtn.addEventListener('click', followHandler);
+            }
+            
+            try {
+                const res = await fetch('/api/follow', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetUserId: targetUserId,
+                        action: isFollowing ? 'follow' : 'unfollow',
+                        sessionSecret: currentUserData.token,
+                        appToken: currentUserData.appToken
+                    })
+                });
+                
+                if (!res.ok) throw new Error('Failed');
+                
+                if (isFollowing) {
+                    followingSet.add(targetUserId);
+                } else {
+                    followingSet.delete(targetUserId);
+                }
+                currentUserData.following = Array.from(followingSet);
+                localStorage.setItem('campus_user', JSON.stringify(currentUserData));
+            } catch (err) {
+                console.error(err);
+                if (newBtn) {
+                    newBtn.outerHTML = originalHtml;
+                    const revertedBtn = container.querySelector('.detail-follow-btn');
+                    if (revertedBtn) revertedBtn.addEventListener('click', followHandler);
+                }
+            }
+        });
+    }
+
+    if (currentUser?.permissions >= 31) {
         document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
         document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
     } else if (isAdmin) {

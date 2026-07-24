@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh">
 <head>
     <script>
@@ -12,76 +12,76 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>龙高北小站 | 登录</title>
+    <title>榫欓珮鍖楀皬绔?| 鐧诲綍</title>
     <link rel="icon" type="image/png" href="./image/LG.png">
     <link rel="stylesheet" href="./css/light/forall.css">
     <link rel="stylesheet" href="./css/light/login.css">
 </head>
 <body class="login-page">
     <div class="login-container">
-        <!-- Logo 区域 -->
+        <!-- Logo 鍖哄煙 -->
         <div class="login-logo">
             <img src="./image/LG.png" alt="Logo">
-            <h1>龙高北小站</h1>
-            <p>非官方校园社区 · 学号登录</p>
+            <h1>榫欓珮鍖楀皬绔?/h1>
+            <p>闈炲畼鏂规牎鍥ぞ鍖?路 瀛﹀彿鐧诲綍</p>
         </div>
 
-        <!-- 登录卡片 -->
+        <!-- 鐧诲綍鍗＄墖 -->
         <div class="login-card">
-            <!-- 选项卡 -->
+            <!-- 閫夐」鍗?-->
             <div class="login-tabs">
-                <div class="login-tab active" data-tab="login">登录</div>
-                <div class="login-tab" data-tab="register">注册</div>
+                <div class="login-tab active" data-tab="login">鐧诲綍</div>
+                <div class="login-tab" data-tab="register">娉ㄥ唽</div>
             </div>
 
-            <!-- 错误/成功提示 -->
+            <!-- 閿欒/鎴愬姛鎻愮ず -->
             <div class="error-message" id="errorMsg"></div>
             <div class="success-message" id="successMsg"></div>
 
-            <!-- 登录表单 -->
+            <!-- 鐧诲綍琛ㄥ崟 -->
             <form class="login-form" id="loginForm">
                 <div class="form-group">
-                    <label>学号</label>
+                    <label>瀛﹀彿</label>
                     <div class="input-with-prefix">
                         <span class="prefix">S</span>
-                        <input type="text" id="loginStudentId" placeholder="例如: 20240101" maxlength="20" autocomplete="off">
+                        <input type="text" id="loginStudentId" placeholder="渚嬪: 20240101" maxlength="20" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>密码</label>
-                    <input type="password" id="loginPassword" placeholder="输入密码" autocomplete="current-password">
+                    <label>瀵嗙爜</label>
+                    <input type="password" id="loginPassword" placeholder="杈撳叆瀵嗙爜" autocomplete="current-password">
                 </div>
-                <button type="submit" class="login-btn" id="loginBtn">登 录</button>
+                <button type="submit" class="login-btn" id="loginBtn">鐧?褰?/button>
             </form>
 
-            <!-- 注册表单（默认隐藏） -->
+            <!-- 娉ㄥ唽琛ㄥ崟锛堥粯璁ら殣钘忥級 -->
             <form class="login-form hidden" id="registerForm">
                 <div class="form-group">
-                    <label>学号</label>
+                    <label>瀛﹀彿</label>
                     <div class="input-with-prefix">
                         <span class="prefix">S</span>
-                        <input type="text" id="regStudentId" placeholder="例如: 20240101" maxlength="20" autocomplete="off">
+                        <input type="text" id="regStudentId" placeholder="渚嬪: 20240101" maxlength="20" autocomplete="off">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>密码</label>
-                    <input type="password" id="regPassword" placeholder="6-20位字符" autocomplete="new-password">
+                    <label>瀵嗙爜</label>
+                    <input type="password" id="regPassword" placeholder="6-20浣嶅瓧绗? autocomplete="new-password">
                 </div>
                 <div class="form-group">
-                    <label>确认密码</label>
-                    <input type="password" id="regConfirmPassword" placeholder="再次输入密码" autocomplete="new-password">
+                    <label>纭瀵嗙爜</label>
+                    <input type="password" id="regConfirmPassword" placeholder="鍐嶆杈撳叆瀵嗙爜" autocomplete="new-password">
                 </div>
-                <button type="submit" class="login-btn" id="registerBtn">注 册</button>
+                <button type="submit" class="login-btn" id="registerBtn">娉?鍐?/button>
                 <p class="form-hint" style="text-align: center; margin-top: 16px;">
-                    仅限本校学生注册 · 学号需真实有效
+                    浠呴檺鏈牎瀛︾敓娉ㄥ唽 路 瀛﹀彿闇€鐪熷疄鏈夋晥
                 </p>
             </form>
         </div>
 
-        <!-- 页脚 -->
+        <!-- 椤佃剼 -->
         <div class="login-footer" style="display: flex; flex-direction: column; gap: 8px; align-items: center;">
-            <a href="download.html" class="download-app-link-footer" style="color: var(--accent); text-decoration: none; font-size: 0.88rem; font-weight: 500;">下载安卓客户端 APP</a>
-            <span> 学生独立项目 · 非官方网站</span>
+            <a href="download.html" class="download-app-link-footer" style="color: var(--accent); text-decoration: none; font-size: 0.88rem; font-weight: 500;">涓嬭浇瀹夊崜瀹㈡埛绔?APP</a>
+            <span> 瀛︾敓鐙珛椤圭洰 路 闈炲畼鏂圭綉绔?/span>
         </div>
     </div>
     <script src="./js/theme-change.js"></script>

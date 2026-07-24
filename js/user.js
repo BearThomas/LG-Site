@@ -96,12 +96,23 @@ async function loadUserInfo() {
             if (statsRes.ok) {
                 const statsData = await statsRes.json();
                 const followersCount = statsData.followersCount || 0;
+                const followingCount = statsData.followingCount || 0;
                 
                 const followersBadge = document.getElementById('followersBadge');
                 const profileFollowersCount = document.getElementById('profileFollowersCount');
-                if (followersBadge && profileFollowersCount) {
+                const profileFollowingCount = document.getElementById('profileFollowingCount');
+                
+                if (followersBadge && profileFollowersCount && profileFollowingCount) {
                     profileFollowersCount.textContent = followersCount;
-                    followersBadge.style.display = 'inline-block';
+                    profileFollowingCount.textContent = followingCount;
+                    followersBadge.style.display = 'flex';
+                    
+                    document.getElementById('viewFollowingBtn')?.addEventListener('click', () => {
+                        if (window.showFollowsList) window.showFollowsList('关注列表', targetUserId, 'following');
+                    });
+                    document.getElementById('viewFollowersBtn')?.addEventListener('click', () => {
+                        if (window.showFollowsList) window.showFollowsList('粉丝列表', targetUserId, 'followers');
+                    });
                 }
             }
             

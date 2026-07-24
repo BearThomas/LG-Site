@@ -500,22 +500,28 @@ function renderPosts(posts, runtimeCache) {
         });
     });
 
-    // Setup intersection observer to fade in follow buttons
+    // Setup intersection observer to fade in follow buttons after 1.5s in viewport
     if (window.IntersectionObserver) {
         const observer = new IntersectionObserver((entries) => {
             entries.forEach(entry => {
+                const container = entry.target.querySelector('.post-follow-container');
+                if (!container) return;
+                
                 if (entry.isIntersecting) {
-                    const container = entry.target.querySelector('.post-follow-container');
-                    if (container) {
+                    entry.target._followTimer = setTimeout(() => {
                         container.style.opacity = '1';
                         container.style.pointerEvents = 'auto';
+                        observer.unobserve(entry.target);
+                    }, 1500); // 1.5秒后出现
+                } else {
+                    if (entry.target._followTimer) {
+                        clearTimeout(entry.target._followTimer);
+                        entry.target._followTimer = null;
                     }
-                    observer.unobserve(entry.target);
                 }
             });
         }, {
-            rootMargin: "0px 0px -33% 0px",
-            threshold: 0
+            threshold: 0.5 // 帖子露出 50% 时开始计时
         });
         
         postsList.querySelectorAll('.post-card').forEach(card => {
@@ -525,7 +531,7 @@ function renderPosts(posts, runtimeCache) {
 
     // Setup follow button clicks
     postsList.querySelectorAll('.post-follow-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        const handleClick = async (e) => {
             e.stopPropagation();
             const targetUserId = btn.dataset.authorId;
             if (!targetUserId || !currentUserData.appToken) {
@@ -557,18 +563,17 @@ function renderPosts(posts, runtimeCache) {
                 currentUserData.following = Array.from(followingSet);
                 localStorage.setItem('campus_user', JSON.stringify(currentUserData));
                 
-                // We could also dynamically update all other visible buttons for this author,
-                // but the next refresh will handle it.
             } catch(error) {
                 console.error(error);
                 container.innerHTML = originalHtml; // Rollback
                 // Re-bind listener
                 const newBtn = container.querySelector('.post-follow-btn');
                 if (newBtn) {
-                    newBtn.addEventListener('click', arguments.callee);
+                    newBtn.addEventListener('click', handleClick);
                 }
             }
-        });
+        };
+        btn.addEventListener('click', handleClick);
     });
     postsList.querySelectorAll('.post-author-link').forEach(link => {
         link.addEventListener('click', event => {

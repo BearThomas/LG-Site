@@ -11,11 +11,12 @@ export async function onRequestGet({ request, env }) {
 
     const db = requireDb(env);
     const id = normalizeUserId(userId);
-    const result = await db.prepare('SELECT followers_count FROM users WHERE id = ?').bind(id).first();
+    const result = await db.prepare('SELECT followers_count, following_count FROM users WHERE id = ?').bind(id).first();
     
     return json({
       success: true,
-      followersCount: result ? Number(result.followers_count || 0) : 0
+      followersCount: result ? Number(result.followers_count || 0) : 0,
+      followingCount: result ? Number(result.following_count || 0) : 0
     });
   } catch (error) {
     return errorResponse(error, '获取用户统计失败');

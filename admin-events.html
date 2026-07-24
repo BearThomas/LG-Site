@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh">
 <head>
     <script>
@@ -12,7 +12,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>龙高北小站 | 审核大事记</title>
+    <title>榫欓珮鍖楀皬绔?| 瀹℃牳澶т簨璁?/title>
     <link rel="icon" type="image/png" href="./image/LG.png">
     <link rel="stylesheet" href="./css/light/forall.css">
     <style>
@@ -29,17 +29,17 @@
 </head>
 <body>
     <div class="title-bar">
-        <h1 class="site-title" style="margin-left: 20px;">后台审核 - 大事记</h1>
+        <h1 class="site-title" style="margin-left: 20px;">鍚庡彴瀹℃牳 - 澶т簨璁?/h1>
         <ul class="nav-bar">
-            <li class="nav-bar-item" onclick="location.href='./'">返回首页</li>
-            <li class="nav-bar-item" onclick="location.href='events'">返回大事记</li>
+            <li class="nav-bar-item" onclick="location.href='./'">杩斿洖棣栭〉</li>
+            <li class="nav-bar-item" onclick="location.href='events'">杩斿洖澶т簨璁?/li>
         </ul>
     </div>
 
     <div class="admin-container">
-        <h2>待审核投稿</h2>
+        <h2>寰呭鏍告姇绋?/h2>
         <div id="pendingList" style="margin-top: 20px;">
-            <div style="text-align: center; color: var(--text-muted); padding: 20px;">正在加载...</div>
+            <div style="text-align: center; color: var(--text-muted); padding: 20px;">姝ｅ湪鍔犺浇...</div>
         </div>
     </div>
 
@@ -48,7 +48,7 @@
             let user = null;
             try { user = JSON.parse(localStorage.getItem('campus_user')); } catch(e) {}
             if (!user || user.authVersion !== 2 || !user.studentId) {
-                alert('请先登录');
+                alert('璇峰厛鐧诲綍');
                 location.href = 'login.html';
                 return;
             }
@@ -80,44 +80,44 @@
                         })
                     });
                     
-                    if (res.status === 403) throw new Error('无权限');
-                    if (!res.ok) throw new Error('加载失败');
+                    if (res.status === 403) throw new Error('鏃犳潈闄?);
+                    if (!res.ok) throw new Error('鍔犺浇澶辫触');
                     
                     const data = await res.json();
                     
                     if (data.length === 0) {
-                        listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无待审核记录</div>';
+                        listEl.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 20px;">鏆傛棤寰呭鏍歌褰?/div>';
                         return;
                     }
 
                     listEl.innerHTML = data.map(ev => `
                         <div class="event-card" id="ev-${ev.id}">
                             <div class="form-group">
-                                <label>标题</label>
+                                <label>鏍囬</label>
                                 <input type="text" class="form-control" id="title-${ev.id}" value="${escapeHtml(ev.title)}">
                             </div>
                             <div class="form-group">
-                                <label>描述</label>
+                                <label>鎻忚堪</label>
                                 <textarea class="form-control" id="desc-${ev.id}" rows="3">${escapeHtml(ev.desc)}</textarea>
                             </div>
                             <div style="display: flex; gap: 15px;">
                                 <div class="form-group" style="flex: 1;">
-                                    <label>标签</label>
+                                    <label>鏍囩</label>
                                     <input type="text" class="form-control" id="tag-${ev.id}" value="${escapeHtml(ev.tag)}">
                                 </div>
                                 <div class="form-group" style="flex: 1;">
-                                    <label>日期 (YYYY-MM-DD)</label>
+                                    <label>鏃ユ湡 (YYYY-MM-DD)</label>
                                     <input type="text" class="form-control" id="date-${ev.id}" value="${escapeHtml(ev.date)}">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>链接 (可选)</label>
+                                <label>閾炬帴 (鍙€?</label>
                                 <input type="text" class="form-control" id="link-${ev.id}" value="${escapeHtml(ev.link || '')}">
                             </div>
-                            <div style="font-size: 0.8rem; color: var(--text-muted);">提交者: ${escapeHtml(ev.submitter_id)} | 时间: ${new Date(ev.created_at).toLocaleString()}</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted);">鎻愪氦鑰? ${escapeHtml(ev.submitter_id)} | 鏃堕棿: ${new Date(ev.created_at).toLocaleString()}</div>
                             <div class="actions">
-                                <button class="btn btn-danger" onclick="handleAction('${ev.id}', 'reject')">拒绝</button>
-                                <button class="btn btn-success" onclick="handleAction('${ev.id}', 'approve')">通过并发布</button>
+                                <button class="btn btn-danger" onclick="handleAction('${ev.id}', 'reject')">鎷掔粷</button>
+                                <button class="btn btn-success" onclick="handleAction('${ev.id}', 'approve')">閫氳繃骞跺彂甯?/button>
                             </div>
                         </div>
                     `).join('');
@@ -127,7 +127,7 @@
             }
 
             window.handleAction = async (id, action) => {
-                if (action === 'reject' && !confirm('确认拒绝这条投稿吗？')) return;
+                if (action === 'reject' && !confirm('纭鎷掔粷杩欐潯鎶曠鍚楋紵')) return;
                 
                 const payload = {
                     id,
@@ -153,13 +153,13 @@
                     });
                     const data = await res.json();
                     if (res.ok) {
-                        alert(data.message || '操作成功');
+                        alert(data.message || '鎿嶄綔鎴愬姛');
                         loadPending();
                     } else {
-                        alert('操作失败: ' + (data.error || '未知错误'));
+                        alert('鎿嶄綔澶辫触: ' + (data.error || '鏈煡閿欒'));
                     }
                 } catch(e) {
-                    alert('网络错误');
+                    alert('缃戠粶閿欒');
                 }
             };
 

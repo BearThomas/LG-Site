@@ -420,3 +420,70 @@ export function goToUserProfile(userId, event) {
     window.location.href = 'user.html?id=' + userId;
 }
 window.goToUserProfile = goToUserProfile;
+
+export async function showFollowsList(title, targetUserId, type) {
+    let modal = document.getElementById('followsListModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'followsListModal';
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal-container" style="max-width: 400px; padding: 0; background: var(--surface);">
+                <div class="modal-header" style="padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <h3 id="followsListTitle" style="margin: 0; color: var(--text-primary); font-size: 1.1rem;">列表</h3>
+                    <button class="modal-close" id="closeFollowsListBtn" style="background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer;">&times;</button>
+                </div>
+                <div class="modal-body" id="followsListBody" style="max-height: 400px; overflow-y: auto; padding: 0;">
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        document.getElementById('closeFollowsListBtn').addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+    }
+
+    document.getElementById('followsListTitle').textContent = title;
+    const listBody = document.getElementById('followsListBody');
+    listBody.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">加载中...</div>';
+    modal.style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/list-follows?id=${encodeURIComponent(targetUserId)}&type=${type}`);
+        if (!res.ok) throw new Error('网络请求失败');
+        const data = await res.json();
+        
+        if (!data.users || data.users.length === 0) {
+            listBody.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">暂无数据</div>';
+            return;
+        }
+
+        listBody.innerHTML = data.users.map(u => {
+            const cleanId = String(u.userId || '').replace(/^student_/, '');
+            const rawId = String(u.userId || '');
+            const safeName = window.escapeHtml ? escapeHtml(u.name || '未知') : (u.name || '未知');
+            const firstChar = safeName.charAt(0);
+            
+            let avatarHtml = `<div style="width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0;">${firstChar}</div>`;
+            if (u.avatar) {
+                avatarHtml = `<img src="${window.escapeHtml ? escapeHtml(u.avatar) : u.avatar}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0;">`;
+            }
+            
+            return `
+                <div style="display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border-color); cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'" onclick="window.goToUserProfile('${rawId}', event)">
+                    ${avatarHtml}
+                    <div style="margin-left: 15px;">
+                        <div style="font-weight: 500; color: var(--text-primary);">${safeName}</div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary);">ID: ${cleanId}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        listBody.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-secondary);">加载失败</div>';
+    }
+}
+window.showFollowsList = showFollowsList;

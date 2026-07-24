@@ -70,11 +70,19 @@ async function initProfile() {
             if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
-            if (document.getElementById('profileFollowingCount')) {
-                document.getElementById('profileFollowingCount').textContent = currentUser.followingCount || 0;
+            const followingCountEl = document.getElementById('profileFollowingCount');
+            if (followingCountEl) {
+                followingCountEl.textContent = currentUser.followingCount || 0;
+                followingCountEl.parentElement.addEventListener('click', () => {
+                    if (window.showFollowsList) window.showFollowsList('关注列表', currentUser.studentId || currentUser.userId, 'following');
+                });
             }
-            if (document.getElementById('profileFollowersCount')) {
-                document.getElementById('profileFollowersCount').textContent = currentUser.followersCount || 0;
+            const followersCountEl = document.getElementById('profileFollowersCount');
+            if (followersCountEl) {
+                followersCountEl.textContent = currentUser.followersCount || 0;
+                followersCountEl.parentElement.addEventListener('click', () => {
+                    if (window.showFollowsList) window.showFollowsList('粉丝列表', currentUser.studentId || currentUser.userId, 'followers');
+                });
             }
     document.getElementById('nameInput').value = currentUser.name || '';
     document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链接
