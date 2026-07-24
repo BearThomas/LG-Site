@@ -487,3 +487,11 @@ export async function showFollowsList(title, targetUserId, type) {
     }
 }
 window.showFollowsList = showFollowsList;
+
+// ========== Global Login Refresh Sentinel ==========
+window.addEventListener('pageshow', (event) => {
+    if (sessionStorage.getItem('need_refresh_after_login') === 'true') {
+        sessionStorage.removeItem('need_refresh_after_login');
+        window.location.reload();
+    }
+});

@@ -254,12 +254,15 @@
                 authVersion: 2,
                 loginTime: Date.now()
             }));
-
-            showSuccess('登录成功！正在跳转大厅...');
+            showSuccess('登录成功！正在跳转...');
             setTimeout(() => {
-                window.location.href = 'posts.html'; // 🚀 丝滑跳入帖子流大厅
+                if (window.history.length > 1 && document.referrer.includes(window.location.host)) {
+                    sessionStorage.setItem('need_refresh_after_login', 'true');
+                    window.history.back();
+                } else {
+                    window.location.replace('./');
+                }
             }, 800);
-
         } catch (err) {
             console.error("💥 登录链路捕获异常:", err);
             showError(err.message || '网络安全认证未通过');
