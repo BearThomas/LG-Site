@@ -512,7 +512,7 @@ function renderPosts(posts, runtimeCache) {
                         container.style.opacity = '1';
                         container.style.pointerEvents = 'auto';
                         observer.unobserve(entry.target);
-                    }, 1500); // 1.5秒后出现
+                    }, 1000); // 1秒后出现
                 } else {
                     if (entry.target._followTimer) {
                         clearTimeout(entry.target._followTimer);

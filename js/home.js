@@ -313,7 +313,7 @@ function renderMixedBatch(isInitial = false) {
                         container.style.opacity = '1';
                         container.style.pointerEvents = 'auto';
                         window._homeFollowObserver.unobserve(entry.target);
-                    }, 1500);
+                    }, 1000);
                 } else {
                     if (entry.target._followTimer) {
                         clearTimeout(entry.target._followTimer);
