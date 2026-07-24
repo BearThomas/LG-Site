@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh">
 <head>
     <script>
@@ -12,138 +12,138 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>榫欓珮鍖楀皬绔?| 甯栧瓙骞垮満</title>
+    <title>龙高北小站 | 帖子广场</title>
     <link rel="icon" type="image/png" href="./image/LG.png">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/image/LG.png">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="榫欓珮鍖楀皬绔?>
+    <meta name="apple-mobile-web-app-title" content="龙高北小站">
     <link rel="stylesheet" href="./css/light/forall.css">
     <link rel="stylesheet" href="./css/light/posts.css">
 </head>
 <div class="modal-overlay" id="createBoardModal" style="display: none;">
     <div class="modal-container">
         <div class="modal-header">
-            <h3>鍒涘缓鏂版澘鍧?/h3>
+            <h3>创建新板块</h3>
             <button class="modal-close" id="closeBoardModal">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label>鏉垮潡鏍囪瘑 (鑻辨枃缂╁啓/鎷奸煶)</label>
-                <input type="text" id="boardId" placeholder="濡傦細photo (浠呴檺灏忓啓鑻辨枃銆佹暟瀛楀拰涓垝绾?" maxlength="20">
+                <label>板块标识 (英文缩写/拼音)</label>
+                <input type="text" id="boardId" placeholder="如：photo (仅限小写英文、数字和中划线)" maxlength="20">
             </div>
             <div class="form-group">
-                <label>鏉垮潡鍚嶇О</label>
-                <input type="text" id="boardName" placeholder="濡傦細鎽勫奖鐖卞ソ鑰? maxlength="15">
+                <label>板块名称</label>
+                <input type="text" id="boardName" placeholder="如：摄影爱好者" maxlength="15">
             </div>
             <div class="form-group">
-                <label>鏉垮潡绠€浠?/label>
-                <textarea id="boardDesc" placeholder="浠嬬粛涓€涓嬭繖涓澘鍧?.." rows="3" maxlength="100"></textarea>
+                <label>板块简介</label>
+                <textarea id="boardDesc" placeholder="介绍一下这个板块..." rows="3" maxlength="100"></textarea>
             </div>
             <div class="form-group">
-                <label>鏉垮潡绫诲瀷</label>
+                <label>板块类型</label>
                 <select id="boardType">
-                    <option value="club">绀惧洟</option>
-                    <option value="custom">鍏朵粬</option>
+                    <option value="club">社团</option>
+                    <option value="custom">其他</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>鍔犲叆璁剧疆</label>
+                <label>加入设置</label>
                 <select id="boardJoinType">
-                    <option value="0">馃實 鍏紑锛堜换浣曚汉鐩存帴鍔犲叆骞跺彲瑙侊級</option>
-                    <option value="1">馃敀 绉佸瘑锛堥渶瑕佺増涓诲鎵瑰悓鎰忥級</option>
+                    <option value="0">🌍 公开（任何人直接加入并可见）</option>
+                    <option value="1">🔒 私密（需要版主审批同意）</option>
                 </select>
             </div>
             <div class="form-actions">
-                <button class="cancel-btn" id="cancelBoardBtn">鍙栨秷</button>
-                <button class="submit-btn" id="submitBoardBtn">鍒涘缓</button>
+                <button class="cancel-btn" id="cancelBoardBtn">取消</button>
+                <button class="submit-btn" id="submitBoardBtn">创建</button>
             </div>
         </div>
     </div>
 </div>
 <body>
         <div class="meteor-container"><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div><div class="meteor"></div></div>
-    <!-- 瀵艰埅鏍?-->
+    <!-- 导航栏 -->
     <div class="title-bar">
         <img src="image/LG.png" width="70px" height="70px" style="padding: 7px;padding-left: 20px;" alt="Logo">
-        <h1 class="site-title" onclick="location.href='./'">榫欓珮鍖楀皬绔?/h1>
+        <h1 class="site-title" onclick="location.href='./'">龙高北小站</h1>
         <ul class="nav-bar">
-            <li class="nav-bar-item" onclick="location.href='./'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-house-door" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146ZM2.5 14V7.707l5.5-5.5 5.5 5.5V14H10v-4a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v4H2.5Z"/></svg>棣栭〉</li>
-            <li class="nav-bar-item active" onclick="location.href='posts'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stickies" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/><path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/></svg>甯栧瓙</li>
-            <li class="nav-bar-item" onclick="location.href='confession'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-heart" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/></svg>琛ㄧ櫧澧?/li>
-            <li class="nav-bar-item" onclick="location.href='messages.html'" id="navMessages"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.079.029C5.019 2.244 3 4.793 3 8l-.007.868c-.004.456-.054.914-.148 1.365-.125.603-.347 1.187-.655 1.713a1.2 1.2 0 0 0-.147.258h11.914a1.2 1.2 0 0 0-.147-.258c-.308-.526-.53-1.11-.655-1.713-.094-.45-.144-.91-.148-1.365L13 8c0-3.207-2.019-5.756-4.921-6.053zM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0z"/></svg>娑堟伅</li>
-            <li class="nav-bar-item" onclick="location.href='docs'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/></svg>甯姪</li>
+            <li class="nav-bar-item" onclick="location.href='./'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-house-door" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8.354 1.146a.5.5 0 0 0-.708 0l-6 6A.5.5 0 0 0 1.5 7.5v7a.5.5 0 0 0 .5.5h4.5a.5.5 0 0 0 .5-.5v-4h2v4a.5.5 0 0 0 .5.5H14a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.146-.354L13 5.793V2.5a.5.5 0 0 0-.5-.5h-1a.5.5 0 0 0-.5.5v1.293L8.354 1.146ZM2.5 14V7.707l5.5-5.5 5.5 5.5V14H10v-4a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5v4H2.5Z"/></svg>首页</li>
+            <li class="nav-bar-item active" onclick="location.href='posts'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-stickies" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/><path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/></svg>帖子</li>
+            <li class="nav-bar-item" onclick="location.href='confession'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-heart" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/></svg>表白墙</li>
+            <li class="nav-bar-item" onclick="location.href='messages.html'" id="navMessages"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-bell" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zM8 1.918l-.079.029C5.019 2.244 3 4.793 3 8l-.007.868c-.004.456-.054.914-.148 1.365-.125.603-.347 1.187-.655 1.713a1.2 1.2 0 0 0-.147.258h11.914a1.2 1.2 0 0 0-.147-.258c-.308-.526-.53-1.11-.655-1.713-.094-.45-.144-.91-.148-1.365L13 8c0-3.207-2.019-5.756-4.921-6.053zM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0z"/></svg>消息</li>
+            <li class="nav-bar-item" onclick="location.href='docs'"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16" style="margin-right: 4px; vertical-align: text-bottom;"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/></svg>帮助</li>
         </ul>
         
-        <!-- 鐧诲綍鐘舵€佸尯鍩?-->
+        <!-- 登录状态区域 -->
                     <div class="user-area" id="userArea">
                 <div class="user-not-login" id="userNotLogin">
-                    <a href="login.html" class="login-link">鐧诲綍</a>
+                    <a href="login.html" class="login-link">登录</a>
                     <span class="divider">/</span>
-                    <a href="login.html#register" class="register-link">娉ㄥ唽</a>
+                    <a href="login.html#register" class="register-link">注册</a>
                 </div>
                 <div class="user-logged-in" id="userLoggedIn" style="display: none;">
-                    <span class="user-name" id="userName">鍚屽</span>
+                    <span class="user-name" id="userName">同学</span>
                     <div class="user-dropdown">
                         <button class="user-avatar" id="userAvatar"></button>
                         <div class="dropdown-menu" id="dropdownMenu">
-                            <a href="./profile" id="profileLink"> 涓汉涓績 </a>
-                            <a href="#" id="logoutBtn"> 閫€鍑虹櫥褰?/a>
+                            <a href="./profile" id="profileLink"> 个人中心 </a>
+                            <a href="#" id="logoutBtn"> 退出登录</a>
                         </div>
                     </div>
                 </div>
             </div>
     </div>
 
-    <!-- 涓诲唴瀹瑰尯 -->
+    <!-- 主内容区 -->
     <div class="posts-container">
         
-        <!-- 甯栧瓙鏃堕棿绾?-->
+        <!-- 帖子时间线 -->
         <main class="posts-main">
-            <!-- 鏋佺畝涓€浣撳寲鎼滅储涓庣瓫閫夋爮 -->
+            <!-- 极简一体化搜索与筛选栏 -->
             <div class="posts-mobile-toolbar">
                 <div class="search-bar-group">
-                    <input type="text" id="searchInput" class="connected-search-input" placeholder="鎼滅储甯栧瓙...">
-                    <button type="button" id="searchSubmitBtn" class="connected-search-btn" aria-label="鎼滅储">
+                    <input type="text" id="searchInput" class="connected-search-input" placeholder="搜索帖子...">
+                    <button type="button" id="searchSubmitBtn" class="connected-search-btn" aria-label="搜索">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                             <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
                         </svg>
                     </button>
                 </div>
 
-                <!-- 鍙充晶鍦嗗舰绛涢€夋寜閽?-->
+                <!-- 右侧圆形筛选按钮 -->
                 <div class="filter-dropdown-wrap">
-                    <button type="button" id="filterCircleBtn" class="filter-circle-btn" aria-label="绛涢€?>
+                    <button type="button" id="filterCircleBtn" class="filter-circle-btn" aria-label="筛选">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-filter" viewBox="0 0 16 16">
                             <path d="M6 10.5a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 0 1h-3a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm-2-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
                         </svg>
                     </button>
 
-                    <!-- 涓嬪脊绛涢€夐潰鏉?-->
+                    <!-- 下弹筛选面板 -->
                     <div class="filter-dropdown-menu" id="filterDropdownMenu" style="display: none;">
                         <div class="filter-menu-group">
-                            <label>鏃堕棿鑼冨洿</label>
+                            <label>时间范围</label>
                             <select id="timeFilter" class="filter-select">
-                                <option value="all">鍏ㄩ儴鏃堕棿</option>
-                                <option value="today">浠婂ぉ</option>
-                                <option value="week">鏈懆</option>
-                                <option value="month">鏈湀</option>
+                                <option value="all">全部时间</option>
+                                <option value="today">今天</option>
+                                <option value="week">本周</option>
+                                <option value="month">本月</option>
                             </select>
                         </div>
                         <div class="filter-menu-group">
-                            <label>鎺掑簭瑙勫垯</label>
+                            <label>排序规则</label>
                             <select id="sortFilter" class="filter-select">
-                                <option value="new">鏈€鏂板彂甯?/option>
-                                <option value="hot">鐑害鎺ㄨ崘</option>
+                                <option value="new">最新发布</option>
+                                <option value="hot">热度推荐</option>
                             </select>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 甯栧瓙鍒楄〃 -->
+            <!-- 帖子列表 -->
             <div class="posts-list" id="postsList">
                 <div class="feed-initial-loader" role="status">
                     <span class="feed-initial-orbit"></span>
@@ -151,25 +151,25 @@
                 </div>
             </div>
 
-            <!-- 鎳掑姞杞戒睛鍚櫒 -->
+            <!-- 懒加载侦听器 -->
             <div id="infiniteScrollAnchor" class="infinite-scroll-anchor" style="height: 20px; display: flex; justify-content: center; align-items: center; margin: 20px 0; color: #868e96;">
-                <!-- 鍔ㄦ€佹樉绀哄姞杞界姸鎬?-->
+                <!-- 动态显示加载状态 -->
             </div>
         </main>
     </div>
 
-    <!-- 鍙戝笘寮圭獥 -->
+    <!-- 发帖弹窗 -->
     <div class="modal-overlay" id="postModal" style="display: none;">
         <div class="modal-container editor-modal-container">
             <div class="modal-header">
-                <h3>鍙戞柊甯?/h3>
+                <h3>发新帖</h3>
 
                 <div class="editor-header-actions">
                     <button
                         type="button"
                         class="preview-toggle-btn"
                         id="togglePostPreviewBtn">
-                        棰勮
+                        预览
                     </button>
 
                     <button
@@ -184,44 +184,44 @@
 
                 <div class="editor-layout">
 
-                    <!-- 宸︿晶缂栬緫鍣?-->
+                    <!-- 左侧编辑器 -->
                     <div class="editor-pane">
 
                         <div class="form-group">
-                            <label>鏍囬</label>
+                            <label>标题</label>
                             <input
                                 type="text"
                                 id="postTitle"
-                                placeholder="杈撳叆鏍囬锛堟渶澶?00瀛楋級"
+                                placeholder="输入标题（最多100字）"
                                 maxlength="100">
                         </div>
 
                         <div class="form-group editor-content-group">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                <label style="margin-bottom: 0;">鍐呭锛堟敮鎸?Markdown锛?/label>
+                                <label style="margin-bottom: 0;">内容（支持 Markdown）</label>
                                 <button type="button" class="upload-image-btn" id="uploadImageBtn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-image" viewBox="0 0 16 16">
                                       <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/>
                                       <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2h-12zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1h12z"/>
                                     </svg>
-                                    鎻掑叆鍥剧墖
+                                    插入图片
                                 </button>
                                 <input type="file" id="imageFileInput" accept="image/jpeg, image/png, image/webp, image/gif" style="display: none;">
                             </div>
 
                             <textarea
                                 id="postContent"
-                                placeholder="# 涓€绾ф爣棰?
+                                placeholder="# 一级标题
 
-        ## 浜岀骇鏍囬
+        ## 二级标题
 
-        **鍔犵矖**
-        *鏂滀綋*
+        **加粗**
+        *斜体*
 
-        - 鍒楄〃1
-        - 鍒楄〃2
+        - 列表1
+        - 列表2
 
-        > 寮曠敤鍐呭
+        > 引用内容
 
         ```js
         console.log('Hello World');
@@ -231,18 +231,18 @@
 
                     </div>
 
-                    <!-- 鍙充晶棰勮 -->
+                    <!-- 右侧预览 -->
                     <div
                         class="preview-pane markdown-body"
                         id="postPreviewPane">
 
                         <div class="preview-empty">
 
-                            <h2>Markdown 棰勮</h2>
+                            <h2>Markdown 预览</h2>
 
                             <p>
-                                鍦ㄥ乏渚ц緭鍏ュ唴瀹瑰悗锛?
-                                杩欓噷浼氬疄鏃舵樉绀烘渶缁堟晥鏋溿€?
+                                在左侧输入内容后，
+                                这里会实时显示最终效果。
                             </p>
 
                         </div>
@@ -251,40 +251,40 @@
 
                 </div>
 
-                <!-- 鍙戝竷鏉垮潡 (宸查殣钘? -->
+                <!-- 发布板块 (已隐藏) -->
                 <div class="form-group" style="display: none;">
-                    <label>鍙戝竷鍒版澘鍧?/label>
+                    <label>发布到板块</label>
                     <div id="postBoardCheckboxes"></div>
                 </div>
 
-                <!-- 鍙鑼冨洿 -->
+                <!-- 可见范围 -->
                 <div class="form-group">
-                    <label>鍙鑼冨洿</label>
+                    <label>可见范围</label>
 
                     <select id="visibilityType">
                         <option value="all">
-                            馃實 鍏ㄥ憳鍙
+                            🌍 全员可见
                         </option>
 
                         <option value="specific">
-                            馃敀 鎸囧畾瀛﹀彿鍙
+                            🔒 指定学号可见
                         </option>
                     </select>
                 </div>
 
-                <!-- 鎸囧畾鐢ㄦ埛鍖哄煙 -->
+                <!-- 指定用户区域 -->
                 <div id="specificUsersArea" style="display:none;">
 
                     <div class="form-group">
 
-                        <label>娣诲姞鍙鐢ㄦ埛</label>
+                        <label>添加可见用户</label>
 
                         <div class="user-search-box">
 
                             <input
                                 type="text"
                                 id="userSearchInput"
-                                placeholder="杈撳叆瀛﹀彿鎼滅储..."
+                                placeholder="输入学号搜索..."
                                 maxlength="12"
                                 autocomplete="off">
 
@@ -319,8 +319,8 @@
                     <div class="form-group">
 
                         <label>
-                            宸查€夌敤鎴?
-                            (<span id="selectedCount">0</span>浜?
+                            已选用户
+                            (<span id="selectedCount">0</span>人)
                         </label>
 
                         <div
@@ -328,7 +328,7 @@
                             id="selectedUsers">
 
                             <div class="no-users-hint">
-                                灏氭湭娣诲姞鐢ㄦ埛
+                                尚未添加用户
                             </div>
 
                         </div>
@@ -343,14 +343,14 @@
                         type="button"
                         class="cancel-btn"
                         id="cancelPostBtn">
-                        鍙栨秷
+                        取消
                     </button>
 
                     <button
                         type="button"
                         class="submit-btn"
                         id="submitPostBtn">
-                        鍙戝竷
+                        发布
                     </button>
 
                 </div>
@@ -359,27 +359,27 @@
         </div>
     </div>
 
-    <!-- 甯栧瓙璇︽儏寮圭獥 -->
+    <!-- 帖子详情弹窗 -->
     <div class="modal-overlay" id="postDetailModal" style="display: none;">
         <div class="modal-container post-detail-container">
             <div class="modal-header">
-                <h3 id="detailTitle">甯栧瓙璇︽儏</h3>
+                <h3 id="detailTitle">帖子详情</h3>
                 <button class="modal-close" id="closeDetailBtn">&times;</button>
             </div>
             <div class="modal-body" id="postDetailBody">
-                <!-- 鍔ㄦ€佸姞杞藉笘瀛愯鎯?-->
+                <!-- 动态加载帖子详情 -->
             </div>
         </div>
     </div>
 
-    <!-- 鎮诞鍙戝笘鎸夐挳 (+) -->
-    <button type="button" class="fab-btn" id="fabNewPostBtn" aria-label="鍙戝竷鏂板笘瀛? title="鍙戝竷鏂板笘瀛?>+</button>
+    <!-- 悬浮发帖按钮 (+) -->
+    <button type="button" class="fab-btn" id="fabNewPostBtn" aria-label="发布新帖子" title="发布新帖子">+</button>
 
     <script src="./js/theme-change.js"></script>
     <script src="./js/dynamic-bg.js"></script>
-    <script src="./js/nav-bar.js?v=20260724b-4"></script>
+    <script src="./js/nav-bar.js?v=20260720-4"></script>
     <script src="https://cdn.jsdelivr.net/npm/localforage@1.10.0/dist/localforage.min.js"></script>
-    <script type="module" src="./js/posts.js?v=20260724b"></script>
+    <script type="module" src="./js/posts.js?v=20260724"></script>
         
 </body>
 </html>
