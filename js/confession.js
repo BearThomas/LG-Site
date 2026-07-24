@@ -303,7 +303,10 @@ function bindEvents() {
             try {
                 const res = await fetch('/api/create-confession', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-LG-Token': currentUser?.appToken || ''
+                    },
                     body: JSON.stringify({ content: text })
                 });
                 const data = await res.json();
