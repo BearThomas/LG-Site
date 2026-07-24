@@ -1,6 +1,7 @@
 import { requireAuth } from '../_lib/auth.js';
 import { normalizeUserId, requireDb } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+import { sendWebPushToUser } from '../_lib/push.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -28,11 +29,33 @@ export async function onRequestPost({ request, env }) {
       // Check if already following
       const existing = await db.prepare('SELECT 1 FROM user_follows WHERE follower_id = ? AND followed_id = ?').bind(followerId, followedId).first();
       if (!existing) {
+        const notificationId = crypto.randomUUID();
+        const notificationTitle = '新粉丝';
+        const notificationContent = `${profile.name} 关注了你`;
+        
         await db.batch([
           db.prepare('INSERT INTO user_follows (follower_id, followed_id, created_at) VALUES (?, ?, ?)').bind(followerId, followedId, now),
           db.prepare('UPDATE users SET following_count = following_count + 1 WHERE id = ?').bind(followerId),
-          db.prepare('UPDATE users SET followers_count = followers_count + 1 WHERE id = ?').bind(followedId)
+          db.prepare('UPDATE users SET followers_count = followers_count + 1 WHERE id = ?').bind(followedId),
+          db.prepare(`
+            INSERT INTO notifications (
+                id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at
+            ) VALUES (?, ?, ?, ?, 'follow', ?, ?, ?, 0, ?)
+          `).bind(notificationId, followedId, followerId, profile.name, notificationTitle, notificationContent, followerId, now)
         ]);
+
+        // 触发 Web Push
+        try {
+            await sendWebPushToUser(env, followedId, {
+                title: notificationTitle,
+                body: notificationContent,
+                url: `/user.html?id=${followerId}`,
+                unreadCount: 1,
+                tag: `follow-${followerId}`
+            });
+        } catch (pushError) {
+            console.error('Failed to send push notification for follow:', pushError);
+        }
       }
     } else {
       // Unfollow
