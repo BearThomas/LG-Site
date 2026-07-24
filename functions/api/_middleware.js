@@ -14,7 +14,12 @@ export async function onRequest(context) {
                 const parts = token.split('.');
                 if (parts.length === 3) {
                     // Quick decode of JWT payload without blocking verification
-                    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                    const normalized = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+                    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+                    const binary = atob(padded);
+                    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+                    const jsonStr = new TextDecoder().decode(bytes);
+                    const payload = JSON.parse(jsonStr);
                     userId = payload.sub || '';
                 }
             }
