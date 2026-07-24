@@ -123,7 +123,9 @@ export function toUserDocument(row, { includePrivate = false } = {}) {
     userId: row.id,
     name: row.name,
     avatar: row.avatar || '',
-    role: row.role || 'normal'
+    role: row.role || 'normal',
+    followingCount: Number(row.following_count || 0),
+    followersCount: Number(row.followers_count || 0)
   };
   if (includePrivate) {
     Object.assign(document, {

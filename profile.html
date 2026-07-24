@@ -295,7 +295,11 @@
                     <img id="avatarImg" src="" alt="头像" style="display: none; width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
                 </div>
                 <h3 id="profileUsername"></h3>
-                <span class="user-id-tag" id="profileUserId">ID: --</span>
+                <span class="user-id-tag" id="profileUserId" style="display: block; margin-bottom: 15px;">ID: --</span>
+                <div class="profile-stats" style="display: flex; gap: 30px; justify-content: center; font-size: 0.9rem; color: var(--text-secondary);">
+                    <div style="text-align: center; cursor: pointer;"><strong id="profileFollowingCount" style="color: var(--text-primary); font-size: 1.2rem; display: block;">0</strong>关注</div>
+                    <div style="text-align: center; cursor: pointer;"><strong id="profileFollowersCount" style="color: var(--text-primary); font-size: 1.2rem; display: block;">0</strong>粉丝</div>
+                </div>
             </div>
 
             <div class="profile-main">

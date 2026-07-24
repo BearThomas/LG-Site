@@ -70,6 +70,12 @@ async function initProfile() {
             if (__sid.length >= 4) __name = `${__name}<span class="year-badge">${__sid.substring(0, 4)}级</span>`;
             document.getElementById('profileUsername').innerHTML = __name;
             
+            if (document.getElementById('profileFollowingCount')) {
+                document.getElementById('profileFollowingCount').textContent = currentUser.followingCount || 0;
+            }
+            if (document.getElementById('profileFollowersCount')) {
+                document.getElementById('profileFollowersCount').textContent = currentUser.followersCount || 0;
+            }
     document.getElementById('nameInput').value = currentUser.name || '';
     document.getElementById('avatarInput').value = currentUser.avatar || ''; // 回显本地记录的头像链接
     updateAvatarPreview(currentUser.name, currentUser.avatar);

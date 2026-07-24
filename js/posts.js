@@ -309,7 +309,16 @@ async function fetchNextPostsBatch() {
         }
 
         // 设基础曝光分 G 为 10，并受内容丰富度调节
-        const baseBoost = 10 * contentBonus;
+        let baseBoost = 10 * contentBonus;
+        
+        // 增加关注者专属权重
+        try {
+            const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
+            const followingSet = new Set(currentUserData.following || []);
+            if (followingSet.has(post.authorId || post.author_id)) {
+                baseBoost += 30; // 专属 30 曝光加成
+            }
+        } catch(e) {}
 
         // 核心公式：[点赞*1 + 评论*3 + 初始曝光分] / (小时数 + 2) 的 1.5 次方衰减
         return (likes * 1 + comments * 3 + baseBoost) / Math.pow(ageHours + 2, 1.5);
@@ -418,6 +427,9 @@ function renderPosts(posts, runtimeCache) {
     }
 
     const renderCache = runtimeCache || userCache;
+    const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
+    const myId = currentUserData.studentId || currentUserData.userId || '';
+    const followingSet = new Set(currentUserData.following || []);
 
     postsList.innerHTML = posts.map(post => {
         const postId = post.$id || post.id;
@@ -430,6 +442,17 @@ function renderPosts(posts, runtimeCache) {
 
         const author = getPostAuthorDisplay(post, renderCache);
         const avatarHtml = renderAuthorAvatar(author, 40);
+        const authorId = author.cleanAuthorId || author.id || '';
+        
+        let followHtml = '';
+        if (authorId && authorId !== myId) {
+            const isFollowing = followingSet.has(authorId);
+            if (isFollowing) {
+                followHtml = `<span class="post-follow-status" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: normal;">· 已关注</span>`;
+            } else {
+                followHtml = `<button class="post-follow-btn" data-author-id="${escapeHtml(authorId)}" style="padding: 4px 10px; font-size: 0.8rem; border-radius: 12px; background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: pointer;">+ 关注</button>`;
+            }
+        }
 
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
@@ -438,12 +461,15 @@ function renderPosts(posts, runtimeCache) {
                         ${avatarHtml}
                     </div>
                     <div class="post-author-info">
-                        <button type="button" class="post-author post-author-link" data-author-id="${escapeHtml(author.cleanAuthorId || author.id || '')}">${author.name || '未知用户'}</button>
+                        <button type="button" class="post-author post-author-link" data-author-id="${escapeHtml(authorId)}">${author.name || '未知用户'}</button>
                         <div class="post-meta">
                             <span>${timeStr}</span>
                             ${isPinned ? '<span class="post-badge pinned-badge">置顶</span>' : ''}
                             ${isLocked ? '<span class="post-badge locked-badge">已锁定</span>' : ''}
                         </div>
+                    </div>
+                    <div class="post-follow-container" style="margin-left: auto; align-self: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease-in;">
+                        ${followHtml}
                     </div>
                 </div>
                 <div class="post-title">${escapeHtml(post.title || '无标题')}</div>
@@ -467,7 +493,82 @@ function renderPosts(posts, runtimeCache) {
     }).join('');
 
     postsList.querySelectorAll('.post-card').forEach(card => {
-        card.addEventListener('click', () => openPostDetail(card.dataset.postId));
+        card.addEventListener('click', (e) => {
+            // Prevent opening post detail if clicking the follow button
+            if (e.target.closest('.post-follow-btn') || e.target.closest('.post-follow-status') || e.target.closest('.post-author-link')) return;
+            openPostDetail(card.dataset.postId);
+        });
+    });
+
+    // Setup intersection observer to fade in follow buttons
+    if (window.IntersectionObserver) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const container = entry.target.querySelector('.post-follow-container');
+                    if (container) {
+                        container.style.opacity = '1';
+                        container.style.pointerEvents = 'auto';
+                    }
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            rootMargin: "0px 0px -33% 0px",
+            threshold: 0
+        });
+        
+        postsList.querySelectorAll('.post-card').forEach(card => {
+            observer.observe(card);
+        });
+    }
+
+    // Setup follow button clicks
+    postsList.querySelectorAll('.post-follow-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const targetUserId = btn.dataset.authorId;
+            if (!targetUserId || !currentUserData.appToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const originalHtml = btn.outerHTML;
+            const container = btn.parentElement;
+            
+            // Optimistic update
+            container.innerHTML = `<span class="post-follow-status" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: normal;">· 已关注</span>`;
+            
+            try {
+                const res = await fetch('/api/follow', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetUserId: targetUserId,
+                        action: 'follow',
+                        sessionSecret: currentUserData.token,
+                        appToken: currentUserData.appToken
+                    })
+                });
+                
+                if (!res.ok) throw new Error('Failed');
+                
+                followingSet.add(targetUserId);
+                currentUserData.following = Array.from(followingSet);
+                localStorage.setItem('campus_user', JSON.stringify(currentUserData));
+                
+                // We could also dynamically update all other visible buttons for this author,
+                // but the next refresh will handle it.
+            } catch(error) {
+                console.error(error);
+                container.innerHTML = originalHtml; // Rollback
+                // Re-bind listener
+                const newBtn = container.querySelector('.post-follow-btn');
+                if (newBtn) {
+                    newBtn.addEventListener('click', arguments.callee);
+                }
+            }
+        });
     });
     postsList.querySelectorAll('.post-author-link').forEach(link => {
         link.addEventListener('click', event => {

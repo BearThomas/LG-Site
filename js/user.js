@@ -90,6 +90,100 @@ async function loadUserInfo() {
             updateAvatarPreview(`同学${sid.slice(-4)}`, '');
         }
         
+        // Load followers count and follow state
+        try {
+            const statsRes = await fetch(`/api/user-stats?id=${encodeURIComponent(targetUserId)}`);
+            if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                const followersCount = statsData.followersCount || 0;
+                
+                const followersBadge = document.getElementById('followersBadge');
+                const profileFollowersCount = document.getElementById('profileFollowersCount');
+                if (followersBadge && profileFollowersCount) {
+                    profileFollowersCount.textContent = followersCount;
+                    followersBadge.style.display = 'inline-block';
+                }
+            }
+            
+            // Setup Follow button
+            const currentUser = JSON.parse(localStorage.getItem('campus_user') || '{}');
+            const followActionContainer = document.getElementById('followActionContainer');
+            const followUserBtn = document.getElementById('followUserBtn');
+            
+            if (currentUser && (currentUser.studentId || currentUser.userId) && (currentUser.studentId || currentUser.userId) !== targetUserId) {
+                if (followActionContainer && followUserBtn) {
+                    followActionContainer.style.display = 'block';
+                    
+                    const followingSet = new Set(currentUser.following || []);
+                    let isFollowing = followingSet.has(targetUserId);
+                    
+                    const updateFollowBtnUI = () => {
+                        if (isFollowing) {
+                            followUserBtn.textContent = '· 已关注';
+                            followUserBtn.style.background = 'transparent';
+                            followUserBtn.style.color = 'var(--text-secondary)';
+                            followUserBtn.style.border = 'none';
+                        } else {
+                            followUserBtn.textContent = '+ 关注';
+                            followUserBtn.style.background = 'var(--accent)';
+                            followUserBtn.style.color = '#fff';
+                            followUserBtn.style.border = '1px solid var(--accent)';
+                        }
+                    };
+                    
+                    updateFollowBtnUI();
+                    
+                    followUserBtn.addEventListener('click', async () => {
+                        const originalState = isFollowing;
+                        isFollowing = !isFollowing;
+                        updateFollowBtnUI();
+                        
+                        // Optimistic update for followers badge
+                        const profileFollowersCount = document.getElementById('profileFollowersCount');
+                        if (profileFollowersCount) {
+                            let currentCount = parseInt(profileFollowersCount.textContent) || 0;
+                            profileFollowersCount.textContent = isFollowing ? currentCount + 1 : Math.max(0, currentCount - 1);
+                        }
+                        
+                        try {
+                            const res = await fetch('/api/follow', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    targetUserId: targetUserId,
+                                    action: isFollowing ? 'follow' : 'unfollow',
+                                    sessionSecret: currentUser.token,
+                                    appToken: currentUser.appToken
+                                })
+                            });
+                            
+                            if (!res.ok) throw new Error('Failed');
+                            
+                            // Update local storage following set
+                            if (isFollowing) {
+                                followingSet.add(targetUserId);
+                            } else {
+                                followingSet.delete(targetUserId);
+                            }
+                            currentUser.following = Array.from(followingSet);
+                            localStorage.setItem('campus_user', JSON.stringify(currentUser));
+                            
+                        } catch(e) {
+                            console.error(e);
+                            isFollowing = originalState; // rollback
+                            updateFollowBtnUI();
+                            if (profileFollowersCount) {
+                                let currentCount = parseInt(profileFollowersCount.textContent) || 0;
+                                profileFollowersCount.textContent = isFollowing ? currentCount + 1 : Math.max(0, currentCount - 1);
+                            }
+                        }
+                    });
+                }
+            }
+        } catch(e) {
+            console.error('Failed to load stats', e);
+        }
+        
         loadUserPosts(targetUserId, sid);
     } catch (error) {
         console.error('加载用户信息失败:', error);

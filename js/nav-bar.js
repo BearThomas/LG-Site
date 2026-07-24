@@ -316,6 +316,9 @@
             user.joinedBoards = profile.joinedBoards || [];
             user.role = profile.role || 'normal';
             user.permissions = profile.permissions ?? 31;
+            user.following = result.following || [];
+            user.followingCount = profile.followingCount || 0;
+            user.followersCount = profile.followersCount || 0;
             // A legacy release stored the Appwrite session in localStorage.
             // /api/auth-me has now migrated it into an HttpOnly cookie.
             delete user.token;
