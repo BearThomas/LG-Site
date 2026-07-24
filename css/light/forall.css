@@ -1175,6 +1175,7 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   .new-post-btn {
     display: none !important;
   }
+}
 
   /* Floating Action Button (FAB) */
   .fab-btn,
@@ -1202,7 +1203,6 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
   /* Profile */
   .profile-wrapper { gap: 28px; }
   .profile-sidebar, .settings-section { padding: 24px; margin-bottom: 28px; }
-}
 
 .home-tabs-bar {
   display: none;
