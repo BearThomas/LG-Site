@@ -101,7 +101,7 @@ function applyFiltersAndSort() {
 
     if (currentSearchKeyword) {
         const kw = currentSearchKeyword.toLowerCase();
-        result = result.filter(c => c.content.toLowerCase().includes(kw));
+        result = result.filter(c => String(c.content || '').toLowerCase().includes(kw));
     }
 
     if (currentTimeFilter !== 'all') {

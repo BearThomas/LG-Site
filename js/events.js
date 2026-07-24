@@ -78,8 +78,8 @@ const EventsManager = (function() {
             // 关键词模糊搜索（标题 + 描述）
             if (f.keyword && f.keyword.trim()) {
                 const kw = f.keyword.trim().toLowerCase();
-                const titleMatch = event.title.toLowerCase().includes(kw);
-                const descMatch = event.desc.toLowerCase().includes(kw);
+                const titleMatch = String(event.title || '').toLowerCase().includes(kw);
+                const descMatch = String(event.desc || '').toLowerCase().includes(kw);
                 if (!titleMatch && !descMatch) {
                     return false;
                 }

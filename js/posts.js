@@ -1,4 +1,4 @@
-﻿// js/posts.js
+// js/posts.js
 // Made by BearThomas 2026/5/31
 import { markdownToPreview, renderMarkdown } from './markdown.js';
 import { createListSkeleton, scheduleAfterPaint, setupPullToRefresh } from './feed-experience.js';
@@ -629,7 +629,7 @@ function bindEvents() {
         searchInput.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => {
-                searchKeyword = e.target.value.trim();
+                currentSearchKeyword = e.target.value.trim();
                 currentPage = 1;
                 loadPosts({ forceRefresh: true });
             }, 300);
@@ -639,7 +639,7 @@ function bindEvents() {
     const searchSubmitBtn = document.getElementById('searchSubmitBtn');
     if (searchSubmitBtn && searchInput) {
         searchSubmitBtn.addEventListener('click', () => {
-            searchKeyword = searchInput.value.trim();
+            currentSearchKeyword = searchInput.value.trim();
             currentPage = 1;
             loadPosts({ forceRefresh: true });
         });
