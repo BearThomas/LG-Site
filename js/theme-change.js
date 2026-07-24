@@ -78,7 +78,11 @@
         }
 
         const userArea = titleBar.querySelector('.user-area');
-        titleBar.insertBefore(button, userArea || null);
+        if (userArea) {
+            userArea.parentNode.insertBefore(button, userArea);
+        } else {
+            titleBar.appendChild(button);
+        }
         syncThemeButton(resolveTheme(getPreference()));
     }
 

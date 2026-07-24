@@ -297,6 +297,83 @@ function renderMixedBatch(isInitial = false) {
     }
 
     mixedFeedOffset += nextBatch.length;
+
+    // Follow button logic
+    const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
+    const followingSet = new Set(currentUserData.following || []);
+
+    if (window.IntersectionObserver && !window._homeFollowObserver) {
+        window._homeFollowObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const container = entry.target.querySelector('.post-follow-container');
+                if (!container) return;
+                
+                if (entry.isIntersecting) {
+                    entry.target._followTimer = setTimeout(() => {
+                        container.style.opacity = '1';
+                        container.style.pointerEvents = 'auto';
+                        window._homeFollowObserver.unobserve(entry.target);
+                    }, 1500);
+                } else {
+                    if (entry.target._followTimer) {
+                        clearTimeout(entry.target._followTimer);
+                        entry.target._followTimer = null;
+                    }
+                }
+            });
+        }, { threshold: 0.5 });
+    }
+
+    feedContainer.querySelectorAll('.feed-card-post:not(.observed)').forEach(card => {
+        card.classList.add('observed');
+        if (window._homeFollowObserver) window._homeFollowObserver.observe(card);
+    });
+
+    feedContainer.querySelectorAll('.post-follow-btn:not(.bound)').forEach(btn => {
+        btn.classList.add('bound');
+        const handleClick = async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const targetUserId = btn.dataset.authorId;
+            if (!targetUserId || !currentUserData.appToken) {
+                alert('请先登录');
+                return;
+            }
+            
+            const originalHtml = btn.outerHTML;
+            const container = btn.parentElement;
+            
+            container.innerHTML = `<span class="post-follow-status" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: normal;">· 已关注</span>`;
+            
+            try {
+                const res = await fetch('/api/follow', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetUserId: targetUserId,
+                        action: 'follow',
+                        sessionSecret: currentUserData.token,
+                        appToken: currentUserData.appToken
+                    })
+                });
+                
+                if (!res.ok) throw new Error('Failed');
+                
+                followingSet.add(targetUserId);
+                currentUserData.following = Array.from(followingSet);
+                localStorage.setItem('campus_user', JSON.stringify(currentUserData));
+                
+            } catch(error) {
+                console.error(error);
+                container.innerHTML = originalHtml; 
+                const newBtn = container.querySelector('.post-follow-btn');
+                if (newBtn) {
+                    newBtn.addEventListener('click', handleClick);
+                }
+            }
+        };
+        btn.addEventListener('click', handleClick);
+    });
 }
 
 function renderMixedFeedItem(item) {
@@ -344,12 +421,27 @@ function renderMixedFeedItem(item) {
     const author = getPostAuthorDisplay(item, userCache);
     const avatarHtml = renderAuthorAvatar(author, 44);
 
+    const authorId = author.cleanAuthorId || author.id || '';
+    const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
+    const myId = currentUserData.studentId || currentUserData.userId || '';
+    const followingSet = new Set(currentUserData.following || []);
+    
+    let followHtml = '';
+    if (authorId && authorId !== myId) {
+        const isFollowing = followingSet.has(authorId);
+        if (isFollowing) {
+            followHtml = `<span class="post-follow-status" style="color: var(--text-secondary); font-size: 0.85rem; font-weight: normal;">· 已关注</span>`;
+        } else {
+            followHtml = `<button class="post-follow-btn" data-author-id="${escapeHtml(authorId)}" style="padding: 4px 10px; font-size: 0.8rem; border-radius: 12px; background: transparent; color: var(--accent); border: 1px solid var(--accent); cursor: pointer;">+ 关注</button>`;
+        }
+    }
+
     return `
         <div class="post-card feed-card-post" onclick="location.href='post.html?id=${item.$id || item.id}'">
             <div class="post-header">
-                <div class="post-avatar" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">${avatarHtml}</div>
+                <div class="post-avatar" onclick="window.goToUserProfile('${authorId}', event)" style="cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; background-color: var(--accent, #228be6); color: #ffffff; font-weight: bold; flex-shrink: 0;">${avatarHtml}</div>
                 <div>
-                    <div class="post-author" onclick="window.goToUserProfile('${author.cleanAuthorId || author.id}', event)" style="cursor: pointer;">${author.name}</div>
+                    <div class="post-author" onclick="window.goToUserProfile('${authorId}', event)" style="cursor: pointer;">${author.name}</div>
                     <div class="post-time" style="display: flex; align-items: center; gap: 4px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-stickies" viewBox="0 0 16 16">
                             <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/>
@@ -357,6 +449,9 @@ function renderMixedFeedItem(item) {
                         </svg>
                         帖子 · ${timeStr}
                     </div>
+                </div>
+                <div class="post-follow-container" style="margin-left: auto; align-self: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease-in;">
+                    ${followHtml}
                 </div>
             </div>
             <div class="post-title">${isPinned ? '<span class="post-badge pinned-badge" style="margin-right:6px;">置顶</span>' : ''}${escapeHtml(item.title || '无标题')}</div>
