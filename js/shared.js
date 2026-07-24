@@ -286,7 +286,7 @@ export function getPostAuthorDisplay(post, userCache = {}) {
     const avatar = cachedUser?.avatar || '';
     const cleanAvatar = String(avatar).trim();
     const isImageAvatar = cleanAvatar.startsWith('http://') || cleanAvatar.startsWith('https://') || cleanAvatar.startsWith('/') || cleanAvatar.startsWith('data:');
-    const initial = (plainName || cleanAuthorId || '?').trim().charAt(0) || '?';
+    const initial = (plainName || cleanAuthorId || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
     return {
         avatar: cleanAvatar,
@@ -299,7 +299,7 @@ export function getPostAuthorDisplay(post, userCache = {}) {
 }
 
 export function renderAuthorAvatar(author, lineHeight = 40) {
-    const initial = (author.initial || author.plainName || '?').trim().charAt(0) || '?';
+    const initial = (author.initial || author.plainName || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
     const initialEscaped = escapeHtml(initial);
     const fallbackSpan = `<span style="line-height: ${lineHeight}px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${initialEscaped}</span>`;
 

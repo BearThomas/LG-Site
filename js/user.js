@@ -27,7 +27,7 @@ let userCache = {}; // Minimal cache for the target user
 function updateAvatarPreview(name, url) {
     const cleanUrl = url ? url.trim() : '';
     const hasUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:'));
-    const firstChar = (name || '?').trim().charAt(0) || '?';
+    const firstChar = (name || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
     if (hasUrl) {
         avatarImg.src = cleanUrl;

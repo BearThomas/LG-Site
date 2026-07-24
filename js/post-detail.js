@@ -236,7 +236,7 @@ function checkLoginStatus() {
             if (commentAvatar) {
                 const cleanUrl = String(currentUser.avatar || '').trim();
                 const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:');
-                const firstChar = (currentUser.name || currentUser.studentId || '?').trim().charAt(0) || '?';
+                const firstChar = (currentUser.name || currentUser.studentId || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
                 commentAvatar.style.overflow = 'hidden';
                 commentAvatar.style.backgroundColor = 'var(--accent, #228be6)';
@@ -421,7 +421,7 @@ function renderPostDetail() {
     const avatarUrl = cachedUser?.avatar || '';
     const cleanAvatar = String(avatarUrl).trim();
     const isImageAvatar = cleanAvatar.startsWith('http://') || cleanAvatar.startsWith('https://') || cleanAvatar.startsWith('/') || cleanAvatar.startsWith('data:');
-    const firstChar = (plainName || cleanAuthorId || '?').trim().charAt(0) || '?';
+    const firstChar = (plainName || cleanAuthorId || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
     let avatarHtml = '';
     const fallbackSpan = `<span style="line-height: 40px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${escapeHtml(firstChar)}</span>`;
@@ -614,7 +614,7 @@ function renderComments(comments) {
         const commentAvatarUrl = cachedCommentUser?.avatar || '';
         const cleanCommentAvatar = String(commentAvatarUrl).trim();
         const isCommentImg = cleanCommentAvatar.startsWith('http://') || cleanCommentAvatar.startsWith('https://') || cleanCommentAvatar.startsWith('/') || cleanCommentAvatar.startsWith('data:');
-        const commentFirstChar = (plainCommentName || cleanCommentAuthorId || '?').trim().charAt(0) || '?';
+        const commentFirstChar = (plainCommentName || cleanCommentAuthorId || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
         let commentAvatarHtml = '';
         const commentFallbackSpan = `<span style="line-height: 32px; color: #ffffff; font-weight: bold; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: var(--accent, #228be6); border-radius: 50%;">${escapeHtml(commentFirstChar)}</span>`;

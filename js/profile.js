@@ -117,7 +117,7 @@ function updateAvatarPreview(name, avatarUrl) {
 
     const cleanUrl = avatarUrl ? avatarUrl.trim() : '';
     const hasUrl = cleanUrl && (cleanUrl.startsWith('http://') || cleanUrl.startsWith('https://') || cleanUrl.startsWith('/') || cleanUrl.startsWith('data:'));
-    const firstChar = (name || '?').trim().charAt(0) || '?';
+    const firstChar = (name || '?').trim().replace(/^同学.*/, '学').charAt(0) || '?';
 
     if (hasUrl) {
         avatarText.style.display = 'none';

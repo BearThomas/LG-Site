@@ -224,7 +224,7 @@
         const cleanName = String(name || '').trim();
         const cleanUrl = String(avatarUrl || '').trim();
         const isImage = cleanUrl.startsWith('https://') || cleanUrl.startsWith('http://') || cleanUrl.startsWith('data:') || (cleanUrl.startsWith('/') && !cleanUrl.startsWith('//'));
-        const firstChar = cleanName.charAt(0) || '?';
+        const firstChar = cleanName.replace(/^同学.*/, '学').charAt(0) || '?';
 
         userAvatar.style.overflow = 'hidden';
         userAvatar.style.border = 'none';
