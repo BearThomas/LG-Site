@@ -7,7 +7,10 @@ export function clean(value) {
 export function required(env, name) {
   const value = clean(env?.[name]);
   if (!value) {
-    const error = new HttpError(500, `缺少环境变量：${name}`);
+    const error = new HttpError(
+      500,
+      `缺少必填环境变量 [${name}]！提示：若是线上网址 (如 xxx.pages.dev)，请进入 Cloudflare 后台 -> 对应项目 Settings -> Environment variables，同时在 Production 与 Preview 两个标签页填入后，务必在 Deployments 点击 [Retry deployment / 重新部署] 才会生效！`
+    );
     error.expose = true;
     throw error;
   }
@@ -16,13 +19,16 @@ export function required(env, name) {
 
 export function getAppwriteConfig(env, { requireApiKey = false } = {}) {
   const config = {
-    endpoint: required(env, 'APPWRITE_ENDPOINT').replace(/\/$/, ''),
+    endpoint: (clean(env?.APPWRITE_ENDPOINT) || 'https://cloud.appwrite.io/v1').replace(/\/$/, ''),
     projectId: required(env, 'APPWRITE_PROJECT_ID'),
     apiKey: clean(env.APPWRITE_API_KEY)
   };
 
   if (requireApiKey && !config.apiKey) {
-    const error = new HttpError(500, '缺少环境变量：APPWRITE_API_KEY');
+    const error = new HttpError(
+      500,
+      '缺少管理员环境变量 [APPWRITE_API_KEY]！请在 Cloudflare 后台 Environment variables 的 Production 和 Preview 环境添加后重新部署生效。'
+    );
     error.expose = true;
     throw error;
   }
