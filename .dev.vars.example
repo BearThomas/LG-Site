@@ -1,23 +1,36 @@
 # Copy this file to .dev.vars for local development only.
-# Never commit .dev.vars, .env, API keys, or token secrets.
+# Never commit .dev.vars, .env, API keys, or token secrets to Git.
 
-APPWRITE_ENDPOINT=https://YOUR_REGION.cloud.appwrite.io/v1
+# ==================== 1. 核心后端认证与存储 (Appwrite) ====================
+APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
 APPWRITE_PROJECT_ID=YOUR_APPWRITE_PROJECT_ID
-# Appwrite API Key scopes required: sessions.write and users.write
+# Appwrite API Key 必填权限 Scopes: sessions.write, users.write
 APPWRITE_API_KEY=YOUR_SERVER_API_KEY
+
+# ==================== 2. 会话加密与安全签名 (Security Secrets) ====================
+# 必须为大于32位的随机高强度字符 (可执行 npm run setup 自动生成)
 AUTH_TOKEN_SECRET=REPLACE_WITH_AT_LEAST_32_RANDOM_CHARACTERS
 BACKUP_ENCRYPT_KEY=64_HEX_CHAR_AES_256_KEY
+
+# ==================== 3. Cloudflare D1 数据库绑定 ====================
+# 本地和生产环境下可通过 wrangler CLI (npm run setup) 自动创建和关联
+D1_DATABASE_NAME=lg-site-db
+D1_DATABASE_ID=YOUR_D1_DATABASE_UUID
+
+# ==================== 4. 站点认证问答防刷 (Campus Verification) ====================
 CAMPUS_VERIFY_QUESTIONS=[{"id":"q1","question":"示例题目一","hint":"","answers":["答案"]},{"id":"q2","question":"示例题目二","hint":"","answers":["答案"]}]
 
-D1_DATABASE_NAME=lg
-D1_DATABASE_ID=31e5fcd9-e15b-492c-90d3-c4119fa7f39a
+# ==================== 5. Web Push 推送通知服务 (可选) ====================
+# 可通过 web-push 工具或线上生成 VAPID 密钥对
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=mailto:admin@example.com
 
-# Web Push VAPID Keys (iOS & PWA Push Notifications)
-VAPID_PUBLIC_KEY=BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I
-VAPID_PRIVATE_KEY=VWTw1aAtNWIzdO7zM-pWHmkmOtgkhkCHVeeliTvKef8
-VAPID_SUBJECT=mailto:admin@lg-site.com
+# ==================== 6. 自动内容安全审核 (可选) ====================
+# 智谱 AI API Key (用于提交事件/发帖内容的自动 AI 合规审核，未配置则默认直接放行或进入人工流)
+ZHIPU_API_KEY=
 
-# Optional tuning
+# ==================== 7. 站点策略与会话限流参数 (可选) ====================
 AUTH_SESSION_TTL_SECONDS=3600
 AUTH_REFRESH_TTL_SECONDS=2592000
 APP_TIMEZONE_OFFSET_MINUTES=480

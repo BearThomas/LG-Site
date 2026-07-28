@@ -69,7 +69,7 @@
                 }
 
                 togglePushBtn.textContent = '开启中...';
-                let vapidKey = 'BGpxlNJMerF9moKOsu6CMBTkwpKehz20DXokpQiFeno6g5Q_ZN7Sx3w8GCVq95Rjej81D1xf6mcoQkvOVpmeG-I';
+                let vapidKey = '';
                 try {
                     const res = await fetch('/api/runtime-config');
                     if (res.ok) {
@@ -77,6 +77,13 @@
                         if (config.vapidPublicKey) vapidKey = config.vapidPublicKey;
                     }
                 } catch(e) {}
+
+                if (!vapidKey) {
+                    alert('服务器未配置推送服务的 VAPID_PUBLIC_KEY 环境变量，请在 Cloudflare 环境变量中配置后重试。');
+                    togglePushBtn.textContent = '订阅推送通知';
+                    togglePushBtn.disabled = false;
+                    return;
+                }
 
                 const swRegistration = await navigator.serviceWorker.ready;
                 const subscription = await swRegistration.pushManager.subscribe({

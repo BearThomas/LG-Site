@@ -4,6 +4,7 @@
   "private": true,
   "description": "LG-Site migrated from Appwrite Database to Cloudflare D1 while retaining Appwrite Auth.",
   "scripts": {
+    "setup": "node tools/setup.mjs",
     "build": "node scripts/build-static.mjs",
     "dev": "npm run build && node scripts/dev-pages.mjs",
     "docs:manifest": "node scripts/generate-docs-manifest.js",

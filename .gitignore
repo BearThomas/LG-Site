@@ -9,6 +9,9 @@ dist/
 .wrangler/
 .DS_Store
 *.log
+*.secret
+*.bak
+appwrite-*.json
 
 # Generated migration files contain decrypted backup content.
 generated/*
