@@ -139,12 +139,20 @@ function main() {
     });
 
     const manifest = {
-        generatedAt: new Date().toISOString(),
         pages,
         tree: buildTree(pages)
     };
 
-    fs.writeFileSync(OUTPUT_FILE, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+    const newContent = `${JSON.stringify(manifest, null, 2)}\n`;
+    if (fs.existsSync(OUTPUT_FILE)) {
+        const currentContent = fs.readFileSync(OUTPUT_FILE, 'utf8');
+        if (currentContent === newContent) {
+            console.log(`doc/manifest.json is up to date (${pages.length} page(s)).`);
+            return;
+        }
+    }
+
+    fs.writeFileSync(OUTPUT_FILE, newContent, 'utf8');
     console.log(`Generated ${toPosix(path.relative(ROOT_DIR, OUTPUT_FILE))} with ${pages.length} page(s).`);
 }
 
