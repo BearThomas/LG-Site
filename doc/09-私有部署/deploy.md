@@ -79,6 +79,7 @@ npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称
   APPWRITE_API_KEY=你的AppwriteAPIKey
   AUTH_TOKEN_SECRET=向导生成的32位以上随机加密密文
   ```
+  *(提示：你随时可运行 `npm run secrets` 自动将你本地 `.dev.vars` 中的变量以批量粘贴格式打印出来；运行 `npm run secrets:generate` 可直接随机生成一个新的 64 位加密签名安全键)*
 * **方法 B（命令行一键上传所有变量）**：
   ```bash
   npx wrangler pages secret bulk .dev.vars --project-name=<你的项目名称>
