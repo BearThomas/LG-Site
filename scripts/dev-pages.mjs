@@ -30,7 +30,7 @@ if (!databaseId) {
   process.exit(1);
 }
 
-const child = spawn(npx, ['wrangler', 'pages', 'dev', 'dist', '--d1', `DB=${databaseId}`], {
+const child = spawn('npx', ['wrangler', 'pages', 'dev', 'dist', '--d1', `DB=${databaseId}`], {
   cwd: root,
   stdio: 'inherit',
   env: process.env,
