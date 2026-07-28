@@ -69,20 +69,28 @@ npm run build && npx wrangler pages deploy dist --project-name=<你的项目名�
 npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称>
 ```
 
-#### 2. 一键上传环境变量与绑定数据源
-你无需再手动去网页后台一个个复制粘贴环境变量！可以直接在终端用以下命令**一键将本地 `.dev.vars` 中的所有环境变量同步上传到 Cloudflare Pages 云端**：
-```bash
-# 将 <你的项目名称> 替换为你实际的项目名 (例如 longgaobei)
-npx wrangler pages secret bulk .dev.vars --project-name=<你的项目名称>
-```
+#### 2. 填写或批量导入环境变量与绑定数据源
+你既可以手动在网页复制粘贴，也可以一行命令导入：
 
-**最后一步（D1 绑定）**：前往 [Cloudflare Dash](https://dash.cloudflare.com/) -> 对应项目 **Settings -> Functions -> D1 Database bindings**，在 **Production 与 Preview 两个标签页**都添加一条绑定：名称固定填 **`DB`**，关联到你创建的 D1 数据库。
+* **方法 A（网页后台批量粘贴）**：前往 [Cloudflare Dash](https://dash.cloudflare.com/) 你的项目 -> **Settings -> Environment variables** -> **同时在 Production 与 Preview 选项卡中**点 `Add variable`，你可以直接复制下列行（一行一个 `KEY=VALUE` 格式），在变量输入框直接整个粘贴：
+  ```text
+  APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
+  APPWRITE_PROJECT_ID=你的Appwrite项目ID
+  APPWRITE_API_KEY=你的AppwriteAPIKey
+  AUTH_TOKEN_SECRET=向导生成的32位以上随机加密密文
+  ```
+* **方法 B（命令行一键上传所有变量）**：
+  ```bash
+  npx wrangler pages secret bulk .dev.vars --project-name=<你的项目名称>
+  ```
+
+**最后一步（D1 绑定）**：前往 **Settings -> Functions -> D1 Database bindings**，在 **Production 与 Preview 两个标签页**都添加一条绑定：名称固定填 **`DB`**，关联到你的 D1 数据库。
 
 > [!IMPORTANT]
 > **为什么配置完之后网页还是报「缺少必填环境变量」或报 500？**
 > 1. 请不要再刷新带有 `0ea3ae7c...` 等哈希前缀的**旧版本历史快照网址**！它们是早先未填配置时冻结的历史快照。
-> 2. **环境变量上传及 D1 绑定后，必须执行一次重新发包（或在后台 Deployments 列表选择最新一条点击 `...` -> `Retry deployment / 重新部署`）**，新配置才会加载！
-> 3. 部署完成后，请直接访问主域名网址：`https://<你的项目名>.pages.dev`（不再带前缀短横线哈希），即可 100% 成功访问！
+> 2. **环境变量及 D1 绑定保存后，必须重新发包（或在 Deployments 页面选择最新记录点击 `...` -> `Retry deployment / 重新部署`）**，新配置才能生效！
+> 3. 部署完成后，请直接访问你的主预览地址：`https://<你的项目名>.pages.dev`（不再带前缀哈希），即可 100% 成功访问！
 
 ---
 
