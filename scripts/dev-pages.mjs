@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +28,19 @@ const databaseId = String(process.env.D1_DATABASE_ID || '').trim();
 if (!databaseId) {
   console.error('D1_DATABASE_ID is missing. Copy .dev.vars.example to .dev.vars and fill it first.');
   process.exit(1);
+}
+
+console.log('--- 正在为本地 D1 开发数据库运行表结构检查与自动迁移 (d1:migrate:local)... ---');
+const migrateRes = spawnSync('npm', ['run', 'd1:migrate:local'], {
+  cwd: root,
+  stdio: 'inherit',
+  env: process.env,
+  shell: true
+});
+if (migrateRes.status !== 0) {
+  console.warn('⚠️ 本地 D1 迁移未完全成功，请确保已正确配置 .dev.vars 中的 D1_DATABASE_NAME 和 D1_DATABASE_ID。');
+} else {
+  console.log('✅ 本地 D1 数据库表结构同步完成！\n');
 }
 
 const child = spawn('npx', ['wrangler', 'pages', 'dev', 'dist', '--d1', `DB=${databaseId}`], {
