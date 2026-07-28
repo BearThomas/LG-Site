@@ -1054,6 +1054,10 @@ button.post-author:hover, button.post-author-link:hover { text-decoration: under
     letter-spacing: 0.04em !important;
   }
 
+  .nav-bar .nav-bar-item.desktop-only-item {
+    display: none !important;
+  }
+
   .dark .nav-bar .nav-bar-item,
   :root[data-theme="dark"] .nav-bar .nav-bar-item {
     color: #94a3b8 !important;

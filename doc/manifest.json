@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-24T00:42:40.231Z",
+  "generatedAt": "2026-07-28T13:55:02.559Z",
   "pages": [
     {
       "path": "index.md",
@@ -9,6 +9,11 @@
     {
       "path": "01-快速开始/login.md",
       "title": "注册与登录",
+      "order": 1
+    },
+    {
+      "path": "09-私有部署/deploy.md",
+      "title": "我也要部署 (私有化部署指南)",
       "order": 1
     },
     {
@@ -193,6 +198,21 @@
             "path": "08-其他/QA.md",
             "title": "常见问题",
             "order": 9
+          }
+        ]
+      },
+      {
+        "type": "folder",
+        "name": "09-私有部署",
+        "title": "私有部署",
+        "order": 9,
+        "children": [
+          {
+            "type": "page",
+            "name": "deploy.md",
+            "path": "09-私有部署/deploy.md",
+            "title": "我也要部署 (私有化部署指南)",
+            "order": 1
           }
         ]
       }

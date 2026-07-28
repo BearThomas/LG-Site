@@ -15,7 +15,8 @@
         posts: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5V13a1 1 0 0 0 1 1V1.5a.5.5 0 0 1 .5-.5H14a1 1 0 0 0-1-1H1.5z"/><path d="M3.5 2A1.5 1.5 0 0 0 2 3.5v11A1.5 1.5 0 0 0 3.5 16h6.086a1.5 1.5 0 0 0 1.06-.44l4.915-4.914A1.5 1.5 0 0 0 16 9.586V3.5A1.5 1.5 0 0 0 14.5 2h-11zM3 3.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 .5.5V9h-4.5A1.5 1.5 0 0 0 9 10.5V15H3.5a.5.5 0 0 1-.5-.5v-11zm7 11.293V10.5a.5.5 0 0 1 .5-.5h4.293L10 14.793z"/></svg>',
         confession: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01L8 2.748zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143c.06.055.119.112.176.171a3.12 3.12 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15z"/></svg>',
         events: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 .5a.5.5 0 0 1 .5.5v.5h7V1a.5.5 0 0 1 1 0v.5h1A1.5 1.5 0 0 1 15 3v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 14V3a1.5 1.5 0 0 1 1.5-1.5h1V1a.5.5 0 0 1 .5-.5ZM2 6v8a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V6H2Zm0-1h12V3a.5.5 0 0 0-.5-.5h-1V3a.5.5 0 0 1-1 0v-.5h-7V3a.5.5 0 0 1-1 0v-.5h-1A.5.5 0 0 0 2 3v2Z"/></svg>',
-        docs: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/></svg>'
+        docs: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286zm1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94z"/></svg>',
+        deploy: '<svg class="nav-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.406 1.342A5.53 5.53 0 0 1 8 0c2.69 0 4.923 2 5.166 4.579C14.758 4.804 16 6.137 16 7.773 16 9.569 14.502 11 12.687 11H10a.5.5 0 0 1 0-1h2.688C13.979 10 15 8.988 15 7.773c0-1.216-1.02-2.228-2.313-2.228h-.5v-.5C12.188 2.825 10.328 1 8 1a4.53 4.53 0 0 0-2.941 1.1c-.757.652-1.153 1.438-1.153 2.055v.448l-.445.049C2.064 4.805 1 5.952 1 7.318 1 8.785 2.23 10 3.781 10H6a.5.5 0 0 1 0 1H3.781C1.708 11 0 9.366 0 7.318c0-1.763 1.266-3.223 2.942-3.593.143-.863.698-1.723 1.464-2.383z"/><path fill-rule="evenodd" d="M7.646 4.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 5.707V14.5a.5.5 0 0 1-1 0V5.707L5.354 7.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>'
     };
 
     function normalizePrimaryNavIcons(navBar) {
@@ -60,7 +61,8 @@
             { key: 'home', title: '推荐', url: 'index.html', icon: primaryNavIcons.home },
             { key: 'posts', title: '帖子', url: 'posts.html', icon: primaryNavIcons.posts },
             { key: 'events', title: '大事记', url: 'events.html', icon: primaryNavIcons.events },
-            { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession }
+            { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession },
+            { key: 'deploy', title: '我也要部署', url: 'docs.html#/09-私有部署/deploy.md', icon: primaryNavIcons.deploy, desktopOnly: true }
         ];
 
         const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
@@ -85,14 +87,15 @@
 
         items.forEach(item => {
             const li = document.createElement('li');
-            li.className = 'nav-bar-item';
+            li.className = item.desktopOnly ? 'nav-bar-item desktop-only-item' : 'nav-bar-item';
             li.innerHTML = `${item.icon}<span>${item.title}</span>`;
             li.addEventListener('click', () => { location.href = item.url; });
 
             const isCurrent = (item.key === 'home' && (currentPage === '' || currentPage === 'index.html' || currentPage === 'index'))
                 || (item.key === 'posts' && (currentPage.includes('posts') || currentPage.includes('post.')))
                 || (item.key === 'events' && currentPage.includes('events'))
-                || (item.key === 'confession' && currentPage.includes('confession'));
+                || (item.key === 'confession' && currentPage.includes('confession'))
+                || (item.key === 'deploy' && currentPage.includes('docs') && location.hash.includes('deploy.md'));
 
             if (isCurrent) {
                 li.classList.add('active');
