@@ -69,22 +69,22 @@ npm run build && npx wrangler pages deploy dist --project-name=<你的项目名�
 npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称>
 ```
 
-#### 2. 在 Cloudflare 后台填入向导提示的生产机密 (Secret)
-由于云端函数安全隔离规则，在 `npx wrangler pages deploy` 发布后，前往 [Cloudflare Dash](https://dash.cloudflare.com/) 对应站点的 **Settings -> Environment variables -> Production** 页面，粘贴你由向导最后输出给你的配置清单：
+#### 2. 在 Cloudflare 后台填入 3 个必填环境变量与数据库绑定 (Secret)
+由于云端函数安全隔离规则，在 `npx wrangler pages deploy` 发布后，前往 [Cloudflare Dash](https://dash.cloudflare.com/) 对应站点的 **Settings -> Environment variables** 页面，**同时在 Production（生产）与 Preview（预览）两个环境标签页**中，填入以下必填清单：
 
-| 生产环境变量 / Secret 名称 | 建议值 / 说明 |
-| :--- | :--- |
-| `APPWRITE_ENDPOINT` | 默认 `https://cloud.appwrite.io/v1` |
-| `APPWRITE_PROJECT_ID` | 向导给你的 Appwrite Project ID |
-| `APPWRITE_API_KEY` | 向导中你传入并经安全检查的 API Key |
-| `AUTH_TOKEN_SECRET` | 向导自动生成的 64 位十六进制签名安全键 |
+| 环境变量名 (Variable name) | 是否必填 | 建议值 / 说明 |
+| :--- | :--- | :--- |
+| `APPWRITE_PROJECT_ID` | **必填** | 你的 Appwrite Project ID |
+| `APPWRITE_API_KEY` | **必填** | 你在 Appwrite 后台创建的 API Key (需含 sessions.write 和 users.write 权限) |
+| `AUTH_TOKEN_SECRET` | **必填** | 至少 32 位的随机签名安全字符串 (由向导自动生成) |
+| `APPWRITE_ENDPOINT` | 选填 | 默认使用官方云 `https://cloud.appwrite.io/v1`，无需填写 |
 
-同时，在 **Settings -> Functions -> D1 Database bindings** 中，绑定一个为名 **`DB`**、绑定到你自定义名称（如 `my-forum-db`）的 D1 数据库。
+同时，在 **Settings -> Functions -> D1 Database bindings** 中，在 **Production 与 Preview 两个标签页**都添加一条绑定：名称为 **`DB`**，关联到你自定义的 D1 数据库。
 
 > [!IMPORTANT]
-> **为什么访问页面提示「缺少环境变量：APPWRITE_ENDPOINT」？**
-> 1. 请确保你在 Cloudflare Pages 后台 **Settings -> Environment variables** 里，为 **Production（生产）与 Preview（预览）** 两个环境**都填入**了上方表格中的变量！通过 `0ea3ae7c...pages.dev` 等二级网址访问属于 Preview 预览环境。
-> 2. **填好环境变量及 D1 数据库绑定后，必须在终端再次执行部署，或者在后台 Deployments 页面点击「Retry deployment / Re-deploy」**，新配置的环境变量才会真正注入并生效！
+> **为什么填入了环境变量还是报「缺少必填环境变量」？**
+> 1. 务必确认不仅填在 Production 生产选项卡，更要填在 **Preview 预览选项卡**！（通过 `0ea3ae7c...pages.dev` 等前缀网址访问均属于 Preview 预览环境）。
+> 2. **环境变量及 D1 数据库绑定修改保存后，历史发包不会自动生效！必须在后台 Deployments 列表点击第一条部署记录右侧的三个点 ... -> [Retry deployment / 重新部署]（或者在终端再次执行 deploy）**，新的变量和数据源才会正式注入！
 
 ---
 
