@@ -1,0 +1,49 @@
+name: Keep Appwrite Active (Prevent Sleep)
+
+on:
+  schedule:
+    # 每天 UTC 02:00 和 14:00 (北京时间 10:00 和 22:00) 自动触发一次防休眠心跳
+    - cron: '0 2,14 * * *'
+  workflow_dispatch: # 支持在 GitHub 后台 Actions 标签页手动点击运行测试
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Heartbeat to Appwrite Cloud
+        env:
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1' }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
+        run: |
+          echo "=========================================="
+          echo " Starting Appwrite Cloud Keep-Alive Ping"
+          echo "=========================================="
+          
+          # 1. 基础健康检查
+          echo "--> Pinging Appwrite Health Endpoint..."
+          curl -s -L "$APPWRITE_ENDPOINT/health" > /dev/null || echo "Health check pinged."
+
+          # 2. 携带 Project ID 触发应用心跳
+          if [ -n "$APPWRITE_PROJECT_ID" ]; then
+            echo "--> Sending project activity heartbeat for Project ID: $APPWRITE_PROJECT_ID"
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" "$APPWRITE_ENDPOINT/locale")
+            echo "    Project Ping HTTP Status: $HTTP_STATUS"
+            
+            # 3. 如果配置了 API KEY，进一步发送一次经鉴权的轻量请求，确保 100% 记录活跃
+            if [ -n "$APPWRITE_API_KEY" ]; then
+              echo "--> Sending authenticated admin heartbeat..."
+              AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" -H "X-Appwrite-Key: $APPWRITE_API_KEY" "$APPWRITE_ENDPOINT/users?limit=1")
+              echo "    Authenticated Ping HTTP Status: $AUTH_STATUS"
+            fi
+            echo "✅ Appwrite keep-alive heartbeat completed successfully!"
+          else
+            echo "⚠️ APPWRITE_PROJECT_ID secret not found in GitHub Repo Settings -> Secrets -> Actions."
+            echo "   Please add APPWRITE_PROJECT_ID in GitHub to keep your specific project active."
+          fi
+
+      - name: Send Heartbeat to Cloudflare Pages Site
+        run: |
+          echo "--> Pinging Cloudflare Pages Worker Endpoint..."
+          curl -s -L "https://longgaobei.pages.dev/api/runtime-config" > /dev/null || true
+          echo "✅ All keep-alive heartbeats completed!"

@@ -207,10 +207,14 @@ CONFESSION_DAILY_LIMIT=20
   console.log('-------------------------------------------------------------');
   console.log(' 👉 Settings -> Functions -> D1 Database bindings 中添加:');
   console.log(`  Variable name: DB   |   D1 database: ${dbName}`);
+  console.log(' 👉 (额外防护) 防止 Appwrite 云服务长期不使用被休眠 (Pause):');
+  console.log(`  在 GitHub 仓库 -> Settings -> Secrets and variables -> Actions -> New repository secret 中:`);
+  console.log(`  添加 APPWRITE_PROJECT_ID = ${appwriteProjectId}  (GitHub 将每日两次为您自动保活)`);
   console.log('-------------------------------------------------------------\n');
-  console.log('现在你可以运行以下命令测试或部署：');
+  console.log('现在你可以运行以下命令测试或部署 (注意将 <你的项目名称> 替换为你 Cloudflare Pages 中的实际英文项目名，如 longgaobei)：');
   console.log('  1. 本地联调预览:   npm run dev');
-  console.log('  2. 构建并发布上线: npm run build && npx wrangler pages deploy dist --project-name=lg-site\n');
+  console.log('  2. 构建并发布上线 (Mac/Linux/CMD):        npm run build && npx wrangler pages deploy dist --project-name=<你的项目名称>');
+  console.log('     构建并发布上线 (Windows PowerShell 5.1):  npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称>\n');
 
   rl.close();
 }

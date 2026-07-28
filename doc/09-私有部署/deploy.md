@@ -60,9 +60,13 @@ npm run dev
 ### 上线部署发布：只需 2 个操作
 
 #### 1. 命令行打包上传至 Cloudflare Pages
+注意：请将命令中的 `<你的项目名称>` 替换为你在 Cloudflare Pages 中的实际英文名称（例如你的网站是 `longgaobei.pages.dev`，项目名称就是 `longgaobei`）：
 ```bash
-npm run build
-npx wrangler pages deploy dist --project-name=lg-site
+# Mac / Linux / Windows CMD 命令提示符 (使用 &&):
+npm run build && npx wrangler pages deploy dist --project-name=<你的项目名称>
+
+# Windows PowerShell 5.1 (使用分号 ; 连接):
+npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称>
 ```
 
 #### 2. 在 Cloudflare 后台填入向导提示的生产机密 (Secret)
@@ -77,7 +81,15 @@ npx wrangler pages deploy dist --project-name=lg-site
 
 同时，在 **Settings -> Functions -> D1 Database bindings** 中，绑定一个为名 **`DB`**、绑定到你自定义名称（如 `my-forum-db`）的 D1 数据库。
 
-> **提示**：如果有配置推送通知的需求，也可以选择性配置 `VAPID_PUBLIC_KEY` 和 `VAPID_PRIVATE_KEY` 环境变量；如果你不填，系统将平滑以静默模式工作，不会报错中断。
+---
+
+### 额外防护：如何防止 Appwrite 免费云因为长期无访问被休眠？
+Appwrite Cloud 免费平台在长期没有任何 API 流量请求时，会自动暂停 (Pause) 您的应用。
+为了帮助大家永久免除此困扰，我们在代码仓库中内置了专属的 **GitHub Actions 自动保活心跳工作流 (`.github/workflows/keep-appwrite-alive.yml`)**！
+* **配置方式**：前往你的 GitHub 代码仓库 -> **Settings -> Secrets and variables -> Actions -> New repository secret**：
+  * 添加秘钥名称 **`APPWRITE_PROJECT_ID`**，值为你社区对应的 Appwrite Project ID。
+  * *(可选)* 也可以同时添加 `APPWRITE_API_KEY` 以获得强签权心跳。
+* **生效原理**：GitHub 每日北京时间 10:00 与 22:00 会自动免费为你向 Appwrite 发送一次安全活动心跳请求，从而让你的社区中台永远处于唤醒与活跃状态！
 
 ---
 
