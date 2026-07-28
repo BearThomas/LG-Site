@@ -38,12 +38,13 @@ npm run setup
 ```
 
 命令启动后，交互向导会带你逐步轻松完成全部必要步骤：
-1. **自定义 Cloudflare D1 数据库命名**：你可以为数据库任意命名（例如 `my-forum-db`）。
-2. **全自动调用与绑定**：向导会在后台直接帮你执行 `npx wrangler d1 create <你取的名字>`，**自动捕获返回的 Database ID 并将 `wrangler.json` 中的名称与 ID 回填更新**！
-3. **Appwrite 接入凭据收集**：根据提示贴入你 [Appwrite Cloud](https://cloud.appwrite.io/) 申请到的 `APPWRITE_ENDPOINT`、`APPWRITE_PROJECT_ID` 及 `APPWRITE_API_KEY`（此 Key 需要勾选 `sessions.write` 和 `users.write` 权限）。
-4. **随机加密秘钥自动生成**：向导会自动为你随机生成两组 64 位无规律高强度的十六进制机密字符串作为 `AUTH_TOKEN_SECRET` 和 `BACKUP_ENCRYPT_KEY`，省去手敲风险。
-5. **本地配置文件安全持久化**：所有环境变量将以加密隔离规范写入根目录 **`.dev.vars`** 文件中。因受 `.gitignore` 保护，其凭密永远不会被上传至 Git，确保代码安全。
-6. **一键数据库迁移**：询问并直接为你将全部初始数据库架构（12 张表）一键创建至生产或调试空间。
+1. **Cloudflare 账号引导与授权登录**：向导首先会检查你是否开通了 Cloudflare 账号，并支持一键在终端调用 `npx wrangler login` 打开浏览器完成授权，或通过按回车键直接进入确认流程。
+2. **自定义 Cloudflare D1 数据库命名**：你可以为数据库任意命名（例如 `my-forum-db`）。
+3. **全自动创建与绑定**：向导会在后台直接帮你执行 `npx wrangler d1 create <你取的名字>`，**自动捕获返回的 Database ID 并将 `wrangler.json` 中的名称与 ID 回填更新**！
+4. **Appwrite 账号建站与鉴权配置指引**：向导会分步告诉你如何免费注册 [Appwrite Cloud](https://cloud.appwrite.io/)、新建项目，以及必须勾选哪些 Key 权限（`sessions.write` 和 `users.write`），附带按回车确认环节，让你无门槛轻松填入 Endpoint、Project ID 及 API Key。
+5. **随机加密秘钥自动生成**：向导会自动为你随机生成两组 64 位无规律高强度的十六进制机密字符串作为 `AUTH_TOKEN_SECRET` 和 `BACKUP_ENCRYPT_KEY`，省去手敲风险。
+6. **本地配置文件安全持久化**：所有环境变量将以加密隔离规范写入根目录 **`.dev.vars`** 文件中。因受 `.gitignore` 保护，其凭密永远不会被上传至 Git，确保代码安全。
+7. **一键数据库迁移**：询问并直接为你将全部初始数据库架构（12 张表）一键创建至生产或调试空间。
 
 ---
 

@@ -44,7 +44,26 @@ function generateRandomHex(byteLength = 32) {
 async function setup() {
   printHeader();
 
+  // 0. Cloudflare account & login confirmation
+  console.log('--- 0. Cloudflare 账号注册与授权登录 ---');
+  console.log('说明: Cloudflare 为本社区提供静态网页托管 (Pages)、无服务器后端函数及 D1 SQLite 数据库。');
+  console.log(' 1) 如果你还没有 Cloudflare 账号，请打开官网免费注册: https://dash.cloudflare.com/sign-up');
+  console.log(' 2) 为让终端能为你自动生成 D1 数据库并绑定，需通过 Wrangler 授权登录你的账号。\n');
+  const doLogin = await question('是否现在在命令行调用「npx wrangler login」打开浏览器授权登录？(Y/n，默认 Y): ', 'y');
+  if (doLogin.toLowerCase() === 'y' || doLogin.toLowerCase() === 'yes') {
+    console.log('\n正在为您调用 Wrangler 授权登录... (请在弹出的浏览器页面中点击 Authorize)\n');
+    try {
+      execSync('npx wrangler login', { stdio: 'inherit', cwd: rootDir });
+      console.log(`\x1b[32m✔ Cloudflare 授权成功！\x1b[0m\n`);
+    } catch (e) {
+      console.log(`\x1b[33m⚠ 授权可能被中断或您已处于登录状态，咱们继续下一步...\x1b[0m\n`);
+    }
+  } else {
+    await question('👉 请按 [回车键 / Enter] 确认您已登录 Cloudflare 账号并继续...');
+  }
+
   // 1. D1 Database setup
+  console.log('\n--- 1. 论坛 D1 数据库配置与一键创建 ---');
   const defaultDbName = 'lg-site-db';
   const dbName = await question(`请为你专属的 Cloudflare D1 数据库命名 (默认: ${defaultDbName}): `, defaultDbName);
 
@@ -93,11 +112,19 @@ async function setup() {
   }
 
   // 2. Appwrite Auth setup
-  console.log('\n--- 2. 用户账号与认证中台 (Appwrite) 配置 ---');
-  console.log('提示: 请登录 https://cloud.appwrite.io 查看或创建项目\n');
+  console.log('\n--- 2. 用户账号与认证中台 (Appwrite) 创建与接入 ---');
+  console.log('说明: Appwrite 为您终身免费托管全论坛的用户登录注册、会话 Token 以及图片/头像文件上传。');
+  console.log(' 1) 登录或免费注册 Appwrite Cloud 平台: https://cloud.appwrite.io/');
+  console.log(' 2) 登录后点击右上角 [Create project] 创建一个新的社区项目');
+  console.log(' 3) 进入项目的 [Overview] 面板，可查看到默认的 API Endpoint 和 Project ID');
+  console.log(' 4) 点击左侧栏 [Overview] -> [API Keys] -> [Create API Key]:');
+  console.log('    ※ 权限勾选说明: 在 Scopes 权限表中务必勾选 [sessions.write] 与 [users.write] 两项');
+  console.log('    ※ 创建成功后请复制保存返回的具体 API Key 秘钥。\n');
+  await question('👉 确认已完成 Appwrite 项目创建与 API Key 生成？请按 [回车键 / Enter] 开始录入凭据...');
+
   const appwriteEndpoint = await question('请输入 Appwrite Endpoint 地址 (默认: https://cloud.appwrite.io/v1): ', 'https://cloud.appwrite.io/v1');
   const appwriteProjectId = await question('请输入你的 Appwrite Project ID (项目唯一 ID): ');
-  const appwriteApiKey = await question('请输入你的 Appwrite Server API Key (需勾选 sessions.write 和 users.write 权限): ');
+  const appwriteApiKey = await question('请输入你的 Appwrite Server API Key (需包含 sessions.write / users.write 权限): ');
 
   // 3. Auto generate security secrets
   console.log('\n--- 3. 自动生成会话安全强加密秘钥 ---');
