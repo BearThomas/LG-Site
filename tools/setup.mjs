@@ -197,8 +197,8 @@ CONFESSION_DAILY_LIMIT=20
   console.log('\n=============================================================');
   console.log('   🎉 恭喜！本地部署与环境向导配置全部完成！');
   console.log('=============================================================');
-  console.log('\n【生产部署指引】在 Cloudflare Pages 后台上线时，请进入项目:');
-  console.log(' 👉 Settings -> Environment variables -> Production 中填入:');
+  console.log('\n【生产与预览环境指引】在 Cloudflare Pages 后台上线时，请进入对应项目:');
+  console.log(' 👉 Settings -> Environment variables (Production 与 Preview 两个环境均需填入):');
   console.log('-------------------------------------------------------------');
   console.log(`  APPWRITE_ENDPOINT    =  ${appwriteEndpoint}`);
   console.log(`  APPWRITE_PROJECT_ID  =  ${appwriteProjectId}`);
@@ -207,6 +207,7 @@ CONFESSION_DAILY_LIMIT=20
   console.log('-------------------------------------------------------------');
   console.log(' 👉 Settings -> Functions -> D1 Database bindings 中添加:');
   console.log(`  Variable name: DB   |   D1 database: ${dbName}`);
+  console.log(' ⚠️  极重要提示: 填好环境变量与 D1 绑定后，务必重新执行一次 deploy 或点击 [Retry deployment]，新变量才能生效！');
   console.log(' 👉 (额外防护) 防止 Appwrite 云服务长期不使用被休眠 (Pause):');
   console.log(`  在 GitHub 仓库 -> Settings -> Secrets and variables -> Actions -> New repository secret 中:`);
   console.log(`  添加 APPWRITE_PROJECT_ID = ${appwriteProjectId}  (GitHub 将每日两次为您自动保活)`);

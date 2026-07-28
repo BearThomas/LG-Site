@@ -81,6 +81,11 @@ npm run build; npx wrangler pages deploy dist --project-name=<你的项目名称
 
 同时，在 **Settings -> Functions -> D1 Database bindings** 中，绑定一个为名 **`DB`**、绑定到你自定义名称（如 `my-forum-db`）的 D1 数据库。
 
+> [!IMPORTANT]
+> **为什么访问页面提示「缺少环境变量：APPWRITE_ENDPOINT」？**
+> 1. 请确保你在 Cloudflare Pages 后台 **Settings -> Environment variables** 里，为 **Production（生产）与 Preview（预览）** 两个环境**都填入**了上方表格中的变量！通过 `0ea3ae7c...pages.dev` 等二级网址访问属于 Preview 预览环境。
+> 2. **填好环境变量及 D1 数据库绑定后，必须在终端再次执行部署，或者在后台 Deployments 页面点击「Retry deployment / Re-deploy」**，新配置的环境变量才会真正注入并生效！
+
 ---
 
 ### 额外防护：如何防止 Appwrite 免费云因为长期无访问被休眠？
