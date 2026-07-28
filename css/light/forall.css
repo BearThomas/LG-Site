@@ -233,6 +233,8 @@ body::before {
   opacity: 0.92;
   transition: opacity 0.4s, filter 0.4s;
   width: auto;
+  max-height: 56px;
+  max-width: 56px;
   object-fit: contain;
 }
 .title-bar img:hover { opacity: 1; }
