@@ -61,8 +61,9 @@
             { key: 'home', title: '推荐', url: 'index.html', icon: primaryNavIcons.home },
             { key: 'posts', title: '帖子', url: 'posts.html', icon: primaryNavIcons.posts },
             { key: 'events', title: '大事记', url: 'events.html', icon: primaryNavIcons.events },
-            { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession },
-            { key: 'deploy', title: '我也要部署', url: 'docs.html#/09-私有部署/deploy.md', icon: primaryNavIcons.deploy, desktopOnly: true }
+            { key: 'confession', title: '表白墙', url: 'confession.html', icon: primaryNavIcons.confession }
+            // 暂时隐藏顶端导航栏“我也要部署”入口，等测试完后再取消注释打开：
+            // , { key: 'deploy', title: '我也要部署', url: 'docs.html#/09-私有部署/deploy.md', icon: primaryNavIcons.deploy, desktopOnly: true }
         ];
 
         const currentPage = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
