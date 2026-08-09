@@ -1,13 +1,14 @@
 {
   "collection": "posts",
   "totalChunks": 1,
-  "totalRecords": 40,
-  "updatedAt": "2026-08-09T07:47:24.078Z",
+  "totalRecords": 41,
+  "updatedAt": "2026-08-09T08:51:12.229Z",
   "chunks": [
     {
       "file": "chunk-1.json",
-      "hash": "bc90da53359f06fb79eb70aae94b05de2159161306b2dae0ced6387a9165b96a",
-      "count": 40
+      "hash": "d2bd7f62196ef68c3351db31fb559386e5a5fdf36c89660102a9246858acc82b",
+      "count": 41,
+      "startDate": "2026-07-08T07:46:30.538Z"
     }
   ]
 }
