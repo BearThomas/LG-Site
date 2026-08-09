@@ -339,6 +339,7 @@ async function loadPostDetail() {
                     fields: ['$id', 'title', 'content', 'createdAt', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes', 'authorId', 'authorName', 'targetGroups']
                 })
             });
+            console.log(res);
             const payload = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(payload.error || '备份解密失败');
             const doc = Array.isArray(payload.documents) ? payload.documents[0] : null;
