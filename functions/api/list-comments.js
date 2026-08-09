@@ -14,6 +14,8 @@ export async function onRequestGet({ request, env }) {
     // if (!post) throw new HttpError(404, '帖子不存在');
     // if (!canViewPost(post, auth?.profile || null)) throw new HttpError(403, '无权查看该帖评论');
 
+    const fieldsParam = url.searchParams.get('fields');
+    const fields = fieldsParam ? fieldsParam.split(',').map(value => value.trim()).filter(Boolean) : null;
     const result = await requireDb(env).prepare(`
       SELECT * FROM comments
       WHERE post_id = ?
@@ -22,7 +24,7 @@ export async function onRequestGet({ request, env }) {
     `).bind(postId).all();
     return json({
       total: Number(result.results?.length || 0),
-      documents: (result.results || []).map(toCommentDocument)
+      documents: (result.results || []).map(row => toCommentDocument(row, fields))
     });
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/list-comments', message: error.message, status: error.status }));

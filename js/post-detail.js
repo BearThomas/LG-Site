@@ -316,8 +316,10 @@ function isPostVisible(post, userBoards) {
 // ========== 加载帖子详情 ==========
 async function loadPostDetail() {
     try {
-        currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId);
-        
+        currentPost = await databases.getDocument(DATABASE_ID, COLLECTION_POSTS, postId, {
+            fields: ['$id', '$createdAt', 'title', 'content', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes', 'liked', 'authorId', 'authorName', 'targetGroups']
+        });
+        currentPost._isCold = false;
     } catch (error) {
         const status = Number(error.code || 0);
         if (status === 403) {
@@ -326,22 +328,22 @@ async function loadPostDetail() {
             }
             return;
         }
-        console.warn('D1 暂时不可用，正在排查 public 备份...');
+        console.warn('D1 暂时不可用，正在尝试从归档备份按需解密...');
         try {
-            let index = await fetchWithHashCache('posts', ['./public/data-backups/posts/index.json']);
-            let raw = [];
-            if (index && index.chunks) {
-                const promises = index.chunks.map(chunk => fetchWithHashCache(`posts_${chunk.file}`, [`./public/data-backups/posts/${chunk.file}`]));
-                const arrays = await Promise.all(promises);
-                raw = arrays.flat();
-            }
-            
-            raw = applyPendingModifications('posts', raw);
-            
-            currentPost = raw.find(p => (p.id === postId || p.$id === postId));
-            if (!currentPost) throw new Error('帖子实体不存在');
-            currentPost._isCold = true;
-            
+            const res = await fetch('/api/backup-decrypt-batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    collection: 'posts',
+                    ids: [postId],
+                    fields: ['$id', 'title', 'content', 'createdAt', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes']
+                })
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(payload.error || '备份解密失败');
+            const doc = Array.isArray(payload.documents) ? payload.documents[0] : null;
+            if (!doc) throw new Error('帖子实体不存在');
+            currentPost = { ...doc, _isCold: true, authorId: '', authorName: '匿名' };
         } catch (localErr) {
             if (postDetailCard) postDetailCard.innerHTML = '<div class="empty-state"><p>报错：当前查看的帖子已被彻底移除或并不存在</p></div>';
             return;
@@ -582,18 +584,20 @@ async function loadComments() {
         let localRes = [];
         if (cloudComments === null) {
             try {
-                let index = await fetchWithHashCache('comments', ['./public/data-backups/comments/index.json']);
-                let raw = [];
-                if (index && index.chunks) {
-                    const promises = index.chunks.map(chunk => fetchWithHashCache(`comments_${chunk.file}`, [`./public/data-backups/comments/${chunk.file}`]));
-                    const arrays = await Promise.all(promises);
-                    raw = arrays.flat();
-                }
-                
-                raw = applyPendingModifications('comments', raw);
-                localRes = raw.filter(comment => comment.postId === postId);
+                const res = await fetch('/api/backup-decrypt-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        collection: 'comments',
+                        ids: [],
+                        fields: ['$id', 'postId', 'content', 'createdAt']
+                    })
+                });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(payload.error || '评论备份解密失败');
+                localRes = Array.isArray(payload.documents) ? payload.documents.filter(comment => comment.postId === postId) : [];
             } catch (error) {
-                console.warn('public 评论备份也无法读取:', error.message);
+                console.warn('归档评论备份也无法读取:', error.message);
             }
         }
 

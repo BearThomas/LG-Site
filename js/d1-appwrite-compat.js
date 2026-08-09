@@ -46,11 +46,14 @@ export class Databases {
     return requestJson(`/api/data?${params.toString()}`);
   }
 
-  getDocument(_databaseId, collectionId, documentId) {
+  getDocument(_databaseId, collectionId, documentId, options = {}) {
     const params = new URLSearchParams({
       collection: String(collectionId),
       documentId: String(documentId)
     });
+    if (Array.isArray(options.fields) && options.fields.length) {
+      params.set('fields', options.fields.join(','));
+    }
     return requestJson(`/api/data?${params.toString()}`);
   }
 

@@ -114,20 +114,31 @@ export function isAdmin(profile) {
   return profile?.role === 'admin';
 }
 
-export function toUserDocument(row, { includePrivate = false } = {}) {
+export function toUserDocument(row, { includePrivate = false, fields = null } = {}) {
   if (!row) return null;
-  const document = {
-    $id: row.id,
-    $createdAt: row.created_at,
-    $updatedAt: row.updated_at,
-    userId: row.id,
-    name: row.name,
-    avatar: row.avatar || '',
-    role: row.role || 'normal',
-    followingCount: Number(row.following_count || 0),
-    followersCount: Number(row.followers_count || 0)
-  };
+  const allowedFields = Array.isArray(fields) ? fields : null;
+  const pick = (fieldName) => allowedFields ? allowedFields.includes(fieldName) : true;
+  const document = {};
+  if (pick('$id')) document.$id = row.id;
+  if (pick('$createdAt')) document.$createdAt = row.created_at;
+  if (pick('$updatedAt')) document.$updatedAt = row.updated_at;
+  if (pick('userId')) document.userId = row.id;
+  if (pick('name')) document.name = row.name;
+  if (pick('avatar')) document.avatar = row.avatar || '';
+  if (pick('role')) document.role = row.role || 'normal';
+  if (pick('followingCount')) document.followingCount = Number(row.following_count || 0);
+  if (pick('followersCount')) document.followersCount = Number(row.followers_count || 0);
   if (includePrivate) {
+    if (pick('email')) document.email = row.email || '';
+    if (pick('permissions')) document.permissions = Number(row.permissions || 0);
+    if (pick('joinedBoards')) document.joinedBoards = parseJsonArray(row.joined_boards);
+    if (pick('ownedBoards')) document.ownedBoards = parseJsonArray(row.owned_boards);
+    if (pick('class')) document.class = row.class_name || '';
+    if (pick('mutedUntil')) document.mutedUntil = row.muted_until || null;
+    if (pick('banned')) document.banned = Boolean(row.banned);
+  }
+  return Object.keys(document).length ? document : null;
+}
     Object.assign(document, {
       email: row.email || '',
       permissions: Number(row.permissions || 0),
@@ -141,54 +152,60 @@ export function toUserDocument(row, { includePrivate = false } = {}) {
   return document;
 }
 
-export function toPostDocument(row) {
+export function toPostDocument(row, fields = null) {
   if (!row) return null;
-  return {
-    $id: row.id,
-    $createdAt: row.created_at,
-    $updatedAt: row.updated_at,
-    boardId: row.board_id || 'main',
-    title: row.title,
-    content: row.content,
-    authorId: `student_${normalizeUserId(row.author_id)}`,
-    authorName: row.author_name,
-    viewPermission: Number(row.view_permission || 1),
-    targetGroups: parseJsonArray(row.target_groups),
-    status: Number(row.status || 0),
-    editedAt: row.edited_at || null,
-    commentCount: Number(row.comment_count || 0),
-    likes: Number(row.likes || 0),
-    liked: Boolean(row.liked)
-  };
+  const allowedFields = Array.isArray(fields) ? fields : null;
+  const pick = (fieldName) => allowedFields ? allowedFields.includes(fieldName) : true;
+  const document = {};
+  if (pick('$id')) document.$id = row.id;
+  if (pick('$createdAt')) document.$createdAt = row.created_at;
+  if (pick('$updatedAt')) document.$updatedAt = row.updated_at;
+  if (pick('boardId')) document.boardId = row.board_id || 'main';
+  if (pick('title')) document.title = row.title;
+  if (pick('content')) document.content = row.content;
+  if (pick('authorId')) document.authorId = `student_${normalizeUserId(row.author_id)}`;
+  if (pick('authorName')) document.authorName = row.author_name;
+  if (pick('viewPermission')) document.viewPermission = Number(row.view_permission || 1);
+  if (pick('targetGroups')) document.targetGroups = parseJsonArray(row.target_groups);
+  if (pick('status')) document.status = Number(row.status || 0);
+  if (pick('editedAt')) document.editedAt = row.edited_at || null;
+  if (pick('commentCount')) document.commentCount = Number(row.comment_count || 0);
+  if (pick('likes')) document.likes = Number(row.likes || 0);
+  if (pick('liked')) document.liked = Boolean(row.liked);
+  return Object.keys(document).length ? document : null;
 }
 
-export function toCommentDocument(row) {
+export function toCommentDocument(row, fields = null) {
   if (!row) return null;
-  return {
-    $id: row.id,
-    $createdAt: row.created_at,
-    $updatedAt: row.updated_at,
-    postId: row.post_id,
-    content: row.content,
-    authorId: normalizeUserId(row.author_id),
-    authorName: row.author_name
-  };
+  const allowedFields = Array.isArray(fields) ? fields : null;
+  const pick = (fieldName) => allowedFields ? allowedFields.includes(fieldName) : true;
+  const document = {};
+  if (pick('$id')) document.$id = row.id;
+  if (pick('$createdAt')) document.$createdAt = row.created_at;
+  if (pick('$updatedAt')) document.$updatedAt = row.updated_at;
+  if (pick('postId')) document.postId = row.post_id;
+  if (pick('content')) document.content = row.content;
+  if (pick('authorId')) document.authorId = normalizeUserId(row.author_id);
+  if (pick('authorName')) document.authorName = row.author_name;
+  return Object.keys(document).length ? document : null;
 }
 
-export function toConfessionDocument(row, viewer = null) {
+export function toConfessionDocument(row, viewer = null, fields = null) {
   if (!row) return null;
+  const allowedFields = Array.isArray(fields) ? fields : null;
+  const pick = (fieldName) => allowedFields ? allowedFields.includes(fieldName) : true;
   const maySeeAuthor = viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.author_id));
-  return {
-    $id: row.id,
-    $createdAt: row.created_at,
-    $updatedAt: row.updated_at,
-    content: row.content,
-    authorId: maySeeAuthor ? normalizeUserId(row.author_id) : '',
-    authorName: maySeeAuthor ? row.author_name : '匿名',
-    toName: row.to_name || null,
-    status: Number(row.status || 0),
-    likes: Number(row.likes || 0)
-  };
+  const document = {};
+  if (pick('$id')) document.$id = row.id;
+  if (pick('$createdAt')) document.$createdAt = row.created_at;
+  if (pick('$updatedAt')) document.$updatedAt = row.updated_at;
+  if (pick('content')) document.content = row.content;
+  if (pick('authorId')) document.authorId = maySeeAuthor ? normalizeUserId(row.author_id) : '';
+  if (pick('authorName')) document.authorName = maySeeAuthor ? row.author_name : '匿名';
+  if (pick('toName')) document.toName = row.to_name || null;
+  if (pick('status')) document.status = Number(row.status || 0);
+  if (pick('likes')) document.likes = Number(row.likes || 0);
+  return Object.keys(document).length ? document : null;
 }
 
 export async function getPostRow(env, postId) {

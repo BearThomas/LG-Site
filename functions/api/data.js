@@ -48,7 +48,7 @@ function queryState(queries) {
   return state;
 }
 
-async function listUsers(env, state, viewer) {
+async function listUsers(env, state, viewer, fields = null) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
@@ -87,7 +87,8 @@ async function listUsers(env, state, viewer) {
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   const total = Number(countResult.results?.[0]?.total || 0);
   const documents = (rowsResult.results || []).map(row => toUserDocument(row, {
-    includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id)))
+    includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id))),
+    fields
   }));
   return { total, documents };
 }
@@ -119,7 +120,7 @@ function appendPostVisibility(conditions, values, viewer) {
   conditions.push(`(${visibility.join(' OR ')})`);
 }
 
-async function listPosts(env, state, viewer) {
+async function listPosts(env, state, viewer, fields = null) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
@@ -200,11 +201,11 @@ async function listPosts(env, state, viewer) {
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   return {
     total: Number(countResult.results?.[0]?.total || 0),
-    documents: (rowsResult.results || []).map(toPostDocument)
+    documents: (rowsResult.results || []).map(row => toPostDocument(row, fields))
   };
 }
 
-async function listComments(env, state, viewer) {
+async function listComments(env, state, viewer, fields = null) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
@@ -247,18 +248,11 @@ async function listComments(env, state, viewer) {
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   return {
     total: Number(countResult.results?.[0]?.total || 0),
-    documents: (rowsResult.results || []).map(row => ({
-      $id: row.id,
-      $createdAt: row.created_at,
-      postId: row.post_id,
-      content: row.content,
-      authorId: row.author_id,
-      authorName: row.author_name || ('同学' + String(row.author_id || '').slice(-4))
-    }))
+    documents: (rowsResult.results || []).map(row => toCommentDocument(row, fields))
   };
 }
 
-async function listConfessions(env, state, viewer) {
+async function listConfessions(env, state, viewer, fields = null) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
@@ -293,16 +287,17 @@ async function listConfessions(env, state, viewer) {
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
   return {
     total: Number(countResult.results?.[0]?.total || 0),
-    documents: (rowsResult.results || []).map(row => toConfessionDocument(row, viewer))
+    documents: (rowsResult.results || []).map(row => toConfessionDocument(row, viewer, fields))
   };
 }
 
-async function getDocument(env, collection, documentId, viewer) {
+async function getDocument(env, collection, documentId, viewer, fields = null) {
   if (collection === 'users') {
     const row = await getUserRow(env, documentId);
     if (!row) throw new HttpError(404, '用户不存在');
     return toUserDocument(row, {
-      includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id)))
+      includePrivate: Boolean(viewer && (isAdmin(viewer) || normalizeUserId(viewer.id) === normalizeUserId(row.id))),
+      fields
     });
   }
   if (collection === 'posts') {
@@ -317,7 +312,7 @@ async function getDocument(env, collection, documentId, viewer) {
     `).bind(viewerId, documentId).first();
     if (!row) throw new HttpError(404, '帖子不存在');
     if (!canViewPost(row, viewer)) throw new HttpError(403, '无权查看该帖子');
-    return toPostDocument(row);
+    return toPostDocument(row, fields);
   }
   if (collection === 'confessions') {
     const row = await requireDb(env)
@@ -328,7 +323,7 @@ async function getDocument(env, collection, documentId, viewer) {
     if (Number(row.status || 0) !== 0 && !(viewer && isAdmin(viewer))) {
       throw new HttpError(404, '内容不存在');
     }
-    return toConfessionDocument(row, viewer);
+    return toConfessionDocument(row, viewer, fields);
   }
   throw new HttpError(400, '不支持的数据集合');
 }
@@ -341,13 +336,15 @@ export async function onRequestGet({ request, env }) {
     const auth = await optionalAuth(request, env);
     const viewer = auth?.profile || null;
     const documentId = url.searchParams.get('documentId');
-    if (documentId) return json(await getDocument(env, collection, documentId, viewer));
+    const requestedFields = url.searchParams.get('fields');
+    const fields = requestedFields ? requestedFields.split(',').map(v => v.trim()).filter(Boolean) : null;
+    if (documentId) return json(await getDocument(env, collection, documentId, viewer, fields));
 
     const state = queryState(parseQueries(url.searchParams.get('queries')));
-    if (collection === 'users') return json(await listUsers(env, state, viewer));
-    if (collection === 'posts') return json(await listPosts(env, state, viewer));
-    if (collection === 'comments') return json(await listComments(env, state, viewer));
-    return json(await listConfessions(env, state, viewer));
+    if (collection === 'users') return json(await listUsers(env, state, viewer, fields));
+    if (collection === 'posts') return json(await listPosts(env, state, viewer, fields));
+    if (collection === 'comments') return json(await listComments(env, state, viewer, fields));
+    return json(await listConfessions(env, state, viewer, fields));
   } catch (error) {
     console.error(JSON.stringify({ level: 'error', route: '/api/data', method: 'GET', message: error.message, status: error.status }));
     return errorResponse(error, '读取数据失败');
