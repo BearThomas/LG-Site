@@ -336,7 +336,7 @@ async function loadPostDetail() {
                 body: JSON.stringify({
                     collection: 'posts',
                     ids: [postId],
-                    fields: ['$id', 'title', 'content', 'createdAt', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes']
+                    fields: ['$id', 'title', 'content', 'createdAt', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes', 'authorId', 'authorName', 'targetGroups']
                 })
             });
             const payload = await res.json().catch(() => ({}));
