@@ -139,18 +139,6 @@ export function toUserDocument(row, { includePrivate = false, fields = null } = 
   }
   return Object.keys(document).length ? document : null;
 }
-    Object.assign(document, {
-      email: row.email || '',
-      permissions: Number(row.permissions || 0),
-      joinedBoards: parseJsonArray(row.joined_boards),
-      ownedBoards: parseJsonArray(row.owned_boards),
-      class: row.class_name || '',
-      mutedUntil: row.muted_until || null,
-      banned: Boolean(row.banned)
-    });
-  }
-  return document;
-}
 
 export function toPostDocument(row, fields = null) {
   if (!row) return null;
