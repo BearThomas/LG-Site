@@ -110,9 +110,34 @@ export async function ensureUserRow(env, identity, defaults = {}) {
   return getUserRow(env, id);
 }
 
-export function isAdmin(profile) {
-  return profile?.role === 'admin';
+export const SUPER_ADMIN_ID = '20240338';
+
+export const PERMISSIONS = {
+  BASIC_USER: 1,         // 0b000001
+  VIEW_DASHBOARD: 2,     // 0b000010
+  AUDIT_EVENTS: 4,       // 0b000100
+  MANAGE_USERS: 8,       // 0b001000
+  MANAGE_PERMISSIONS: 16,// 0b010000
+  DATABASE_STUDIO: 32    // 0b100000
+};
+
+export function isSuperAdmin(profile) {
+  if (!profile) return false;
+  return normalizeUserId(profile.id) === SUPER_ADMIN_ID;
 }
+
+export function hasPermission(profile, permBit) {
+  if (!profile) return false;
+  if (isSuperAdmin(profile)) return true;
+  const userPerms = Number(profile.permissions ?? 0);
+  return (userPerms & permBit) === permBit;
+}
+
+export function isAdmin(profile) {
+  if (!profile) return false;
+  return isSuperAdmin(profile) || profile?.role === 'admin' || hasPermission(profile, PERMISSIONS.VIEW_DASHBOARD);
+}
+
 
 export function toUserDocument(row, { includePrivate = false, fields = null } = {}) {
   if (!row) return null;

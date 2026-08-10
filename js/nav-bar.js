@@ -149,8 +149,22 @@
         helpLink.href = 'docs.html';
         helpLink.textContent = '帮助';
 
+        const user = readSavedUser();
+        const sid = String(user?.studentId || user?.userId || '').replace(/^student_/, '');
+        const isSuperAdmin = sid === '20240338';
+        const hasDashboardPerm = (Number(user?.permissions || 0) & 2) === 2;
+        const isAdmin = isSuperAdmin || user?.role === 'admin' || hasDashboardPerm;
+
         menu.appendChild(profileLink);
         menu.appendChild(messagesLink);
+        if (isAdmin) {
+            const adminLink = document.createElement('a');
+            adminLink.href = 'admin-dashboard.html';
+            adminLink.style.color = 'var(--primary-color, #228be6)';
+            adminLink.style.fontWeight = 'bold';
+            adminLink.textContent = '🛡️ 管理控制台';
+            menu.appendChild(adminLink);
+        }
         menu.appendChild(settingsLink);
         menu.appendChild(helpLink);
 

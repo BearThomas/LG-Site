@@ -145,6 +145,38 @@ ${userInput}
       now
     ).run();
 
+    // 查找拥有 AUDIT_EVENTS (位 4) 权限或超级管理员(20240338)的最近活跃管理员
+    try {
+      const activeAdmins = await db.prepare(`
+        SELECT id, name FROM users
+        WHERE (id = '20240338' OR (permissions & 4) = 4 OR role = 'admin') AND banned = 0
+        ORDER BY updated_at DESC
+        LIMIT 5
+      `).all();
+
+      const adminRows = activeAdmins?.results || [];
+      const notifTime = new Date().toISOString();
+
+      for (const adminRow of adminRows) {
+        const notifId = crypto.randomUUID();
+        await db.prepare(`
+          INSERT INTO notifications (id, recipient_id, sender_id, sender_name, type, title, content, target_id, is_read, created_at)
+          VALUES (?, ?, ?, ?, 'system', ?, ?, ?, 0, ?)
+        `).bind(
+          notifId,
+          adminRow.id,
+          userId,
+          profile.name || '系统用户',
+          '【大事记审核提醒】',
+          `用户投稿了新大事记《${normalizedTitle}》，请及时在大事记面板中审核。`,
+          eventId,
+          notifTime
+        ).run().catch(e => console.warn('写入管理员通知失败:', e.message));
+      }
+    } catch (notifErr) {
+      console.warn('通知活跃管理员异常:', notifErr.message);
+    }
+
     return json({
       success: true,
       eventId: eventId,

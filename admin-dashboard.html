@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理控制台 - 龙高北小站</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <style>
+        .admin-container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 15px;
+        }
+
+        .admin-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .admin-tabs {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid var(--border-color, #e9ecef);
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .admin-tab-btn {
+            padding: 10px 18px;
+            border: none;
+            background: transparent;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-muted, #6c757d);
+            cursor: pointer;
+            border-radius: 8px 8px 0 0;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .admin-tab-btn:hover {
+            color: var(--primary-color, #228be6);
+            background: rgba(34, 139, 230, 0.05);
+        }
+
+        .admin-tab-btn.active {
+            color: var(--primary-color, #228be6);
+            border-bottom: 3px solid var(--primary-color, #228be6);
+            background: rgba(34, 139, 230, 0.08);
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e9ecef);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(34, 139, 230, 0.1);
+            color: var(--primary-color, #228be6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .stat-info h4 {
+            margin: 0;
+            font-size: 13px;
+            color: var(--text-muted, #6c757d);
+            font-weight: 500;
+        }
+
+        .stat-info .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-color, #212529);
+            margin: 4px 0;
+        }
+
+        .stat-info .stat-sub {
+            font-size: 12px;
+            color: #40c057;
+        }
+
+        /* Common Table Styling */
+        .data-table-container {
+            background: var(--card-bg, #ffffff);
+            border: 1px solid var(--border-color, #e9ecef);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .data-table th, .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color, #e9ecef);
+        }
+
+        .data-table th {
+            background: rgba(0,0,0,0.02);
+            font-weight: 600;
+            color: var(--text-muted, #6c757d);
+        }
+
+        .data-table tr:hover {
+            background: rgba(34, 139, 230, 0.02);
+        }
+
+        /* Bitmask Checkbox Grid */
+        .perm-checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-hover, #f8f9fa);
+            border-radius: 8px;
+        }
+
+        .perm-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .perm-checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary-color, #228be6);
+        }
+
+        /* SQL Terminal Box */
+        .sql-editor-wrap {
+            background: #1e1e1e;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .sql-textarea {
+            width: 100%;
+            height: 120px;
+            background: transparent;
+            color: #d4d4d4;
+            border: none;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+        }
+
+        .sql-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .btn-confirm-danger {
+            background: #f03e3e;
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Modal Safe Safeguard */
+        .safe-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .safe-modal.show {
+            display: flex;
+        }
+
+        .safe-modal-content {
+            background: var(--card-bg, #ffffff);
+            border-radius: 14px;
+            max-width: 440px;
+            width: 90%;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color, #e9ecef);
+        }
+
+        .confirm-code-badge {
+            display: inline-block;
+            background: #fff5f5;
+            color: #e03131;
+            font-family: monospace;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 4px 12px;
+            border-radius: 6px;
+            border: 1px dashed #f03e3e;
+            margin: 8px 0;
+        }
+
+        .confirm-input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e03131;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-top: 12px;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 头部导航栏 -->
+    <header class="title-bar">
+        <div class="site-title" onclick="location.href='./'">
+            <span class="title-text">龙高北小站</span>
+        </div>
+        <ul class="nav-bar"></ul>
+        <div class="user-area" id="userArea">
+            <div id="userNotLogin" style="display: none;">
+                <button class="btn btn-primary" onclick="location.href='login.html'">登录 / 注册</button>
+            </div>
+            <div id="userLoggedIn" style="display: flex; align-items: center; gap: 10px;">
+                <a id="navMessages" href="messages.html" class="notification-center-link" title="通知中心"></a>
+                <span id="userName" style="font-size: 14px; font-weight: 500;">...</span>
+                <div class="avatar" id="userAvatar">?</div>
+                <div class="dropdown-menu" id="dropdownMenu"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="admin-container">
+        <div class="admin-header">
+            <div>
+                <h2 style="margin: 0;">🛡️ 统一管理控制台</h2>
+                <p style="margin: 4px 0 0 0; color: var(--text-muted, #6c757d); font-size: 14px;">
+                    数据面板、大事记审核、二进制权限开关管理与超级管理员 SQL 控制台
+                </p>
+            </div>
+        </div>
+
+        <!-- 选项卡按钮栏 -->
+        <div class="admin-tabs">
+            <button class="admin-tab-btn active" data-tab="tab-stats">
+                📊 数据概览
+            </button>
+            <button class="admin-tab-btn" data-tab="tab-events">
+                📜 大事记审核 <span id="eventPendingBadge" class="nav-badge" style="display:none;">0</span>
+            </button>
+            <button class="admin-tab-btn" data-tab="tab-perms">
+                🔑 权限与用户管理
+            </button>
+            <button class="admin-tab-btn" data-tab="tab-studio" id="studioTabBtn" style="display: none;">
+                💻 DB 控制台 & SQL 终端 (Super Admin)
+            </button>
+        </div>
+
+        <!-- 选项卡 1：数据概览 -->
+        <section id="tab-stats" class="tab-panel active">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-info">
+                        <h4>注册用户总数</h4>
+                        <div class="stat-value" id="statUserTotal">-</div>
+                        <div class="stat-sub" id="statUserToday">今日 +0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-info">
+                        <h4>帖子总量</h4>
+                        <div class="stat-value" id="statPostTotal">-</div>
+                        <div class="stat-sub" id="statPostToday">今日 +0</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💬</div>
+                    <div class="stat-info">
+                        <h4>评论总量</h4>
+                        <div class="stat-value" id="statCommentTotal">-</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💌</div>
+                    <div class="stat-info">
+                        <h4>表白墙记录</h4>
+                        <div class="stat-value" id="statConfessionTotal">-</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🔔</div>
+                    <div class="stat-info">
+                        <h4>大事记待审核</h4>
+                        <div class="stat-value" id="statEventPending" style="color: #f76707;">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 选项卡 2：大事记审核 -->
+        <section id="tab-events" class="tab-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="margin:0;">大事记待审核列表</h3>
+                <button class="btn btn-secondary btn-sm" onclick="loadEventsList()">刷新列表</button>
+            </div>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>标题</th>
+                            <th>标签</th>
+                            <th>发生日期</th>
+                            <th>投稿人 ID</th>
+                            <th>描述</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody">
+                        <tr><td colspan="6" style="text-align: center; color: #888;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 选项卡 3：二进制权限与用户管理 -->
+        <section id="tab-perms" class="tab-panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px;">
+                <h3 style="margin:0;">二进制权限开关分配 (Checkboxes)</h3>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="userSearchInput" placeholder="搜索学号 / 姓名..." style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc; font-size: 14px;">
+                    <button class="btn btn-primary btn-sm" onclick="loadPermissionsList()">搜索</button>
+                </div>
+            </div>
+            <div class="data-table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>学号 / 用户 ID</th>
+                            <th>姓名</th>
+                            <th>角色</th>
+                            <th>当前二进制权限开关掩码 (Checkboxes)</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="permsTableBody">
+                        <tr><td colspan="5" style="text-align: center; color: #888;">加载中...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 选项卡 4：DB 控制台 & SQL 终端 (仅 Super Admin) -->
+        <section id="tab-studio" class="tab-panel">
+            <div class="sql-editor-wrap">
+                <div style="display: flex; justify-content: space-between; color: #a0a0a0; font-size: 13px; margin-bottom: 8px;">
+                    <span>💻 超级管理员 SQL 执行终端 (D1 SQLite)</span>
+                    <span>超级管理员: bearThomas (20240338)</span>
+                </div>
+                <textarea id="sqlTerminalInput" class="sql-textarea" placeholder="输入自定义 SQL 语句，例如：SELECT * FROM users LIMIT 10;"></textarea>
+                <div class="sql-toolbar">
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-sm" onclick="setSqlTemplate('SELECT * FROM users LIMIT 10')">模板: 用户表</button>
+                        <button class="btn btn-secondary btn-sm" onclick="setSqlTemplate('SELECT * FROM posts ORDER BY created_at DESC LIMIT 10')">模板: 最新帖子</button>
+                        <button class="btn btn-secondary btn-sm" onclick="setSqlTemplate('SELECT * FROM mod_log ORDER BY created_at DESC LIMIT 10')">模板: 审计日志</button>
+                    </div>
+                    <button class="btn btn-primary btn-sm" onclick="handleRunSql()">▶ 执行 SQL</button>
+                </div>
+            </div>
+
+            <!-- 可视化数据表浏览区 -->
+            <div style="margin-top: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3 style="margin: 0;">数据表直操:</h3>
+                        <select id="dbTableSelect" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #ccc;" onchange="loadSelectedTableData()"></select>
+                    </div>
+                    <span id="tableTotalRows" style="font-size: 13px; color: #666;">总行数: -</span>
+                </div>
+                <div class="data-table-container" style="max-height: 500px; overflow: auto;">
+                    <table class="data-table" id="dbStudioTable">
+                        <thead id="dbStudioThead"></thead>
+                        <tbody id="dbStudioTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 高危操作二次确认 Modal 模态框 -->
+    <div id="safeModal" class="safe-modal">
+        <div class="safe-modal-content">
+            <h3 style="margin: 0 0 10px 0; color: #e03131; display: flex; align-items: center; gap: 8px;">
+                ⚠️ 高危操作二次安全确认
+            </h3>
+            <p style="font-size: 14px; color: var(--text-color, #333); margin-bottom: 10px;" id="safeModalPrompt">
+                检测到您正在进行写/修改/删除等高危操作。为防误触，请输入下面的确认码：
+            </p>
+            <div style="text-align: center;">
+                <span class="confirm-code-badge" id="confirmCodeDisplay">CONFIRM-1234</span>
+            </div>
+            <input type="text" id="confirmCodeInput" class="confirm-input" placeholder="请输入上方红字确认码" autocomplete="off">
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeSafeModal()">取消</button>
+                <button class="btn-confirm-danger" id="confirmSubmitBtn">确认执行</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 脚本引入 -->
+    <script src="js/shared.js"></script>
+    <script src="js/nav-bar.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+</body>
+</html>
