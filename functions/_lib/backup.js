@@ -120,6 +120,20 @@ function normalizeCreatedAt(document) {
   return document?.$createdAt || document?.createdAt || document?.created_at || null;
 }
 
+function matchesFilter(row, filters = {}) {
+  if (!filters || typeof filters !== 'object') return true;
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === undefined || value === null) continue;
+    const rowVal = row[key] ?? row[`$${key}`] ?? row[key.replace(/([A-Z])/g, '_$1').toLowerCase()];
+    if (Array.isArray(value)) {
+      if (!value.includes(rowVal)) return false;
+    } else if (rowVal !== value) {
+      return false;
+    }
+  }
+  return true;
+}
+
 async function projectArchivedDocument(collection, document, selectedFields, decrypt) {
   const projected = {};
   const fieldMap = FIELD_VALUE_MAP[collection] || {};
