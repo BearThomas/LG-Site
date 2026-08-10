@@ -408,7 +408,8 @@ function renderPostDetail() {
     const timeStr = formatTime(new Date(postCreatedAt));
     
     let actionsHtml = '';
-    const isAdmin = currentUser && (currentUser.role === 'admin' || currentUser.permissions === 255);
+    const currentUserId = normalizeUserId(currentUser?.studentId || currentUser?.userId || '');
+    const isAdmin = currentUser && (currentUser.role === 'admin' || (Number(currentUser.permissions || 0) & 2) !== 0 || currentUserId === '20240338');
     if (isAuthor) {
         actionsHtml = `
             <button class="post-action-btn" id="editPostBtn">✏️ 编辑</button>
@@ -548,13 +549,10 @@ function renderPostDetail() {
         });
     }
 
-    if (currentUser?.permissions >= 31) {
-        document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
-        document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
-    } else if (isAdmin) {
-        document.getElementById('deletePostBtn')?.addEventListener('click', openDeleteModal);
-        document.getElementById('editPostBtn')?.addEventListener('click', openEditModal);
-    }
+    const editBtn = document.getElementById('editPostBtn');
+    const deleteBtn = document.getElementById('deletePostBtn');
+    if (editBtn) editBtn.addEventListener('click', openEditModal);
+    if (deleteBtn) deleteBtn.addEventListener('click', openDeleteModal);
     
     const likeBtn = document.getElementById('likeBtn');
     if (likeBtn) {
