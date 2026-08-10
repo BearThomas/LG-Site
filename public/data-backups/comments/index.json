@@ -2,17 +2,21 @@
   "collection": "comments",
   "totalChunks": 2,
   "totalRecords": 61,
-  "updatedAt": "2026-08-09T07:47:27.527Z",
+  "updatedAt": "2026-08-10T07:30:26.398Z",
   "chunks": [
     {
       "file": "chunk-1.json",
       "hash": "afc21947f0c7c9ac365cd9824b9a32218153c6de42e847b3bdc196df0fcc6e9f",
-      "count": 50
+      "count": 50,
+      "startDate": "2026-07-13T15:59:44.536+00:00",
+      "endDate": "2026-06-20T13:31:08.985+00:00"
     },
     {
       "file": "chunk-2.json",
       "hash": "ae8e34a58f5afa7f172e1b2d3a2765a34cc234895a07929e86d6acb7873b45e5",
-      "count": 11
+      "count": 11,
+      "startDate": "2026-07-16T09:28:18.762Z",
+      "endDate": "2026-07-13T15:59:56.796+00:00"
     }
   ]
 }
