@@ -12,34 +12,36 @@ jobs:
     steps:
       - name: Send Heartbeat to Appwrite Cloud
         env:
-          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1' }}
-          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID }}
+          APPWRITE_ENDPOINT: ${{ secrets.APPWRITE_ENDPOINT || 'https://sgp.cloud.appwrite.io/v1' }}
+          APPWRITE_PROJECT_ID: ${{ secrets.APPWRITE_PROJECT_ID || 'lg' }}
           APPWRITE_API_KEY: ${{ secrets.APPWRITE_API_KEY }}
         run: |
           echo "=========================================="
           echo " Starting Appwrite Cloud Keep-Alive Ping"
+          echo " Endpoint: $APPWRITE_ENDPOINT"
+          echo " Project ID: $APPWRITE_PROJECT_ID"
           echo "=========================================="
           
-          # 1. 基础健康检查
-          echo "--> Pinging Appwrite Health Endpoint..."
-          curl -s -L "$APPWRITE_ENDPOINT/health" > /dev/null || echo "Health check pinged."
-
-          # 2. 携带 Project ID 触发应用心跳
+          # 1. 携带 Project ID 触发应用心跳
           if [ -n "$APPWRITE_PROJECT_ID" ]; then
-            echo "--> Sending project activity heartbeat for Project ID: $APPWRITE_PROJECT_ID"
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" "$APPWRITE_ENDPOINT/locale")
-            echo "    Project Ping HTTP Status: $HTTP_STATUS"
+            echo "--> Sending project activity ping..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" "$APPWRITE_ENDPOINT/account")
+            echo "    Project Account Ping Status: $HTTP_STATUS"
             
-            # 3. 如果配置了 API KEY，进一步发送一次经鉴权的轻量请求，确保 100% 记录活跃
+            # 2. 如果配置了 API KEY，发送鉴权 API 请求（100% 记录为活跃操作）
             if [ -n "$APPWRITE_API_KEY" ]; then
               echo "--> Sending authenticated admin heartbeat..."
               AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" -H "X-Appwrite-Key: $APPWRITE_API_KEY" "$APPWRITE_ENDPOINT/users?limit=1")
-              echo "    Authenticated Ping HTTP Status: $AUTH_STATUS"
+              echo "    Users API Status: $AUTH_STATUS"
+              
+              BUCKET_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "X-Appwrite-Project: $APPWRITE_PROJECT_ID" -H "X-Appwrite-Key: $APPWRITE_API_KEY" "$APPWRITE_ENDPOINT/storage/buckets?limit=1")
+              echo "    Storage API Status: $BUCKET_STATUS"
+            else
+              echo "💡 提示: 强烈建议在 GitHub Secrets 中配置 APPWRITE_API_KEY，带 API Key 的请求能 100% 被 Appwrite 记录为项目活跃数据。"
             fi
-            echo "✅ Appwrite keep-alive heartbeat completed successfully!"
+            echo "✅ Appwrite keep-alive heartbeat completed!"
           else
-            echo "⚠️ APPWRITE_PROJECT_ID secret not found in GitHub Repo Settings -> Secrets -> Actions."
-            echo "   Please add APPWRITE_PROJECT_ID in GitHub to keep your specific project active."
+            echo "⚠️ 缺少 APPWRITE_PROJECT_ID 变量，请在 GitHub 仓库 Settings -> Secrets -> Actions 中配置。"
           fi
 
       - name: Send Heartbeat to Cloudflare Pages Site
