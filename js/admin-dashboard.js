@@ -133,7 +133,7 @@
             const events = data.events || data.submissions || (Array.isArray(data) ? data : []);
 
             if (!events.length) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">暂无待审核的大事记投稿 🎉</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">暂无待审核的大事记投稿</td></tr>';
                 return;
             }
 

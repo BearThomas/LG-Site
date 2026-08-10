@@ -162,7 +162,7 @@
             adminLink.href = 'admin-dashboard.html';
             adminLink.style.color = 'var(--primary-color, #228be6)';
             adminLink.style.fontWeight = 'bold';
-            adminLink.textContent = '🛡️ 管理控制台';
+            adminLink.textContent = '管理控制台';
             menu.appendChild(adminLink);
         }
         menu.appendChild(settingsLink);
