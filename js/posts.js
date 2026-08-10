@@ -420,6 +420,65 @@ async function loadNextChunk() {
     }
 }
 
+// ========== 置顶帖已读跟踪与折叠控制 (无 Emoji 版) ==========
+function getViewedPinnedPosts() {
+    try {
+        return JSON.parse(localStorage.getItem('campus_viewed_pinned_posts') || '{}');
+    } catch {
+        return {};
+    }
+}
+
+export function markPinnedPostAsViewed(postId) {
+    if (!postId) return;
+    try {
+        const viewed = getViewedPinnedPosts();
+        viewed[String(postId)] = Date.now();
+        localStorage.setItem('campus_viewed_pinned_posts', JSON.stringify(viewed));
+    } catch (e) {}
+}
+
+if (typeof window !== 'undefined') {
+    window.markPinnedPostAsViewed = markPinnedPostAsViewed;
+
+    window.togglePinnedFold = function(btn) {
+        const wrapper = btn.closest('.pinned-fold-wrapper');
+        if (!wrapper) return;
+        const body = wrapper.querySelector('.pinned-fold-body');
+        const textSpan = btn.querySelector('.pinned-fold-text');
+        if (body.style.display === 'none') {
+            body.style.display = 'block';
+            if (textSpan) textSpan.textContent = '[收起]';
+        } else {
+            body.style.display = 'none';
+            if (textSpan) textSpan.textContent = '[展开]';
+        }
+    };
+
+    window.handleAdminTogglePin = async function(e, postId) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!confirm('确定要修改该帖子的置顶状态吗？')) return;
+        try {
+            const res = await fetch('/api/data', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    collection: 'posts',
+                    documentId: postId,
+                    action: 'toggle_pin'
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || '修改置顶状态失败');
+            alert(data.isPinned ? '已成功置顶该帖子' : '已取消该帖子的置顶');
+            if (typeof loadPosts === 'function') loadPosts({ forceRefresh: true });
+        } catch (err) {
+            alert(err.message || '操作失败');
+        }
+    };
+}
+
 // ========== 渲染列表页面核心 HTML ==========
 function renderPosts(posts, runtimeCache) {
     if (!postsList) return;
@@ -432,8 +491,10 @@ function renderPosts(posts, runtimeCache) {
     const currentUserData = JSON.parse(localStorage.getItem('campus_user') || '{}');
     const myId = currentUserData.studentId || currentUserData.userId || '';
     const followingSet = new Set(currentUserData.following || []);
+    const isAdminUser = currentUserData.role === 'admin' || currentUserData.isAdmin === true;
+    const viewedPinned = getViewedPinnedPosts();
 
-    postsList.innerHTML = posts.map(post => {
+    const generateSingleCardHtml = (post) => {
         const postId = post.$id || post.id;
         const postCreatedAt = post.$createdAt || post.createdAt;
 
@@ -456,6 +517,12 @@ function renderPosts(posts, runtimeCache) {
             }
         }
 
+        const adminPinBtnHtml = isAdminUser ? `
+            <button type="button" class="admin-pin-btn" onclick="window.handleAdminTogglePin(event, '${postId}')" style="margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--accent, #228be6); background: transparent; color: var(--accent, #228be6); cursor: pointer;">
+                ${isPinned ? '取消置顶' : '设置置顶'}
+            </button>
+        ` : '';
+
         return `
             <div class="post-card ${isPinned ? 'pinned' : ''}" data-post-id="${postId}">
                 <div class="post-header">
@@ -468,6 +535,7 @@ function renderPosts(posts, runtimeCache) {
                             <span>${timeStr}</span>
                             ${isPinned ? '<span class="post-badge pinned-badge">置顶</span>' : ''}
                             ${isLocked ? '<span class="post-badge locked-badge">已锁定</span>' : ''}
+                            ${adminPinBtnHtml}
                         </div>
                     </div>
                     <div class="post-follow-container" style="margin-left: auto; align-self: center; opacity: 0; pointer-events: none; transition: opacity 0.5s ease-in;">
@@ -492,7 +560,55 @@ function renderPosts(posts, runtimeCache) {
                 </div>
             </div>
         `;
-    }).join('');
+    };
+
+    const unreadPinnedPosts = [];
+    const readPinnedPosts = [];
+    const normalPosts = [];
+
+    posts.forEach(p => {
+        const pId = p.$id || p.id;
+        const isPinned = p.status ? (p.status & 1) !== 0 : false;
+        if (isPinned) {
+            if (viewedPinned[pId]) {
+                readPinnedPosts.push(p);
+            } else {
+                unreadPinnedPosts.push(p);
+            }
+        } else {
+            normalPosts.push(p);
+        }
+    });
+
+    let htmlBuffer = '';
+
+    // 1. 渲染未读置顶帖 (在最前面完整展开)
+    if (unreadPinnedPosts.length > 0) {
+        htmlBuffer += unreadPinnedPosts.map(generateSingleCardHtml).join('');
+    }
+
+    // 2. 渲染已读置顶帖 (折叠在一个优雅的折叠条里)
+    if (readPinnedPosts.length > 0) {
+        const readPinnedCardsHtml = readPinnedPosts.map(generateSingleCardHtml).join('');
+        htmlBuffer += `
+            <div class="pinned-fold-wrapper" style="margin-bottom: 16px; border: 1px solid var(--border-color, rgba(0,0,0,0.12)); border-radius: 12px; background: var(--card-bg, #ffffff); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <button type="button" class="pinned-fold-toggle-btn" onclick="window.togglePinnedFold(this)" style="width: 100%; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-secondary, #f8f9fa); border: none; font-size: 0.88rem; font-weight: 600; color: var(--text-primary); cursor: pointer;">
+                    <span>已读置顶通知 (${readPinnedPosts.length})</span>
+                    <span class="pinned-fold-text" style="color: var(--accent, #228be6); font-size: 0.82rem; font-weight: normal;">[展开]</span>
+                </button>
+                <div class="pinned-fold-body" style="display: none; border-top: 1px solid var(--border-color, rgba(0,0,0,0.08)); padding: 12px; background: var(--bg-secondary, #fafafa);">
+                    ${readPinnedCardsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    // 3. 渲染普通帖子
+    if (normalPosts.length > 0) {
+        htmlBuffer += normalPosts.map(generateSingleCardHtml).join('');
+    }
+
+    postsList.innerHTML = htmlBuffer;
 
     postsList.querySelectorAll('.post-card').forEach(card => {
         card.addEventListener('click', (e) => {

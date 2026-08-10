@@ -366,7 +366,14 @@ async function loadPostDetail() {
         }
         if (commentInputBox) commentInputBox.style.display = 'none';
         if (loginTip) loginTip.style.display = 'none';
-        return; 
+    // 标记已读（若为置顶帖，返回列表后将自动智能折叠）
+    const isPinnedPost = currentPost.status ? (Number(currentPost.status) & 1) !== 0 : false;
+    if (isPinnedPost) {
+        try {
+            const viewed = JSON.parse(localStorage.getItem('campus_viewed_pinned_posts') || '{}');
+            viewed[String(postId)] = Date.now();
+            localStorage.setItem('campus_viewed_pinned_posts', JSON.stringify(viewed));
+        } catch (e) {}
     }
 
     document.title = `${currentPost.title || '帖子详情'} | 龙高北小站`;
