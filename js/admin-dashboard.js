@@ -241,12 +241,6 @@
             alert(e.message);
         }
     };
-            loadEventsList();
-            loadDashboardStats();
-        } catch (e) {
-            alert(e.message);
-        }
-    };
 
     // 3. 权限与二进制开关勾选列表
     async function loadPermissionsList() {
