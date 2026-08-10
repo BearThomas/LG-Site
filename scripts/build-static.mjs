@@ -33,6 +33,12 @@ for (const name of directories) {
   if (fs.existsSync(source)) fs.cpSync(source, path.join(output, name), { recursive: true });
 }
 
+// Copy public/ contents directly to dist root so /data-backups/... maps to dist/data-backups/...
+const publicSource = path.join(root, 'public');
+if (fs.existsSync(publicSource)) {
+  fs.cpSync(publicSource, output, { recursive: true });
+}
+
 for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
   if (!entry.isFile()) continue;
   if (/\.(html?|json|js|apk)$/i.test(entry.name) || /^_headers$|^_redirects$|^sw\.js$|^manifest\.json$/.test(entry.name) || /^[a-f0-9]{32}\.txt$/i.test(entry.name)) {

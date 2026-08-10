@@ -86,7 +86,11 @@ export async function createArchiveDecryptor(env) {
 
 export async function fetchAssetJson(env, request, path) {
   if (!env?.ASSETS) return null;
-  const response = await env.ASSETS.fetch(new Request(new URL(path, request.url)));
+  let response = await env.ASSETS.fetch(new Request(new URL(path, request.url)));
+  if (!response.ok) {
+    const altPath = path.startsWith('/public/') ? path.replace('/public/', '/') : ('/public' + (path.startsWith('/') ? path : '/' + path));
+    response = await env.ASSETS.fetch(new Request(new URL(altPath, request.url)));
+  }
   if (!response.ok) return null;
   return response.json();
 }
