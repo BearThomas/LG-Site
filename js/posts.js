@@ -483,14 +483,20 @@ if (typeof window !== 'undefined') {
         }
 
         try {
+            const currentUser = JSON.parse(localStorage.getItem('campus_user') || '{}');
+            const token = currentUser.appToken || currentUser.token || '';
             const res = await fetch('/api/data', {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-LG-Token': token
+                },
                 body: JSON.stringify({
                     collection: 'posts',
                     documentId: postId,
                     action: 'toggle_pin',
-                    days
+                    days,
+                    appToken: token
                 })
             });
             const data = await res.json();
