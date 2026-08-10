@@ -112,11 +112,14 @@
         }
     }
 
+    let eventsMap = new Map();
+
     // 2. 大事记审核列表
     async function loadEventsList() {
         const tbody = document.getElementById('eventsTableBody');
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">加载中...</td></tr>';
+        eventsMap.clear();
 
         try {
             const res = await fetch('/api/events-admin?status=pending_admin', { headers: getAuthHeaders() });
@@ -137,6 +140,8 @@
                 return;
             }
 
+            events.forEach(ev => eventsMap.set(String(ev.id), ev));
+
             tbody.innerHTML = events.map(ev => `
                 <tr>
                     <td><strong>${escapeHtml(ev.title)}</strong></td>
@@ -145,7 +150,7 @@
                     <td>${escapeHtml(ev.submitter_id || ev.author_id || '-')}</td>
                     <td style="max-width: 300px; font-size: 13px;">${escapeHtml(ev.desc || ev.content || '')}</td>
                     <td>
-                        <button class="btn btn-primary btn-sm" onclick="handleAuditEvent('${ev.id}', 'published')">通过</button>
+                        <button class="btn btn-primary btn-sm" onclick="openEventAuditModal('${ev.id}')">审核调整并发布</button>
                         <button class="btn btn-secondary btn-sm" onclick="handleAuditEvent('${ev.id}', 'rejected')">拒绝</button>
                     </td>
                 </tr>
@@ -156,6 +161,68 @@
     }
 
     window.loadEventsList = loadEventsList;
+
+    window.openEventAuditModal = function(eventId) {
+        const ev = eventsMap.get(String(eventId));
+        if (!ev) {
+            alert('未能找到对应的事件记录');
+            return;
+        }
+
+        document.getElementById('auditEventId').value = ev.id;
+        document.getElementById('auditEventTitle').value = ev.title || '';
+        document.getElementById('auditEventDesc').value = ev.desc || ev.content || '';
+        document.getElementById('auditEventTag').value = ev.tag || '校园';
+        document.getElementById('auditEventDate').value = ev.date || new Date().toISOString().split('T')[0];
+        document.getElementById('auditEventLink').value = ev.link || '';
+
+        const modal = document.getElementById('eventAuditModal');
+        if (modal) modal.classList.add('show');
+    };
+
+    window.closeEventAuditModal = function() {
+        const modal = document.getElementById('eventAuditModal');
+        if (modal) modal.classList.remove('show');
+    };
+
+    window.submitEventAudit = async function() {
+        const eventId = document.getElementById('auditEventId').value;
+        const title = document.getElementById('auditEventTitle').value.trim();
+        const desc = document.getElementById('auditEventDesc').value.trim();
+        const tag = document.getElementById('auditEventTag').value.trim();
+        const date = document.getElementById('auditEventDate').value.trim();
+        const link = document.getElementById('auditEventLink').value.trim();
+
+        if (!title || !desc || !tag || !date) {
+            alert('标题、描述、标签与日期均不能为空');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/events-admin', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    id: eventId,
+                    status: 'published',
+                    title,
+                    desc,
+                    tag,
+                    date,
+                    link
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || '审核发布失败');
+
+            alert('已成功调整并发布该大事记！');
+            closeEventAuditModal();
+            loadEventsList();
+            loadDashboardStats();
+        } catch (e) {
+            alert(e.message);
+        }
+    };
 
     window.handleAuditEvent = async function(eventId, actionStatus) {
         if (!confirm(`确定将该大事记状态设为: ${actionStatus === 'published' ? '通过发布' : '拒绝'} 吗？`)) return;
@@ -168,6 +235,12 @@
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || '审核操作失败');
             alert('审核完成！');
+            loadEventsList();
+            loadDashboardStats();
+        } catch (e) {
+            alert(e.message);
+        }
+    };
             loadEventsList();
             loadDashboardStats();
         } catch (e) {
