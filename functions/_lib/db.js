@@ -206,19 +206,22 @@ export async function getPostRow(env, postId) {
 
 export function canViewPost(post, viewer) {
   if (!post) return false;
-  const permission = Number(post.view_permission || 1);
+  const permission = Number(post.view_permission ?? post.viewPermission ?? 1);
   if (permission === 1) return true;
   if (!viewer) return false;
   if (isAdmin(viewer)) return true;
 
   const viewerId = normalizeUserId(viewer.id);
-  if (normalizeUserId(post.author_id) === viewerId) return true;
+  const authorId = normalizeUserId(post.author_id ?? post.authorId ?? '');
+  if (authorId && authorId === viewerId) return true;
   if (permission === 8) return false;
 
+  const boardId = String(post.board_id ?? post.boardId ?? 'main');
   const joinedBoards = parseJsonArray(viewer.joined_boards);
-  if (permission === 2) return joinedBoards.includes(post.board_id || 'main');
+  if (permission === 2) return joinedBoards.includes(boardId);
   if (permission === 4) {
-    const targets = parseJsonArray(post.target_groups).map(String);
+    const rawTargets = post.target_groups ?? post.targetGroups ?? [];
+    const targets = (Array.isArray(rawTargets) ? rawTargets : parseJsonArray(rawTargets)).map(String);
     return targets.includes(viewerId) || targets.some(target => joinedBoards.includes(target || 'main'));
   }
   return false;
