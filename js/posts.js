@@ -438,6 +438,20 @@ export function markPinnedPostAsViewed(postId) {
     } catch (e) {}
 }
 
+function checkPostPinned(post) {
+    if (!post || !post.status) return false;
+    const bitPinned = (Number(post.status) & 1) !== 0;
+    if (!bitPinned) return false;
+    const untilStr = post.pinnedUntil || post.pinned_until;
+    if (untilStr) {
+        const until = new Date(untilStr).getTime();
+        if (!isNaN(until) && Date.now() > until) {
+            return false; // 到期自动解置顶
+        }
+    }
+    return true;
+}
+
 if (typeof window !== 'undefined') {
     window.markPinnedPostAsViewed = markPinnedPostAsViewed;
 
@@ -455,10 +469,19 @@ if (typeof window !== 'undefined') {
         }
     };
 
-    window.handleAdminTogglePin = async function(e, postId) {
+    window.handleAdminTogglePin = async function(e, postId, isCurrentlyPinned) {
         e.stopPropagation();
         e.preventDefault();
-        if (!confirm('确定要修改该帖子的置顶状态吗？')) return;
+        
+        let days = 0;
+        if (isCurrentlyPinned) {
+            if (!confirm('确定要取消该帖子的置顶状态吗？')) return;
+        } else {
+            const input = prompt('请输入置顶有效天数（例如 1、3、7 天；填 0 或留空为永久置顶）：', '3');
+            if (input === null) return; // 用户取消
+            days = Math.max(0, parseInt(input.trim(), 10) || 0);
+        }
+
         try {
             const res = await fetch('/api/data', {
                 method: 'PATCH',
@@ -466,12 +489,16 @@ if (typeof window !== 'undefined') {
                 body: JSON.stringify({
                     collection: 'posts',
                     documentId: postId,
-                    action: 'toggle_pin'
+                    action: 'toggle_pin',
+                    days
                 })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || '修改置顶状态失败');
-            alert(data.isPinned ? '已成功置顶该帖子' : '已取消该帖子的置顶');
+            const msg = data.isPinned 
+                ? (days > 0 ? `已成功设置该帖子置顶 ${days} 天` : '已成功设置为永久置顶')
+                : '已取消该帖子的置顶';
+            alert(msg);
             if (typeof loadPosts === 'function') loadPosts({ forceRefresh: true });
         } catch (err) {
             alert(err.message || '操作失败');
@@ -498,7 +525,7 @@ function renderPosts(posts, runtimeCache) {
         const postId = post.$id || post.id;
         const postCreatedAt = post.$createdAt || post.createdAt;
 
-        const isPinned = post.status ? (post.status & 1) !== 0 : false;
+        const isPinned = checkPostPinned(post);
         const isLocked = post.status ? (post.status & 2) !== 0 : false;
         const createdAt = new Date(postCreatedAt);
         const timeStr = formatTime(createdAt);
@@ -518,7 +545,7 @@ function renderPosts(posts, runtimeCache) {
         }
 
         const adminPinBtnHtml = isAdminUser ? `
-            <button type="button" class="admin-pin-btn" onclick="window.handleAdminTogglePin(event, '${postId}')" style="margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--accent, #228be6); background: transparent; color: var(--accent, #228be6); cursor: pointer;">
+            <button type="button" class="admin-pin-btn" onclick="window.handleAdminTogglePin(event, '${postId}', ${isPinned})" style="margin-left: 8px; padding: 2px 8px; font-size: 0.75rem; border-radius: 6px; border: 1px solid var(--accent, #228be6); background: transparent; color: var(--accent, #228be6); cursor: pointer;">
                 ${isPinned ? '取消置顶' : '设置置顶'}
             </button>
         ` : '';

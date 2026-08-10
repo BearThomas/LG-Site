@@ -446,12 +446,19 @@ export async function onRequestPatch({ request, env }) {
       post.id = post.$id || post.id;
     }
     
-    // 支持管理员切换置顶状态 (Toggle Pinned Status)
+    // 支持管理员切换置顶状态 (Toggle Pinned Status with Days Expiration)
     if (body.action === 'toggle_pin' || body.data?.action === 'toggle_pin') {
       if (!isAdmin(profile)) throw new HttpError(403, '只有管理员可以设置帖子置顶');
       const currentStatus = Number(post.status || 0);
       const newStatus = currentStatus ^ 1; // 切换 Bit 1 置顶标志
+      const isNewPinned = (newStatus & 1) !== 0;
       const now = new Date().toISOString();
+
+      const days = Number(body.days ?? body.data?.days ?? 0);
+      let pinnedUntil = null;
+      if (isNewPinned && days > 0) {
+        pinnedUntil = new Date(Date.now() + days * 86400000).toISOString();
+      }
 
       if (!isCold) {
         await requireDb(env).prepare(`
@@ -464,13 +471,14 @@ export async function onRequestPatch({ request, env }) {
       await requireDb(env).prepare(`
         INSERT INTO mod_log (collection, item_id, action, payload)
         VALUES (?, ?, 'status', ?)
-      `).bind('posts', post.id, JSON.stringify({ status: newStatus, updated_at: now })).run();
+      `).bind('posts', post.id, JSON.stringify({ status: newStatus, pinnedUntil, updated_at: now })).run();
 
       return json({
         success: true,
         id: post.id,
         status: newStatus,
-        isPinned: (newStatus & 1) !== 0
+        isPinned: isNewPinned,
+        pinnedUntil
       });
     }
 
