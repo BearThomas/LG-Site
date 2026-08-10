@@ -125,10 +125,35 @@ async function processCollection(collection) {
   let searchIndex = [];
 
   for (let i = 0; i < merged.length; i += CHUNK_SIZE) {
-    let chunkData = merged.slice(i, i + CHUNK_SIZE);
+    const rawChunkData = merged.slice(i, i + CHUNK_SIZE);
     
-    // Encrypt fields before saving
-    chunkData = chunkData.map(doc => encryptDocument(collection, doc));
+    if (collection === 'posts') {
+        rawChunkData.forEach(p => {
+            searchIndex.push({
+                id: p.id || p.$id,
+                title: p.title || '',
+                authorId: p.author_id || p.authorId || '',
+                authorName: p.author_name || p.authorName || '',
+                tags: typeof p.targetGroups === 'string' ? p.targetGroups : JSON.stringify(p.targetGroups || []),
+                boardId: p.board_id || p.boardId || 'main',
+                c: chunkIndex,
+                t: p.created_at || p.$createdAt || ''
+            });
+        });
+    } else if (collection === 'comments') {
+        rawChunkData.forEach(c => {
+            searchIndex.push({
+                id: c.id || c.$id,
+                postId: c.post_id || c.postId || '',
+                authorId: c.author_id || c.authorId || '',
+                c: chunkIndex,
+                t: c.created_at || c.$createdAt || ''
+            });
+        });
+    }
+
+    // Encrypt fields before saving chunk
+    const chunkData = rawChunkData.map(doc => encryptDocument(collection, doc));
     
     const fileName = `chunk-${chunkIndex}.json`;
     const filePath = path.join(folder, fileName);
@@ -140,34 +165,9 @@ async function processCollection(collection) {
       file: fileName,
       hash: computeHash(jsonStr),
       count: chunkData.length,
-      startDate: chunkData[chunkData.length - 1].created_at,
-      endDate: chunkData[0].created_at
+      startDate: chunkData[chunkData.length - 1].created_at || chunkData[chunkData.length - 1].$createdAt || '',
+      endDate: chunkData[0].created_at || chunkData[0].$createdAt || ''
     });
-    
-    if (collection === 'posts') {
-        chunkData.forEach(p => {
-            searchIndex.push({
-                id: p.id || p.$id,
-                title: p.title,
-                authorId: p.author_id || p.authorId,
-                authorName: p.author_name || p.authorName,
-                tags: typeof p.targetGroups === 'string' ? p.targetGroups : JSON.stringify(p.targetGroups || []),
-                boardId: p.board_id || p.boardId || 'main',
-                c: chunkIndex,
-                t: p.created_at
-            });
-        });
-    } else if (collection === 'comments') {
-        chunkData.forEach(c => {
-            searchIndex.push({
-                id: c.id || c.$id,
-                postId: c.post_id || c.postId,
-                authorId: c.author_id || c.authorId,
-                c: chunkIndex,
-                t: c.created_at
-            });
-        });
-    }
     
     chunkIndex++;
   }

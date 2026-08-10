@@ -12,6 +12,7 @@ import {
   toUserDocument
 } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+import { fetchAssetJson, findArchivedDocuments } from '../_lib/backup.js';
 
 const COLLECTIONS = new Set(['users', 'posts', 'confessions', 'comments']);
 
@@ -120,7 +121,7 @@ function appendPostVisibility(conditions, values, viewer) {
   conditions.push(`(${visibility.join(' OR ')})`);
 }
 
-async function listPosts(env, state, viewer, fields = null) {
+async function listPosts(env, request, state, viewer, fields = null) {
   const db = requireDb(env);
   const conditions = [];
   const values = [];
@@ -199,10 +200,45 @@ async function listPosts(env, state, viewer, fields = null) {
     LIMIT ? OFFSET ?
   `).bind(viewerId, ...values, state.limit, state.offset);
   const [countResult, rowsResult] = await db.batch([countStatement, rowsStatement]);
-  return {
-    total: Number(countResult.results?.[0]?.total || 0),
-    documents: (rowsResult.results || []).map(row => toPostDocument(row, fields))
-  };
+  
+  let total = Number(countResult.results?.[0]?.total || 0);
+  let documents = (rowsResult.results || []).map(row => toPostDocument(row, fields));
+
+  // 如果带有关键词搜索条件，或者 D1 返回的数据不满 limit，则尝试搜索/补充冷备份
+  const searchKws = state.search?.map(s => s.value).filter(Boolean) || [];
+  if (searchKws.length > 0 || documents.length < state.limit) {
+    try {
+      const searchIndex = await fetchAssetJson(env, request, '/data-backups/posts/search-index.json');
+      if (Array.isArray(searchIndex) && searchIndex.length > 0) {
+        const matchedIds = [];
+        const existingIds = new Set(documents.map(d => d.$id || d.id));
+
+        for (const item of searchIndex) {
+          if (existingIds.has(item.id)) continue;
+          if (searchKws.length > 0) {
+            const matches = searchKws.some(kw => {
+              const k = kw.toLowerCase();
+              return (item.title || '').toLowerCase().includes(k) || (item.authorName || '').toLowerCase().includes(k);
+            });
+            if (!matches) continue;
+          }
+          matchedIds.push(item.id);
+          if (matchedIds.length >= (state.limit - documents.length)) break;
+        }
+
+        if (matchedIds.length > 0) {
+          const coldPosts = await findArchivedDocuments(env, request, 'posts', matchedIds, fields);
+          const visibleCold = coldPosts.filter(p => canViewPost(p, viewer));
+          documents = [...documents, ...visibleCold];
+          total += visibleCold.length;
+        }
+      }
+    } catch (e) {
+      console.warn('检索冷备份索引失败 (不影响热数据):', e.message);
+    }
+  }
+
+  return { total, documents };
 }
 
 async function listComments(env, state, viewer, fields = null) {
@@ -291,7 +327,7 @@ async function listConfessions(env, state, viewer, fields = null) {
   };
 }
 
-async function getDocument(env, collection, documentId, viewer, fields = null) {
+async function getDocument(env, request, collection, documentId, viewer, fields = null) {
   if (collection === 'users') {
     const row = await getUserRow(env, documentId);
     if (!row) throw new HttpError(404, '用户不存在');
@@ -310,20 +346,34 @@ async function getDocument(env, collection, documentId, viewer, fields = null) {
       FROM posts
       WHERE id = ? LIMIT 1
     `).bind(viewerId, documentId).first();
-    if (!row) throw new HttpError(404, '帖子不存在');
-    if (!canViewPost(row, viewer)) throw new HttpError(403, '无权查看该帖子');
-    return toPostDocument(row, fields);
+    if (row) {
+      if (!canViewPost(row, viewer)) throw new HttpError(403, '无权查看该帖子');
+      return toPostDocument(row, fields);
+    }
+    const archivedDocs = await findArchivedDocuments(env, request, 'posts', [documentId], fields);
+    if (archivedDocs && archivedDocs.length > 0) {
+      const coldPost = archivedDocs[0];
+      if (!canViewPost(coldPost, viewer)) throw new HttpError(403, '无权查看该帖子');
+      return coldPost;
+    }
+    throw new HttpError(404, '帖子不存在');
   }
   if (collection === 'confessions') {
     const row = await requireDb(env)
       .prepare('SELECT * FROM confessions WHERE id = ? LIMIT 1')
       .bind(documentId)
       .first();
-    if (!row) throw new HttpError(404, '内容不存在');
-    if (Number(row.status || 0) !== 0 && !(viewer && isAdmin(viewer))) {
-      throw new HttpError(404, '内容不存在');
+    if (row) {
+      if (Number(row.status || 0) !== 0 && !(viewer && isAdmin(viewer))) {
+        throw new HttpError(404, '内容不存在');
+      }
+      return toConfessionDocument(row, viewer, fields);
     }
-    return toConfessionDocument(row, viewer, fields);
+    const archivedDocs = await findArchivedDocuments(env, request, 'confessions', [documentId], fields);
+    if (archivedDocs && archivedDocs.length > 0) {
+      return archivedDocs[0];
+    }
+    throw new HttpError(404, '内容不存在');
   }
   throw new HttpError(400, '不支持的数据集合');
 }
@@ -338,11 +388,11 @@ export async function onRequestGet({ request, env }) {
     const documentId = url.searchParams.get('documentId');
     const requestedFields = url.searchParams.get('fields');
     const fields = requestedFields ? requestedFields.split(',').map(v => v.trim()).filter(Boolean) : null;
-    if (documentId) return json(await getDocument(env, collection, documentId, viewer, fields));
+    if (documentId) return json(await getDocument(env, request, collection, documentId, viewer, fields));
 
     const state = queryState(parseQueries(url.searchParams.get('queries')));
     if (collection === 'users') return json(await listUsers(env, state, viewer, fields));
-    if (collection === 'posts') return json(await listPosts(env, state, viewer, fields));
+    if (collection === 'posts') return json(await listPosts(env, request, state, viewer, fields));
     if (collection === 'comments') return json(await listComments(env, state, viewer, fields));
     return json(await listConfessions(env, state, viewer, fields));
   } catch (error) {
@@ -359,13 +409,10 @@ export async function onRequestPatch({ request, env }) {
     let post = await getPostRow(env, body.documentId);
     let isCold = false;
     if (!post) {
-      const url = new URL('/public/data-backups/posts.json', request.url);
-      const res = await env.ASSETS.fetch(new Request(url));
-      if (res.ok) {
-        const backup = await res.json();
-        const rawPosts = backup.documents || backup || [];
-        post = rawPosts.find(p => p.id === body.documentId || p.$id === body.documentId);
-        if (post) isCold = true;
+      const archived = await findArchivedDocuments(env, request, 'posts', [body.documentId], null);
+      if (archived && archived.length > 0) {
+        post = archived[0];
+        isCold = true;
       }
     }
     if (!post) throw new HttpError(404, '帖子不存在');

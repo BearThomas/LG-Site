@@ -1,6 +1,7 @@
 import { requireAuth } from '../_lib/auth.js';
 import { isAdmin, normalizeUserId, requireDb } from '../_lib/db.js';
 import { errorResponse, HttpError, json, methodNotAllowed, readJsonBody } from '../_lib/http.js';
+import { findArchivedDocuments } from '../_lib/backup.js';
 
 export async function onRequestPost({ request, env }) {
   try {
@@ -21,13 +22,10 @@ export async function onRequestPost({ request, env }) {
         return json({ success: true, tombstoned: true });
       }
       
-      const url = new URL('/public/data-backups/comments.json', request.url);
-      const res = await env.ASSETS.fetch(new Request(url));
-      if (res.ok) {
-        const backup = await res.json();
-        const rawComments = backup.documents || backup || [];
-        comment = rawComments.find(c => c.id === commentId || c.$id === commentId);
-        if (comment) isCold = true;
+      const archived = await findArchivedDocuments(env, request, 'comments', [commentId], ['$id', 'authorId']);
+      if (archived && archived.length > 0) {
+        comment = archived[0];
+        isCold = true;
       }
     }
     
@@ -37,6 +35,7 @@ export async function onRequestPost({ request, env }) {
     
     if (isCold) {
       comment.author_id = comment.authorId || comment.author_id;
+      comment.id = comment.$id || comment.id;
     }
     
     if (!isAdmin(profile) && normalizeUserId(comment.author_id) !== normalizeUserId(profile.id)) {

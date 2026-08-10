@@ -52,12 +52,12 @@ function documentDate(document) {
 }
 
 async function listArchivedActivity(env, request, collection, userId, decrypt, tombstones) {
-  const index = await fetchAssetJson(env, request, `/public/data-backups/${collection}/index.json`);
+  const index = await fetchAssetJson(env, request, `/data-backups/${collection}/index.json`);
   if (!index?.chunks?.length) return [];
   const documents = [];
 
   for (const chunk of index.chunks) {
-    const rows = await fetchAssetJson(env, request, `/public/data-backups/${collection}/${chunk.file}`);
+    const rows = await fetchAssetJson(env, request, `/data-backups/${collection}/${chunk.file}`);
     if (!Array.isArray(rows)) continue;
     for (const row of rows) {
       const id = documentId(row);
