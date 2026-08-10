@@ -204,38 +204,63 @@ async function listPosts(env, request, state, viewer, fields = null) {
   let total = Number(countResult.results?.[0]?.total || 0);
   let documents = (rowsResult.results || []).map(row => toPostDocument(row, fields));
 
-  // 如果带有关键词搜索条件，或者 D1 返回的数据不满 limit，则尝试搜索/补充冷备份
   const searchKws = state.search?.map(s => s.value).filter(Boolean) || [];
-  if (searchKws.length > 0 || documents.length < state.limit) {
-    try {
-      const searchIndex = await fetchAssetJson(env, request, '/data-backups/posts/search-index.json');
-      if (Array.isArray(searchIndex) && searchIndex.length > 0) {
-        const matchedIds = [];
+  
+  try {
+    const searchIndex = await fetchAssetJson(env, request, '/data-backups/posts/search-index.json');
+    if (Array.isArray(searchIndex) && searchIndex.length > 0) {
+      if (searchKws.length > 0) {
+        // 搜索模式：匹配 searchIndex 关键词并按需切片
+        const matchedItems = searchIndex.filter(item => {
+          return searchKws.some(kw => {
+            const k = kw.toLowerCase();
+            return (item.title || '').toLowerCase().includes(k) || (item.authorName || '').toLowerCase().includes(k);
+          });
+        });
+        total += matchedItems.length;
         const existingIds = new Set(documents.map(d => d.$id || d.id));
-
-        for (const item of searchIndex) {
-          if (existingIds.has(item.id)) continue;
-          if (searchKws.length > 0) {
-            const matches = searchKws.some(kw => {
-              const k = kw.toLowerCase();
-              return (item.title || '').toLowerCase().includes(k) || (item.authorName || '').toLowerCase().includes(k);
-            });
-            if (!matches) continue;
+        const uncollectedItems = matchedItems.filter(item => !existingIds.has(item.id));
+        
+        const neededCount = state.limit - documents.length;
+        if (neededCount > 0) {
+          const sliceItems = uncollectedItems.slice(0, neededCount);
+          if (sliceItems.length > 0) {
+            const coldPosts = await findArchivedDocuments(env, request, 'posts', sliceItems.map(i => i.id), fields);
+            const visibleCold = coldPosts.filter(p => canViewPost(p, viewer));
+            documents = [...documents, ...visibleCold];
           }
-          matchedIds.push(item.id);
-          if (matchedIds.length >= (state.limit - documents.length)) break;
+        }
+      } else {
+        // 普通瀑布流浏览模式：基于 d1Total 计算物理冷偏移 (coldOffset) 精准切片
+        const d1Total = total;
+        total += searchIndex.length;
+
+        let coldOffset = 0;
+        let neededCount = 0;
+
+        if (state.offset >= d1Total) {
+          coldOffset = state.offset - d1Total;
+          neededCount = state.limit;
+        } else if (state.offset + documents.length < state.offset + state.limit) {
+          coldOffset = 0;
+          neededCount = state.limit - documents.length;
         }
 
-        if (matchedIds.length > 0) {
-          const coldPosts = await findArchivedDocuments(env, request, 'posts', matchedIds, fields);
-          const visibleCold = coldPosts.filter(p => canViewPost(p, viewer));
-          documents = [...documents, ...visibleCold];
-          total += visibleCold.length;
+        if (neededCount > 0 && coldOffset < searchIndex.length) {
+          const existingIds = new Set(documents.map(d => d.$id || d.id));
+          const sliceItems = searchIndex.slice(coldOffset, coldOffset + neededCount);
+          const wantedIds = sliceItems.map(i => i.id).filter(id => !existingIds.has(id));
+
+          if (wantedIds.length > 0) {
+            const coldPosts = await findArchivedDocuments(env, request, 'posts', wantedIds, fields);
+            const visibleCold = coldPosts.filter(p => canViewPost(p, viewer));
+            documents = [...documents, ...visibleCold];
+          }
         }
       }
-    } catch (e) {
-      console.warn('检索冷备份索引失败 (不影响热数据):', e.message);
     }
+  } catch (e) {
+    console.warn('处理冷备份切片逻辑失败 (不影响热数据):', e.message);
   }
 
   return { total, documents };

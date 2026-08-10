@@ -290,7 +290,9 @@ async function fetchNextPostsBatch() {
     let processedBatch = batch.map(p => normalizePost(p)).filter(filterFn);
     processedBatch = applyPendingModifications('posts', processedBatch);
 
-    currentPostsPool.push(...processedBatch);
+    const existingIds = new Set(currentPostsPool.map(p => p.$id || p.id));
+    const uniqueBatch = processedBatch.filter(p => !existingIds.has(p.$id || p.id));
+    currentPostsPool.push(...uniqueBatch);
 
     // 🌟 已更新：融合新帖曝光分、字数丰富度激励与平滑时间衰减的新算法
     const calculateHotScore = post => {
