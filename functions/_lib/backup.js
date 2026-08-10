@@ -3,34 +3,45 @@ import { getBackupEncryptKey } from './config.js';
 const ENCRYPTED_VALUE = /^[0-9a-fA-F]{32}:[0-9a-fA-F]+$/;
 
 const COLLECTION_FIELD_ALLOWLIST = {
-  posts: ['$id', 'title', 'content', 'createdAt', 'boardId', 'viewPermission', 'status', 'editedAt', 'commentCount', 'likes'],
-  comments: ['$id', 'postId', 'content', 'createdAt'],
-  confessions: ['$id', 'content', 'createdAt', 'likes', 'status']
+  posts: ['$id', 'id', 'title', 'content', 'createdAt', '$createdAt', 'created_at', 'boardId', 'board_id', 'viewPermission', 'view_permission', 'status', 'editedAt', 'edited_at', 'commentCount', 'comment_count', 'likes', 'authorId', 'author_id', 'authorName', 'author_name', 'targetGroups', 'target_groups'],
+  comments: ['$id', 'id', 'postId', 'post_id', 'content', 'createdAt', '$createdAt', 'created_at', 'authorId', 'author_id', 'authorName', 'author_name'],
+  confessions: ['$id', 'id', 'content', 'createdAt', '$createdAt', 'created_at', 'likes', 'status']
 };
 
 const FIELD_VALUE_MAP = {
   posts: {
     $id: ['id', '$id'],
+    id: ['id', '$id'],
     title: ['title'],
     content: ['content'],
     createdAt: ['$createdAt', 'createdAt', 'created_at'],
+    $createdAt: ['$createdAt', 'createdAt', 'created_at'],
     boardId: ['boardId', 'board_id'],
     viewPermission: ['viewPermission', 'view_permission'],
     status: ['status'],
     editedAt: ['editedAt', 'edited_at'],
     commentCount: ['commentCount', 'comment_count'],
-    likes: ['likes']
+    likes: ['likes'],
+    authorId: ['authorId', 'author_id', 'author'],
+    authorName: ['authorName', 'author_name'],
+    targetGroups: ['targetGroups', 'target_groups']
   },
   comments: {
     $id: ['id', '$id'],
+    id: ['id', '$id'],
     postId: ['postId', 'post_id'],
     content: ['content'],
-    createdAt: ['$createdAt', 'createdAt', 'created_at']
+    createdAt: ['$createdAt', 'createdAt', 'created_at'],
+    $createdAt: ['$createdAt', 'createdAt', 'created_at'],
+    authorId: ['authorId', 'author_id', 'author'],
+    authorName: ['authorName', 'author_name']
   },
   confessions: {
     $id: ['id', '$id'],
+    id: ['id', '$id'],
     content: ['content'],
     createdAt: ['$createdAt', 'createdAt', 'created_at'],
+    $createdAt: ['$createdAt', 'createdAt', 'created_at'],
     likes: ['likes'],
     status: ['status']
   }
@@ -49,22 +60,28 @@ function hexToBytes(value) {
 
 export async function createArchiveDecryptor(env) {
   const rawKey = getBackupEncryptKey(env);
-  if (!/^[0-9a-fA-F]{64}$/.test(rawKey)) return null;
-  const key = await crypto.subtle.importKey('raw', hexToBytes(rawKey), { name: 'AES-CBC' }, false, ['decrypt']);
-  return async value => {
-    if (value === undefined || value === null || !ENCRYPTED_VALUE.test(String(value))) return value;
-    const [ivHex, cipherHex] = String(value).split(':');
-    try {
-      const decrypted = await crypto.subtle.decrypt(
-        { name: 'AES-CBC', iv: hexToBytes(ivHex) },
-        key,
-        hexToBytes(cipherHex)
-      );
-      return new TextDecoder().decode(decrypted);
-    } catch {
-      throw new Error('归档内容解密失败');
-    }
-  };
+  if (!/^[0-9a-fA-F]{64}$/.test(rawKey)) {
+    return async value => value;
+  }
+  try {
+    const key = await crypto.subtle.importKey('raw', hexToBytes(rawKey), { name: 'AES-CBC' }, false, ['decrypt']);
+    return async value => {
+      if (value === undefined || value === null || !ENCRYPTED_VALUE.test(String(value))) return value;
+      const [ivHex, cipherHex] = String(value).split(':');
+      try {
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-CBC', iv: hexToBytes(ivHex) },
+          key,
+          hexToBytes(cipherHex)
+        );
+        return new TextDecoder().decode(decrypted);
+      } catch {
+        return value;
+      }
+    };
+  } catch {
+    return async value => value;
+  }
 }
 
 export async function fetchAssetJson(env, request, path) {
@@ -78,7 +95,8 @@ function normalizeRequestedFields(collection, fields) {
   const allowList = COLLECTION_FIELD_ALLOWLIST[collection] || [];
   if (!Array.isArray(fields) || !fields.length) return allowList;
   const requested = fields.filter(Boolean).map(String);
-  return requested.filter(field => allowList.includes(field));
+  const matched = requested.filter(field => allowList.includes(field));
+  return matched.length ? matched : allowList;
 }
 
 function pickValue(document, fieldName, fieldMap) {
@@ -102,14 +120,17 @@ async function projectArchivedDocument(collection, document, selectedFields, dec
   const projected = {};
   const fieldMap = FIELD_VALUE_MAP[collection] || {};
   for (const field of selectedFields) {
-    if (field === '$id') {
+    if (field === '$id' || field === 'id') {
       const value = normalizeDocumentId(document);
       if (value) projected.$id = value;
       continue;
     }
-    if (field === 'createdAt') {
+    if (field === 'createdAt' || field === '$createdAt') {
       const value = normalizeCreatedAt(document);
-      if (value !== null && value !== undefined) projected.createdAt = value;
+      if (value !== null && value !== undefined) {
+        projected.createdAt = value;
+        projected.$createdAt = value;
+      }
       continue;
     }
     const rawValue = pickValue(document, field, fieldMap);
@@ -130,31 +151,30 @@ async function projectArchivedDocument(collection, document, selectedFields, dec
 export async function findArchivedDocuments(env, request, collection, ids, fields, filters = {}) {
   const selectedFields = normalizeRequestedFields(collection, fields);
   if (!selectedFields.length) return [];
-  const decrypt = await createArchiveDecryptor(env);
-  if (!decrypt) return [];
+  const decrypt = (await createArchiveDecryptor(env)) || (async value => value);
 
   const index = await fetchAssetJson(env, request, `/data-backups/${collection}/index.json`);
   if (!index?.chunks?.length) return [];
 
   const results = [];
-  const wanted = new Set(ids.map(String).filter(Boolean));
+  const wanted = new Set((ids || []).map(String).filter(Boolean));
 
   for (const chunk of index.chunks) {
     const rows = await fetchAssetJson(env, request, `/data-backups/${collection}/${chunk.file}`);
     if (!Array.isArray(rows)) continue;
     for (const row of rows) {
       const rowId = normalizeDocumentId(row);
-      if (ids.length && (!rowId || !wanted.has(rowId))) continue;
+      if (Array.isArray(ids) && ids.length && (!rowId || !wanted.has(rowId))) continue;
       if (!matchesFilter(row, filters)) continue;
       const projected = await projectArchivedDocument(collection, row, selectedFields, decrypt);
       if (rowId) projected.$id = rowId;
       results.push(projected);
-      if (ids.length) {
+      if (Array.isArray(ids) && ids.length) {
         wanted.delete(rowId);
         if (!wanted.size) break;
       }
     }
-    if (ids.length && !wanted.size) break;
+    if (Array.isArray(ids) && ids.length && !wanted.size) break;
   }
 
   return results;
