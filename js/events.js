@@ -267,38 +267,7 @@ const EventsManager = (function() {
         return headers;
     }
 
-    async function checkAdminPendingEvents() {
-        const user = getSavedUser();
-        if (!user) return;
 
-        const adminAuditBtn = document.getElementById('adminAuditBtn');
-        const adminPendingCount = document.getElementById('adminPendingCount');
-
-        try {
-            const res = await fetch('/api/events-admin', {
-                method: 'POST',
-                headers: authHeaders(user, true),
-                body: JSON.stringify({
-                    studentId: user.studentId,
-                    appToken: user.appToken || '',
-                    sessionSecret: user.token || '',
-                    action: 'list'
-                })
-            });
-
-            if (res.status === 403 || !res.ok) return;
-
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                if (adminPendingCount) adminPendingCount.textContent = data.length;
-                if (adminAuditBtn) adminAuditBtn.style.display = 'inline-flex';
-            }
-        } catch (e) {
-            console.warn('检查管理员待审核大事记数量失败:', e.message);
-        }
-    }
-
-    checkAdminPendingEvents();
 
     function readLocalRecords() {
         try {
@@ -350,11 +319,8 @@ const EventsManager = (function() {
         }).join('');
     }
 
-    // 金色 FAB + 号按钮与管理员菜单/投稿弹窗逻辑
+    // 金色 FAB + 号按钮投稿弹窗逻辑
     const fabBtn = document.getElementById('fabEventBtn');
-    const choiceModal = document.getElementById('eventAdminChoiceModal');
-    const closeChoiceModalBtn = document.getElementById('closeAdminChoiceModal');
-    const choiceCreateBtn = document.getElementById('choiceCreateEventBtn');
 
     if (fabBtn) {
         fabBtn.addEventListener('click', () => {
@@ -364,41 +330,10 @@ const EventsManager = (function() {
                 location.href = 'login.html';
                 return;
             }
-
-            const isAdmin = user.role === 'admin' || user.permissions === 255;
-            if (isAdmin && choiceModal) {
-                choiceModal.style.display = 'flex';
-            } else if (submitModal) {
+            if (submitModal) {
                 submitModal.style.display = 'flex';
                 if (contentInput) contentInput.value = '';
             }
-        });
-    }
-
-    if (submitBtn && submitModal) {
-        submitBtn.addEventListener('click', () => {
-            const user = getSavedUser();
-            if (!user) {
-                alert('请先登录');
-                location.href = 'login.html';
-                return;
-            }
-            submitModal.style.display = 'flex';
-            if (contentInput) contentInput.value = '';
-        });
-    }
-
-    if (closeChoiceModalBtn && choiceModal) {
-        closeChoiceModalBtn.addEventListener('click', () => {
-            choiceModal.style.display = 'none';
-        });
-    }
-
-    if (choiceCreateBtn && submitModal && choiceModal) {
-        choiceCreateBtn.addEventListener('click', () => {
-            choiceModal.style.display = 'none';
-            submitModal.style.display = 'flex';
-            if (contentInput) contentInput.value = '';
         });
     }
 
