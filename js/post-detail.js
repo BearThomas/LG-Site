@@ -366,6 +366,9 @@ async function loadPostDetail() {
         }
         if (commentInputBox) commentInputBox.style.display = 'none';
         if (loginTip) loginTip.style.display = 'none';
+        return;
+    }
+
     // 标记已读（若为置顶帖，返回列表后将自动智能折叠）
     const isPinnedPost = currentPost.status ? (Number(currentPost.status) & 1) !== 0 : false;
     if (isPinnedPost) {
