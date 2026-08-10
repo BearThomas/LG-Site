@@ -1,11 +1,21 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+    <script>
+        (function() {
+            const t = localStorage.getItem('theme') || 'auto';
+            const isDark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+            document.documentElement.classList.toggle('dark', isDark);
+            document.documentElement.classList.toggle('light', !isDark);
+        })();
+    </script>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>管理控制台 - 龙高北小站</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/theme.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>龙高北小站 | 管理控制台</title>
+    <link rel="icon" type="image/png" href="./image/LG.png">
+    <link rel="stylesheet" href="./css/light/forall.css">
+    <link rel="stylesheet" href="./css/light/posts.css">
     <style>
         .admin-container {
             max-width: 1200px;
@@ -457,8 +467,8 @@
     </div>
 
     <!-- 脚本引入 -->
-    <script src="js/shared.js"></script>
-    <script src="js/nav-bar.js"></script>
-    <script src="js/admin-dashboard.js"></script>
+    <script src="./js/theme-change.js"></script>
+    <script src="./js/nav-bar.js"></script>
+    <script type="module" src="./js/admin-dashboard.js"></script>
 </body>
 </html>
