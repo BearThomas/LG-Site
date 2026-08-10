@@ -120,9 +120,17 @@
 
         try {
             const res = await fetch('/api/events-admin?status=pending_admin', { headers: getAuthHeaders() });
-            if (!res.ok) throw new Error('获取待审核列表失败');
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(`获取待审核列表失败 (${res.status}) ${text.slice(0, 60)}`);
+            }
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await res.text().catch(() => '');
+                throw new Error(`接口未返回 JSON 格式 (${text.slice(0, 60)})`);
+            }
             const data = await res.json();
-            const events = data.events || data.submissions || [];
+            const events = data.events || data.submissions || (Array.isArray(data) ? data : []);
 
             if (!events.length) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">暂无待审核的大事记投稿 🎉</td></tr>';
