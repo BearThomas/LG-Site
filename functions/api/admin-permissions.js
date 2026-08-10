@@ -66,10 +66,11 @@ export async function onRequestPost({ request, env }) {
 
     const db = requireDb(env);
     const now = new Date().toISOString();
+    const newRole = newPermissions > 1 ? 'admin' : 'normal';
 
     await db.prepare(`
-      UPDATE users SET permissions = ?, updated_at = ? WHERE id = ?
-    `).bind(newPermissions, now, targetUserId).run();
+      UPDATE users SET permissions = ?, role = ?, updated_at = ? WHERE id = ?
+    `).bind(newPermissions, newRole, now, targetUserId).run();
 
     // 记录审计日志
     await db.prepare(`

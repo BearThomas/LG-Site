@@ -71,6 +71,9 @@ export async function ensureUserRow(env, identity, defaults = {}) {
   );
   const ownedBoards = JSON.stringify(defaults.ownedBoards || []);
 
+  const userPermissions = Number(defaults.permissions ?? 31);
+  const userRole = defaults.role || (userPermissions > 1 ? 'admin' : 'normal');
+
   await db.prepare(`
     INSERT INTO users (
       id, appwrite_user_id, name, avatar, email, role, permissions,
@@ -96,8 +99,8 @@ export async function ensureUserRow(env, identity, defaults = {}) {
     name,
     defaults.avatar || null,
     email,
-    defaults.role || 'normal',
-    Number(defaults.permissions ?? 31),
+    userRole,
+    userPermissions,
     joinedBoards,
     ownedBoards,
     className,
