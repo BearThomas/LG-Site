@@ -1,0 +1,29 @@
+name: Export Decrypted Archive Data
+
+on:
+  workflow_dispatch:
+
+jobs:
+  decrypt-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run decryption script
+        env:
+          BACKUP_ENCRYPT_KEY: ${{ secrets.BACKUP_ENCRYPT_KEY }}
+        run: |
+          node scripts/decrypt-backup.mjs
+
+      - name: Upload decrypted data
+        uses: actions/upload-artifact@v4
+        with:
+          name: decrypted-backup-data
+          path: decrypted-backups/
+          retention-days: 7
