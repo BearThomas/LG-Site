@@ -1,22 +1,22 @@
 {
   "collection": "posts",
   "totalChunks": 2,
-  "totalRecords": 54,
-  "updatedAt": "2026-08-19T19:21:09.352Z",
+  "totalRecords": 55,
+  "updatedAt": "2026-08-20T19:26:46.130Z",
   "chunks": [
     {
       "file": "chunk-1.json",
-      "hash": "f4208deb7a4577905a66858047d9d5e0f790d2c02db1825461ac410a372ac38a",
+      "hash": "6fef7afd7a5c7a8cca51e0e24cd78ab5aa1e38fd8ccac502264fb5652aaa66c4",
       "count": 50,
-      "startDate": "2026-07-17T12:10:53.828Z",
+      "startDate": "2026-07-17T12:13:52.212Z",
       "endDate": "2026-06-20T13:01:49.022+00:00"
     },
     {
       "file": "chunk-2.json",
-      "hash": "43b98c1e37f44be8ce898b00aefe9a442a54aa629c742026368874f3eb8d787a",
-      "count": 4,
+      "hash": "bc20d8d98a47e8d426bdc43c4ae4060f1f17079337cf927d58e448dcb537aa1d",
+      "count": 5,
       "startDate": "2026-07-01T01:10:10.313Z",
-      "endDate": "2026-07-16T14:49:17.306Z"
+      "endDate": "2026-07-17T12:10:53.828Z"
     }
   ]
 }
